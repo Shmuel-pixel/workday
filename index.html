@@ -224,6 +224,15 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 .cell .g{font-family:var(--display);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
 .cell .h{font-family:var(--heb);font-size:12px;color:var(--muted);text-align:right}
 .cell.blank{background:transparent}
+.calpick{display:grid;justify-items:center;gap:2px;padding:4px 10px;border-radius:10px}
+.calpick:active{background:var(--sunk)}
+.calpick .caret{font-size:14px;color:var(--todo)}
+.cell.picked{border-color:var(--erev);box-shadow:inset 0 0 0 2px var(--erev)}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--sunk);border-radius:10px;padding:3px}
+.seg button{padding:9px;border-radius:8px;font-weight:700;color:var(--muted)}
+.seg button.on{background:var(--surface);color:var(--todo);box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.three{display:grid;grid-template-columns:1fr 1.6fr 1.2fr;gap:8px}
+.three select{padding:12px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;font-size:17px;min-width:0}
 .cell.today{border-color:var(--todo);box-shadow:inset 0 0 0 1px var(--todo)}
 .cell.c-off{background:var(--off-soft)} .cell.c-erev{background:var(--erev-soft)} .cell.c-fast{background:var(--fast-soft)} .cell.c-chm{background:var(--chm-soft)} .cell.c-us{background:var(--todo-soft)}
 .dots{position:absolute;top:6px;right:5px;display:flex;gap:2px}
@@ -285,7 +294,7 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 25, 2026 (11)';
+var KEY='workday.v1',APPVER='Oct 25, 2026 (12)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Angio','Charlie','Adon'],vehicles:['2019 Ford Box Truck','2013 Silverado','2016 F450 Utility Truck','Geronimo 2016 F550'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -703,7 +712,7 @@ function renderCal(){
   var a=ymd(first),b=ymd(new Date(y,m,days));
   var hm1=heb(a),hm2=heb(b);
   var hsub=cc(HM[hm1.m])+(hm1.m!==hm2.m?' - '+cc(HM[hm2.m]):'')+' '+gem(hm2.y);
-  var h='<div class="calhead"><button class="navbtn" id="cPrev" style="width:44px" aria-label="Previous month">&lsaquo;</button><div style="text-align:center"><h2>'+MONS[m]+' '+y+'</h2><div class="sub" lang="he">'+hsub+'</div></div><button class="navbtn" id="cNext" style="width:44px" aria-label="Next month">&rsaquo;</button></div>';
+  var h='<div class="calhead"><button class="navbtn" id="cPrev" style="width:44px" aria-label="Previous month">&lsaquo;</button><button class="calpick" id="cPick" aria-label="Go to any date"><h2>'+MONS[m]+' '+y+' <span class="caret">&#9662;</span></h2><div class="sub" lang="he">'+hsub+'</div></button><button class="navbtn" id="cNext" style="width:44px" aria-label="Next month">&rsaquo;</button></div>';
   h+='<div class="grid">';for(var i=0;i<7;i++)h+='<div class="dow">'+DOWSH[i]+'</div>';
   for(var j=0;j<first.getDay();j++)h+='<div class="cell blank"></div>';
   var specs=[];
@@ -711,7 +720,7 @@ function renderCal(){
     var s=ymd(new Date(y,m,d)),k=topKind(s),cs=cardsOn(s);
     var dots='';var nd=0,nt=0,nm=0;cs.forEach(function(c){if(c.status==='done')nd++;else if(diff(s,T)<0)nm++;else nt++});
     if(nt)dots+='<i class="dot"></i>';if(nd)dots+='<i class="dot d"></i>';if(nm)dots+='<i class="dot m"></i>';
-    h+='<button class="cell'+(k?' c-'+k:'')+(s===T?' today':'')+'" data-open="'+s+'" aria-label="'+esc(engLong(s))+'"><span class="g">'+d+'</span><span class="h" lang="he">'+gem(heb(s).d)+'</span>'+(dots?'<span class="dots">'+dots+'</span>':'')+'</button>';
+    h+='<button class="cell'+(k?' c-'+k:'')+(s===T?' today':'')+(s===S.calSel?' picked':'')+'" data-open="'+s+'" aria-label="'+esc(engLong(s))+'"><span class="g">'+d+'</span><span class="h" lang="he">'+gem(heb(s).d)+'</span>'+(dots?'<span class="dots">'+dots+'</span>':'')+'</button>';
     special(s).forEach(function(x){if(x.n==='Shabbos'||x.n==='Erev Shabbos')return;specs.push({s:s,x:x})});
   }
   h+='</div>';
@@ -720,8 +729,46 @@ function renderCal(){
   document.getElementById('mainIn').innerHTML=h;document.getElementById('main').className='';
   bind('cPrev',function(){S.calM--;if(S.calM<0){S.calM=11;S.calY--}render()});
   bind('cNext',function(){S.calM++;if(S.calM>11){S.calM=0;S.calY++}render()});
+  bind('cPick',openDatePick);
+  if(S.calSel){var pc=document.querySelector('.cell.picked');if(pc&&pc.scrollIntoView)pc.scrollIntoView({block:'center'})}
 }
 function openDate(s){if(diff(s,todayStr())<-7){S.view='log';S.logFocus=s}else{S.view='day';S.cur=s}render();window.scrollTo(0,0)}
+
+var HMORDER=['Tishrei','Cheshvan','Kislev','Teves','Shvat','Adar','AdarI','AdarII','Nisan','Iyar','Sivan','Tamuz','Av','Elul'];
+function hebMonths(y){return HMORDER.filter(function(m){return isLeap(y)?m!=='Adar':(m!=='AdarI'&&m!=='AdarII')})}
+function hebToGreg(y,m,d){
+  if(m==='Adar'&&isLeap(y))m='AdarII';if((m==='AdarI'||m==='AdarII')&&!isLeap(y))m='Adar';
+  var start=ymd(new Date(y-3761,7,1));
+  for(var i=0;i<420;i++){var s=addDays(start,i),h=heb(s);if(h.y===y&&h.m===m&&h.d===d)return s;if(h.y>y)break}
+  return null;
+}
+var PICKMODE='heb';
+function openDatePick(){
+  var base=S.calSel||ymd(new Date(S.calY,S.calM,1)),hb=heb(base);
+  var h='<h3>Go to a date</h3><div class="seg"><button id="pmHeb" class="'+(PICKMODE==='heb'?'on':'')+'">Hebrew</button><button id="pmEng" class="'+(PICKMODE==='eng'?'on':'')+'">English</button></div>';
+  if(PICKMODE==='heb'){
+    var days='';for(var d=1;d<=30;d++)days+='<option value="'+d+'"'+(d===hb.d?' selected':'')+'>'+gem(d)+' ('+d+')</option>';
+    var yrs='';for(var y=hb.y-60;y<=hb.y+15;y++)yrs+='<option value="'+y+'"'+(y===hb.y?' selected':'')+'>'+gem(y)+' '+y+'</option>';
+    h+='<div class="three"><select id="phD" aria-label="Day">'+days+'</select><select id="phM" aria-label="Month"></select><select id="phY" aria-label="Year">'+yrs+'</select></div>';
+  }else{
+    h+='<div class="field"><label for="peD">Date</label><input id="peD" type="date" value="'+base+'"></div>';
+  }
+  h+='<div id="pWarn"></div><div class="row"><button class="btn primary" id="pGo">Go</button><button class="btn" id="pToday">Today</button><button class="btn" id="pX">Cancel</button></div>';
+  openSheet(h);
+  function fillMonths(){var y=+val('phY'),cur=document.getElementById('phM').value||hb.m;document.getElementById('phM').innerHTML=hebMonths(y).map(function(m){return '<option value="'+m+'"'+(m===cur||(cur==='Adar'&&m==='AdarII')||((cur==='AdarI'||cur==='AdarII')&&m==='Adar')?' selected':'')+'>'+cc(HM[m])+' '+esc(HMEN[m])+'</option>'}).join('')}
+  if(PICKMODE==='heb'){fillMonths();document.getElementById('phY').onchange=fillMonths}
+  bind('pmHeb',function(){PICKMODE='heb';openDatePick()});
+  bind('pmEng',function(){PICKMODE='eng';openDatePick()});
+  bind('pX',closeSheet);
+  function go(s){var dt=parse(s);S.calY=dt.getFullYear();S.calM=dt.getMonth();S.calSel=s;S.view='cal';closeSheet();render()}
+  bind('pToday',function(){go(todayStr())});
+  bind('pGo',function(){
+    if(PICKMODE==='eng'){var v=val('peD');if(v)go(v);return}
+    var s2=hebToGreg(+val('phY'),val('phM'),+val('phD'));
+    if(!s2){document.getElementById('pWarn').innerHTML='<div class="warn">That month has only 29 days. Pick day 29 or earlier.</div>';return}
+    go(s2);
+  });
+}
 
 /* ---------- log ---------- */
 function renderLog(){
