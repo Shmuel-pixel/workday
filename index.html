@@ -174,7 +174,7 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 .sheetlink{display:inline-flex;align-items:center;justify-content:center;padding:9px 14px;border-radius:8px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--todo);text-decoration:none}
 .sheetrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--bg);color:var(--fg);text-decoration:none}
 .sheetrow b{color:var(--todo);font-size:13px}
-@media print{body>*:not(#printArea){display:none!important}#printArea{display:block!important;color:#000;background:#fff;font:12pt/1.35 Arial,sans-serif;padding:0}#printArea h1{font-size:18pt;margin:0 0 2pt}#printArea .ph2{color:#444;margin:0 0 10pt}#printArea table{width:100%;border-collapse:collapse;margin-bottom:10pt}#printArea th,#printArea td{border:1px solid #999;padding:4pt 5pt;text-align:left;vertical-align:top;font-size:10.5pt}#printArea th{background:#eee}#printArea h2{font-size:13pt;margin:10pt 0 4pt}#printArea .foot{color:#666;font-size:9pt;margin-top:8pt}}
+@media print{@page{margin:0.5in}body>*:not(#printArea){display:none!important}#printArea{display:block!important;color:#000;background:#fff;font:11pt/1.4 Arial,Helvetica,sans-serif}#printArea h1{font-size:18pt;margin:0}#printArea .ph2{color:#555;margin:2pt 0 12pt;font-size:10.5pt}#printArea h2{font-size:13pt;margin:14pt 0 2pt;padding-bottom:3pt;border-bottom:2px solid #000}#printArea .pb{padding:7pt 0;border-bottom:1px solid #bbb;page-break-inside:avoid}#printArea .pt{font-size:12pt;font-weight:bold;margin-bottom:3pt}#printArea .pt span{font-weight:normal;color:#444}#printArea .pr{display:grid;grid-template-columns:1.25in 1fr;gap:1pt 10pt}#printArea .pr b{color:#555;font-weight:bold}#printArea .pst{float:right;font-weight:bold;font-size:10pt;border:1px solid #000;padding:0 5pt}#printArea .psum{margin-top:12pt}#printArea .foot{color:#666;font-size:9pt;margin-top:14pt}}
 .swhint{font-size:12px;color:var(--muted);text-align:center}
 .grip{width:30px;height:44px;display:grid;place-items:center;color:var(--muted);touch-action:none;cursor:grab}
 .grip svg{width:16px;height:16px}
@@ -269,7 +269,7 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 <script>
 (function(){
 var LAT=40.0821, LNG=-74.2097;
-var KEY='workday.v1',APPVER='Oct 25, 2026 (4)';
+var KEY='workday.v1',APPVER='Oct 25, 2026 (5)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Angio','Charlie','Adon'],vehicles:['Truck 1','Truck 2','Van'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -750,7 +750,7 @@ function renderTools(){
   done();
   function done(){
     document.getElementById('mainIn').innerHTML=h;document.getElementById('main').className='';
-    bind('eqRef',eqRefresh);bind('eqPrint',printTools);bind('eqOk',eqApprove);bind('eqAdd',function(){openEq(null)});
+    bind('eqRef',eqRefresh);bind('eqPrint',function(){printTools(false)});bind('eqOk',eqApprove);bind('eqAdd',function(){openEq(null)});
     bind('eqAttn',function(){EQ.attn=!EQ.attn;render()});
     var qi=document.getElementById('eqQ');
     if(qi)qi.oninput=function(){EQ.q=qi.value;var p=qi.selectionStart;renderTools();var n=document.getElementById('eqQ');n.focus();try{n.setSelectionRange(p,p)}catch(e){}};
@@ -982,7 +982,7 @@ function openBill(){
     o+='<div class="speclist">'+(rs.length?lines.map(function(l){return '<div class="spec"><span>'+esc(l)+'</span></div>'}).join(''):'<div class="spec"><span>No dumpsters at this site in these dates.</span></div>')+'</div>';
     document.getElementById('bOut').innerHTML=o;
     psub=f+' to '+t+' '+MID+' '+rs.length+' dumpster'+(rs.length===1?'':'s')+(hasT?' '+MID+' '+Math.round(tons*100)/100+' tons':'')+' '+MID+' '+days+' dumpster-days';
-    ptab='<table><tr><th>Size</th><th>Company</th><th>#</th><th>Ordered</th><th>Delivered</th><th>Picked up</th><th>Days</th><th>Tons</th><th>Invoice</th><th>Notes</th></tr>'+(rs.length?rs.map(function(r){var d=daysOn(r);return '<tr><td>'+esc(r.size)+'</td><td>'+esc(r.co)+'</td><td>'+esc(r.num)+'</td><td>'+esc(r.ord)+'</td><td>'+esc(r.del)+'</td><td>'+esc(r.pick||'not yet')+'</td><td>'+(d==null?'':d)+'</td><td>'+esc(r.tons)+'</td><td>'+esc(r.inv)+'</td><td>'+esc(r.notes)+'</td></tr>'}).join(''):'<tr><td colspan="10">No dumpsters at this site in these dates.</td></tr>')+'</table>';
+    ptab=rs.length?rs.map(dmBlock).join(''):'<p>No dumpsters at this site in these dates.</p>';var unused='<table><tr><th>Size</th><th>Company</th><th>#</th><th>Ordered</th><th>Delivered</th><th>Picked up</th><th>Days</th><th>Tons</th><th>Invoice</th><th>Notes</th></tr>'+(rs.length?rs.map(function(r){var d=daysOn(r);return '<tr><td>'+esc(r.size)+'</td><td>'+esc(r.co)+'</td><td>'+esc(r.num)+'</td><td>'+esc(r.ord)+'</td><td>'+esc(r.del)+'</td><td>'+esc(r.pick||'not yet')+'</td><td>'+(d==null?'':d)+'</td><td>'+esc(r.tons)+'</td><td>'+esc(r.inv)+'</td><td>'+esc(r.notes)+'</td></tr>'}).join(''):'<tr><td colspan="10">No dumpsters at this site in these dates.</td></tr>')+'</table>';
   }
   ['bSite','bFrom','bTo'].forEach(function(i){document.getElementById(i).onchange=run});run();
   bind('bCopy',function(){try{navigator.clipboard.writeText(txt).then(function(){toast('Report copied')},function(){showCopy(txt)})}catch(e){showCopy(txt)}});
@@ -1130,30 +1130,60 @@ function printHtml(title,sub,body){
   try{window.print()}catch(e){}
   if(window.claude)setTimeout(function(){toast('Printing works from the home-screen app')},400);
 }
+function prows(pairs){var h='<div class="pr">';pairs.forEach(function(p){if(p[1]!==''&&p[1]!=null)h+='<b>'+esc(p[0])+'</b><span>'+esc(p[1])+'</span>'});return h+'</div>'}
+function pblock(title,sub,status,pairs){return '<div class="pb">'+(status?'<span class="pst">'+esc(status)+'</span>':'')+'<div class="pt">'+esc(title)+(sub?' <span>'+esc(sub)+'</span>':'')+'</div>'+prows(pairs)+'</div>'}
+function jobBlocks(list,s){
+  if(!list.length)return '<p>No jobs.</p>';
+  return list.map(function(c){
+    var st=c.status==='done'?'Done':(rel(c.date)==='past'?'Missed':'To-Do');
+    return pblock((c.time?fmtTime(c.time)+'  ':'')+c.type,'',st,[['Address',c.address],['Contractor',c.contractor+(c.phone?'  '+c.phone:'')],['Crew',c.crew],['Truck',c.vehicle],['Materials',(c.materials||[]).join(', ')],['Tools',(c.tools||[]).join(', ')],['Notes',c.notes]].concat(s?[]:[['Date',engShort(c.date)]]));
+  }).join('');
+}
 function printDay(s){
-  var list=cardsOn(s),m=summarize(s);
-  var b='<table><tr><th>Time</th><th>Job</th><th>Address</th><th>Contractor</th><th>Crew / vehicle</th><th>Materials / tools</th><th>Status</th></tr>';
-  if(!list.length)b+='<tr><td colspan="7">No jobs.</td></tr>';
-  list.forEach(function(c){
-    var st=c.status==='done'?'Done':(rel(s)==='past'?'Missed':'To-Do');
-    b+='<tr><td>'+esc(fmtTime(c.time))+'</td><td>'+esc(c.type)+'</td><td>'+esc(c.address)+'</td><td>'+esc(c.contractor)+(c.phone?'<br>'+esc(c.phone):'')+'</td><td>'+esc(c.crew)+(c.vehicle?'<br>'+esc(c.vehicle):'')+'</td><td>'+esc((c.materials||[]).join(', '))+((c.tools||[]).length?'<br>'+esc(c.tools.join(', ')):'')+'</td><td>'+st+'</td></tr>';
-  });
-  b+='</table>';
-  if(m.lines.length){b+='<h2>Summary</h2><p>'+esc(m.head)+'</p><table>';m.lines.forEach(function(l){b+='<tr><th>'+esc(l[0])+'</th><td>'+esc(l[1])+'</td></tr>'});b+='</table>'}
+  var m=summarize(s),b=jobBlocks(cardsOn(s),s);
+  if(m.lines.length)b+='<div class="psum"><h2>Summary</h2><p>'+esc(m.head)+'</p>'+prows(m.lines)+'</div>';
   printHtml(engLong(s),hebEn(s),b);
 }
-function printTools(){
-  var q=EQ.q.toLowerCase(),b='',n=0;
+function eqBlocks(rs){return rs.map(function(r){var bm=[r.brand,r.model].filter(function(x){return x&&x!=='Not specified'}).join(' ');return pblock(r.item+(r.blade?' ('+r.blade+' in.)':''),r.id,r.cond,[['Brand / model',bm],['Quantity',r.qty],['Power',r.power==='Not specified'?'':r.power],['Serial',r.serial],['Action needed',r.action],['Notes',r.notes]])}).join('')}
+function printTools(all){
+  var q=all?'':EQ.q.toLowerCase(),b='',n=0;
   groups().forEach(function(g){
-    if(EQ.loc!=='all'&&EQ.loc!==g)return;
-    var rs=EQ.rows.filter(function(r){return r.group===g&&(!EQ.attn||needsAttn(r))&&(!q||(r.item+' '+r.brand+' '+r.model+' '+r.serial+' '+r.notes+' '+r.blade).toLowerCase().indexOf(q)>=0)});
+    if(!all&&EQ.loc!=='all'&&EQ.loc!==g)return;
+    var rs=EQ.rows.filter(function(r){return r.group===g&&(all||!EQ.attn||needsAttn(r))&&(!q||(r.item+' '+r.brand+' '+r.model+' '+r.serial+' '+r.notes+' '+r.blade).toLowerCase().indexOf(q)>=0)});
     if(!rs.length)return;n+=rs.length;
-    b+='<h2>'+esc(g)+'</h2><table><tr><th>ID</th><th>Item</th><th>Brand / model</th><th>Qty</th><th>Condition</th><th>Action needed</th><th>Serial</th></tr>';
-    rs.forEach(function(r){b+='<tr><td>'+esc(r.id)+'</td><td>'+esc(r.item)+(r.blade?' ('+esc(r.blade)+' in.)':'')+'</td><td>'+esc([r.brand,r.model].join(' ').trim())+'</td><td>'+esc(r.qty)+'</td><td>'+esc(r.cond)+'</td><td>'+esc(r.action)+'</td><td>'+esc(r.serial)+'</td></tr>'});
-    b+='</table>';
+    b+='<h2>'+esc(g)+(locDesc(g)!==g?' <span style="font-weight:normal;font-size:10pt">'+esc(locDesc(g))+'</span>':'')+'</h2>'+eqBlocks(rs);
   });
-  if(!n)b='<p>No equipment matches.</p>';
-  printHtml('Five Star equipment',(EQ.attn?'Needs attention only':'All items')+(EQ.loc!=='all'?' '+MID+' '+EQ.loc:'')+' '+MID+' '+n+' items',b);
+  if(!n){toast(EQ.rows.length?'Nothing to print with this filter':'Load the Tools tab first');return}
+  printHtml('Five Star equipment',(!all&&EQ.attn?'Needs attention only':'All items')+(!all&&EQ.loc!=='all'?' '+MID+' '+EQ.loc:'')+' '+MID+' '+n+' items',b);
+}
+function dmBlock(r){var d=daysOn(r);return pblock(r.size+' '+MID+' '+r.co,r.num?'#'+r.num:'',r.status,[['Ordered',dshort(r.ord)],['Delivered',dshort(r.del)],['Pickup asked',dshort(r.req)],['Picked up',dshort(r.pick)],['Days on site',d==null?'':String(d)],['Tonnage',r.tons],['Invoice',r.inv],['Notes',r.notes]])}
+function printDumpsters(){
+  if(!DM.rows.length){toast('Load the Dumpsters tab first');return}
+  var by={};DM.rows.forEach(function(r){(by[r.site]=by[r.site]||[]).push(r)});
+  var b='';Object.keys(by).sort().forEach(function(k){b+='<h2>'+esc(k)+'</h2>'+by[k].sort(function(a,c){return String(c.ord).localeCompare(String(a.ord))}).map(dmBlock).join('')});
+  printHtml('Dumpster Log',DM.rows.length+' dumpsters',b);
+}
+function printUpcoming(){
+  var T=todayStr(),b='',n=0;
+  for(var i=0;i<14;i++){var s=addDays(T,i),l=cardsOn(s);if(!l.length)continue;n+=l.length;b+='<h2>'+esc(engLong(s))+' <span style="font-weight:normal;font-size:10pt">'+esc(hebEn(s))+'</span></h2>'+jobBlocks(l,s)}
+  if(!n){toast('No jobs in the next two weeks');return}
+  printHtml('Jobs for the next 2 weeks',engShort(T)+' to '+engShort(addDays(T,13))+' '+MID+' '+n+' jobs',b);
+}
+function printSupply(){
+  getMcp().then(function(mcp){
+    if(!mcp){toast(window.claude?'Open this inside the Claude app to print the supply tracker':'Printing the supply tracker comes with the Google sign-in step');return}
+    toast('Loading supply tracker...');
+    mcp.callTool(GS,'get_values',{spreadsheetId:'1X-1lPEIHSr5uEjTAq7UA4MfzE1LwC_Z4erVa3dELcuo',range:'Stock!A1:Z400'}).then(function(res){
+      var v=(res.payload&&res.payload.values)||[];if(v.length<2){toast('The Stock tab is empty');return}
+      var hd=v[0],by={},order=[];
+      for(var i=1;i<v.length;i++){var r=v[i];if(!r||!r[0])continue;if(!by[r[0]]){by[r[0]]=[];order.push(r[0])}by[r[0]].push(r)}
+      var b='';order.forEach(function(sec){
+        b+='<h2>'+esc(sec)+'</h2>';
+        by[sec].forEach(function(r){var pairs=[];for(var j=2;j<hd.length;j++)pairs.push([hd[j],r[j]==null?'':String(r[j])]);b+=pblock(String(r[1]||''),'','',pairs)});
+      });
+      printHtml('Five Star supplies on hand','From the Supply Tracker',b);
+    },function(e){toast(e&&DENY[e.code]?eqErrText(e):'Could not load the supply tracker. Try again.')});
+  });
 }
 /* ---------- tabs ---------- */
 var TABS=[['day','Today',IC.day],['cal','Calendar',IC.cal],['log','Log',IC.log],['ord','Orders',IC.ord],['dump','Dumpsters',IC.dump],['tool','Tools',IC.tool]];
@@ -1297,7 +1327,7 @@ function openSettings(){
   h+='<div><span>Sent to</span><b>WhatsApp + phone</b></div></div></div>';
   h+=listEditor('crew','Crew')+listEditor('vehicles','Vehicles')+listEditor('tools','Tools')+listEditor('types','Work types');
   h+='<div class="field"><label>Assistant key</label><div class="rem"><div><span>'+(getKey()?'Claude API key saved on this phone':'No key yet. Tap Assistant to add one.')+'</span><b>'+(getKey()?'Saved':'')+'</b></div></div>'+(getKey()?'<div class="row"><button class="btn" id="kDel">Remove key</button></div>':'')+'</div>';
-  h+='<div class="field"><label>Sheets</label><div class="listed">'+SHEETS.map(function(x){return '<a class="sheetrow" href="'+sheetUrl(x[1])+'" target="_blank" rel="noopener"><span><span style="font-weight:600">'+esc(x[0])+'</span><br><small style="color:var(--muted)">'+esc(x[2])+'</small></span><b>Open</b></a>'}).join('')+'</div><div class="mt" style="margin-top:4px">To print a whole sheet: open it, then tap the three dots, Share and export, Print.</div></div>';
+  h+='<div class="field"><label>Sheets</label><div class="listed">'+SHEETS.map(function(x){return '<div class="sheetrow"><span><span style="font-weight:600">'+esc(x[0])+'</span><br><small style="color:var(--muted)">'+esc(x[2])+'</small></span><span class="row" style="gap:14px"><button data-printsheet="'+x[1]+'" style="color:var(--todo);font-weight:700;font-size:13px">Print</button><a href="'+sheetUrl(x[1])+'" target="_blank" rel="noopener" style="color:var(--todo);font-weight:700;font-size:13px;text-decoration:none">Open</a></span></div>'}).join('')+'</div><div class="mt" style="margin-top:4px">Print makes a clean list straight from the app. Workday prints the next 2 weeks of jobs.</div></div>';
   h+='<div class="field"><label>App</label><div class="rem"><div><span>Version</span><b>'+APPVER+'</b></div></div><div class="row"><button class="btn" id="appUpd">Update app now</button></div></div>';
   h+='<button class="btn primary" id="sClose">Done</button>';
   openSheet(h);
@@ -1308,8 +1338,9 @@ function openSettings(){
 
 /* ---------- events ---------- */
 document.addEventListener('click',function(e){
-  var t=e.target.closest('[data-printday],[data-aiundo],[data-dm],[data-dmf],[data-eq],[data-eqloc],[data-copysum],[data-notes],[data-markdone],[data-more],[data-movetoday],[data-tab],[data-open],[data-rm],[data-addto]');if(!t)return;
-  if(t.dataset.printday)printDay(t.dataset.printday);
+  var t=e.target.closest('[data-printsheet],[data-printday],[data-aiundo],[data-dm],[data-dmf],[data-eq],[data-eqloc],[data-copysum],[data-notes],[data-markdone],[data-more],[data-movetoday],[data-tab],[data-open],[data-rm],[data-addto]');if(!t)return;
+  if(t.dataset.printsheet){var ps=t.dataset.printsheet;closeSheet();if(ps===SHEETS[0][1])printUpcoming();else if(ps===SHEETS[1][1])printTools(true);else if(ps===SHEETS[2][1])printSupply();else printDumpsters()}
+  else if(t.dataset.printday)printDay(t.dataset.printday);
   else if(t.dataset.aiundo)aiUndo(+t.dataset.aiundo);
   else if(t.dataset.dm)openDm(t.dataset.dm);
   else if(t.dataset.dmf){DM.filter=DM.filter===t.dataset.dmf&&t.dataset.dmf!=='active'?'active':t.dataset.dmf;render()}
