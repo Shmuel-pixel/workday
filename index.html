@@ -170,6 +170,11 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 .bub.ai small{color:var(--muted);font-size:12px}
 .fab{position:fixed;z-index:7;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(74px + env(safe-area-inset-bottom,0px));height:52px;padding:0 18px;border-radius:26px;background:var(--todo);color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .fab svg{width:20px;height:20px}
+#printArea{display:none}
+.sheetlink{display:inline-flex;align-items:center;justify-content:center;padding:9px 14px;border-radius:8px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--todo);text-decoration:none}
+.sheetrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--bg);color:var(--fg);text-decoration:none}
+.sheetrow b{color:var(--todo);font-size:13px}
+@media print{body>*:not(#printArea){display:none!important}#printArea{display:block!important;color:#000;background:#fff;font:12pt/1.35 Arial,sans-serif;padding:0}#printArea h1{font-size:18pt;margin:0 0 2pt}#printArea .ph2{color:#444;margin:0 0 10pt}#printArea table{width:100%;border-collapse:collapse;margin-bottom:10pt}#printArea th,#printArea td{border:1px solid #999;padding:4pt 5pt;text-align:left;vertical-align:top;font-size:10.5pt}#printArea th{background:#eee}#printArea h2{font-size:13pt;margin:10pt 0 4pt}#printArea .foot{color:#666;font-size:9pt;margin-top:8pt}}
 .swhint{font-size:12px;color:var(--muted);text-align:center}
 .grip{width:30px;height:44px;display:grid;place-items:center;color:var(--muted);touch-action:none;cursor:grab}
 .grip svg{width:16px;height:16px}
@@ -259,11 +264,12 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 <nav class="tabs" id="tabs" aria-label="Pages"></nav>
 <div class="scrim" id="scrim" hidden><div class="sheet" id="sheet"><div class="wrap" id="sheetIn"></div></div></div>
 <div class="toast" id="toast" hidden></div>
+<div id="printArea"></div>
 
 <script>
 (function(){
 var LAT=40.0821, LNG=-74.2097;
-var KEY='workday.v1',APPVER='Oct 25, 2026 (3)';
+var KEY='workday.v1',APPVER='Oct 25, 2026 (4)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Angio','Charlie','Adon'],vehicles:['Truck 1','Truck 2','Van'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -591,7 +597,7 @@ function summarize(s){
 function summaryHtml(s){
   var m=summarize(s),r=rel(s);
   var h='<details class="sum" id="sumBox"'+(S.sumOpen?' open':'')+'><summary><span>'+(r==='today'?'Today so far':r==='past'?'Day summary':'Day plan')+'</span><i>Tap to</i></summary>';
-  h+='<div class="sumtop"><div class="sumhead">'+esc(m.head)+'</div><button data-copysum="'+s+'">Copy</button></div>';
+  h+='<div class="sumtop"><div class="sumhead">'+esc(m.head)+'</div><span class="row" style="gap:14px"><button data-printday="'+s+'">Print</button><button data-copysum="'+s+'">Copy</button></span></div>';
   if(m.lines.length){h+='<ul class="sumlines">';m.lines.forEach(function(l){h+='<li><b>'+esc(l[0])+'</b><span>'+esc(l[1])+'</span></li>'});h+='</ul>'}
   return h+'</details>';
 }
@@ -712,7 +718,7 @@ function clockAt(ms){var d=new Date(ms);return engShort(ymd(d))+', '+fmtTime(pad
 function renderTools(){
   eqStart();
   var h='',st=EQ.state;
-  h+='<div class="eqbar"><div><b>Five Star equipment sheet</b><span>'+(st==='loading'?'Loading...':EQ.at?'Updated '+esc(clockAt(EQ.at)):'')+'</span></div><button class="btn" id="eqRef">Refresh</button></div>';
+  h+='<div class="eqbar"><div><b>Five Star equipment sheet</b><span>'+(st==='loading'?'Loading...':EQ.at?'Updated '+esc(clockAt(EQ.at)):'')+'</span></div><span class="row">'+sheetLink('1fV83ak0tgWdPJy-iTrHzxkg6_fzpcF8k6ThH62aiXJ4')+'<button class="btn" id="eqRef">Refresh</button></span></div>';
   if(st==='nomcp')h+='<div class="warn">'+(window.claude?'Open this page inside the Claude app to load the equipment sheet.':'This tab connects to your equipment sheet in the next setup step (Google sign-in).')+'</div>';
   else if(st==='approve')h+='<div class="ask"><p>'+esc(eqErrText(EQ.err))+'</p><div class="row"><button class="btn primary" id="eqOk">Allow and load</button></div></div>';
   else if((st==='denied'||st==='err'||st==='cached')&&EQ.err)h+='<div class="warn">'+esc(eqErrText(EQ.err))+'</div>';
@@ -740,11 +746,11 @@ function renderTools(){
     });
     if(!any)h+='<div class="empty">Nothing matches. Clear the search or pick All.</div>';
   }
-  if(st!=='nomcp'&&st!=='denied')h+='<button class="btn primary" id="eqAdd">Add equipment</button>';
+  h+='<div class="row">'+(st!=='nomcp'&&st!=='denied'?'<button class="btn primary" id="eqAdd">Add equipment</button>':'')+(EQ.rows.length?'<button class="btn" id="eqPrint">Print this list</button>':'')+'</div>';
   done();
   function done(){
     document.getElementById('mainIn').innerHTML=h;document.getElementById('main').className='';
-    bind('eqRef',eqRefresh);bind('eqOk',eqApprove);bind('eqAdd',function(){openEq(null)});
+    bind('eqRef',eqRefresh);bind('eqPrint',printTools);bind('eqOk',eqApprove);bind('eqAdd',function(){openEq(null)});
     bind('eqAttn',function(){EQ.attn=!EQ.attn;render()});
     var qi=document.getElementById('eqQ');
     if(qi)qi.oninput=function(){EQ.q=qi.value;var p=qi.selectionStart;renderTools();var n=document.getElementById('eqQ');n.focus();try{n.setSelectionRange(p,p)}catch(e){}};
@@ -856,7 +862,7 @@ function dshort(d){if(!d||!/^\d{4}-\d\d-\d\d$/.test(d))return d||'';return engSh
 function renderDump(){
   dmStart();
   var h='',st=DM.state;
-  h+='<div class="eqbar"><div><b>Dumpster Log</b><span>'+(st==='loading'?'Loading...':DM.at?'Updated '+esc(clockAt(DM.at)):'')+'</span></div><button class="btn" id="dmRef">Refresh</button></div>';
+  h+='<div class="eqbar"><div><b>Dumpster Log</b><span>'+(st==='loading'?'Loading...':DM.at?'Updated '+esc(clockAt(DM.at)):'')+'</span></div><span class="row">'+sheetLink(DSID)+'<button class="btn" id="dmRef">Refresh</button></span></div>';
   if(st==='nomcp')h+='<div class="warn">'+(window.claude?'Open this page inside the Claude app to load the dumpster log.':'This tab connects to your Dumpster Log in the next setup step (Google sign-in).')+'</div>';
   else if(st==='approve')h+='<div class="ask"><p>'+esc(dmErrText(DM.err))+'</p><div class="row"><button class="btn primary" id="dmOk">Allow and load</button></div></div>';
   else if(DM.err&&(st==='denied'||st==='err'||st==='cached'))h+='<div class="warn">'+esc(dmErrText(DM.err))+'</div>';
@@ -962,9 +968,9 @@ function dmWrite(old,v,isNew){
 function openBill(){
   var T=todayStr(),sl=dmSiteList(),first=T.slice(0,8)+'01';
   var h='<h3>Billing report</h3><div class="field"><label for="bSite">Job site</label><select id="bSite">'+opts(sl,sl[0]||'')+'</select></div>';
-  h+='<div class="two">'+dateField('bFrom','From',first)+dateField('bTo','To',T)+'</div><div id="bOut"></div><div class="row"><button class="btn primary" id="bCopy">Copy report</button><button class="btn" id="bClose">Close</button></div>';
+  h+='<div class="two">'+dateField('bFrom','From',first)+dateField('bTo','To',T)+'</div><div id="bOut"></div><div class="row"><button class="btn primary" id="bCopy">Copy report</button><button class="btn" id="bPrint">Print</button><button class="btn" id="bClose">Close</button></div>';
   openSheet(h);
-  var txt='';
+  var txt='',ptab='',psub='';
   function run(){
     var site=val('bSite'),f=val('bFrom'),t=val('bTo');
     var rs=DM.rows.filter(function(r){if(r.site!==site)return false;var s=r.del||r.ord,e=r.pick||T;return s<=t&&e>=f}).sort(function(a,b){return String(a.ord).localeCompare(String(b.ord))});
@@ -975,9 +981,12 @@ function openBill(){
     var o='<div class="eqstats"><div><b>'+rs.length+'</b><span>dumpsters</span></div><div><b>'+(hasT?Math.round(tons*100)/100:'-')+'</b><span>tons</span></div><div><b>'+days+'</b><span>dumpster-days</span></div></div>';
     o+='<div class="speclist">'+(rs.length?lines.map(function(l){return '<div class="spec"><span>'+esc(l)+'</span></div>'}).join(''):'<div class="spec"><span>No dumpsters at this site in these dates.</span></div>')+'</div>';
     document.getElementById('bOut').innerHTML=o;
+    psub=f+' to '+t+' '+MID+' '+rs.length+' dumpster'+(rs.length===1?'':'s')+(hasT?' '+MID+' '+Math.round(tons*100)/100+' tons':'')+' '+MID+' '+days+' dumpster-days';
+    ptab='<table><tr><th>Size</th><th>Company</th><th>#</th><th>Ordered</th><th>Delivered</th><th>Picked up</th><th>Days</th><th>Tons</th><th>Invoice</th><th>Notes</th></tr>'+(rs.length?rs.map(function(r){var d=daysOn(r);return '<tr><td>'+esc(r.size)+'</td><td>'+esc(r.co)+'</td><td>'+esc(r.num)+'</td><td>'+esc(r.ord)+'</td><td>'+esc(r.del)+'</td><td>'+esc(r.pick||'not yet')+'</td><td>'+(d==null?'':d)+'</td><td>'+esc(r.tons)+'</td><td>'+esc(r.inv)+'</td><td>'+esc(r.notes)+'</td></tr>'}).join(''):'<tr><td colspan="10">No dumpsters at this site in these dates.</td></tr>')+'</table>';
   }
   ['bSite','bFrom','bTo'].forEach(function(i){document.getElementById(i).onchange=run});run();
   bind('bCopy',function(){try{navigator.clipboard.writeText(txt).then(function(){toast('Report copied')},function(){showCopy(txt)})}catch(e){showCopy(txt)}});
+  bind('bPrint',function(){printHtml('Dumpsters at '+val('bSite'),psub,ptab)});
   bind('bClose',closeSheet);
 }
 
@@ -1111,6 +1120,41 @@ function aiSend(text){
 }
 function aiUndo(i){var m=AIH[i];if(!m||!m.undo||m.undone)return;try{S.cards=JSON.parse(m.undo)}catch(e){return}m.undone=true;save();render();aiRedraw();toast('Changes undone')}
 
+/* ---------- sheets + printing ---------- */
+var SHEETS=[['Workday','1-6dJlD1UaD16rgJfdY1cVjH_hgaYjNdQkrrJeA30WHo','Jobs, notes, lists and settings'],['Equipment Manager','1fV83ak0tgWdPJy-iTrHzxkg6_fzpcF8k6ThH62aiXJ4','Tools and where they are'],['Supply Tracker','1X-1lPEIHSr5uEjTAq7UA4MfzE1LwC_Z4erVa3dELcuo','Core bits and blades'],['Dumpster Log','15YCb4w9HbNq1Mw9E2ZmX9FP8pTVsHVqkh3yMUNUJ1v4','Dumpsters by job site']];
+function sheetUrl(id){return 'https://docs.google.com/spreadsheets/d/'+id+'/edit'}
+function sheetLink(id,label){return '<a class="sheetlink" href="'+sheetUrl(id)+'" target="_blank" rel="noopener">'+(label||'Open sheet')+'</a>'}
+function printHtml(title,sub,body){
+  var pa=document.getElementById('printArea');
+  pa.innerHTML='<h1>'+esc(title)+'</h1>'+(sub?'<p class="ph2">'+esc(sub)+'</p>':'')+body+'<p class="foot">Five Star Services '+MID+' printed '+esc(clockAt(Date.now()))+'</p>';
+  try{window.print()}catch(e){}
+  if(window.claude)setTimeout(function(){toast('Printing works from the home-screen app')},400);
+}
+function printDay(s){
+  var list=cardsOn(s),m=summarize(s);
+  var b='<table><tr><th>Time</th><th>Job</th><th>Address</th><th>Contractor</th><th>Crew / vehicle</th><th>Materials / tools</th><th>Status</th></tr>';
+  if(!list.length)b+='<tr><td colspan="7">No jobs.</td></tr>';
+  list.forEach(function(c){
+    var st=c.status==='done'?'Done':(rel(s)==='past'?'Missed':'To-Do');
+    b+='<tr><td>'+esc(fmtTime(c.time))+'</td><td>'+esc(c.type)+'</td><td>'+esc(c.address)+'</td><td>'+esc(c.contractor)+(c.phone?'<br>'+esc(c.phone):'')+'</td><td>'+esc(c.crew)+(c.vehicle?'<br>'+esc(c.vehicle):'')+'</td><td>'+esc((c.materials||[]).join(', '))+((c.tools||[]).length?'<br>'+esc(c.tools.join(', ')):'')+'</td><td>'+st+'</td></tr>';
+  });
+  b+='</table>';
+  if(m.lines.length){b+='<h2>Summary</h2><p>'+esc(m.head)+'</p><table>';m.lines.forEach(function(l){b+='<tr><th>'+esc(l[0])+'</th><td>'+esc(l[1])+'</td></tr>'});b+='</table>'}
+  printHtml(engLong(s),hebEn(s),b);
+}
+function printTools(){
+  var q=EQ.q.toLowerCase(),b='',n=0;
+  groups().forEach(function(g){
+    if(EQ.loc!=='all'&&EQ.loc!==g)return;
+    var rs=EQ.rows.filter(function(r){return r.group===g&&(!EQ.attn||needsAttn(r))&&(!q||(r.item+' '+r.brand+' '+r.model+' '+r.serial+' '+r.notes+' '+r.blade).toLowerCase().indexOf(q)>=0)});
+    if(!rs.length)return;n+=rs.length;
+    b+='<h2>'+esc(g)+'</h2><table><tr><th>ID</th><th>Item</th><th>Brand / model</th><th>Qty</th><th>Condition</th><th>Action needed</th><th>Serial</th></tr>';
+    rs.forEach(function(r){b+='<tr><td>'+esc(r.id)+'</td><td>'+esc(r.item)+(r.blade?' ('+esc(r.blade)+' in.)':'')+'</td><td>'+esc([r.brand,r.model].join(' ').trim())+'</td><td>'+esc(r.qty)+'</td><td>'+esc(r.cond)+'</td><td>'+esc(r.action)+'</td><td>'+esc(r.serial)+'</td></tr>'});
+    b+='</table>';
+  });
+  if(!n)b='<p>No equipment matches.</p>';
+  printHtml('Five Star equipment',(EQ.attn?'Needs attention only':'All items')+(EQ.loc!=='all'?' '+MID+' '+EQ.loc:'')+' '+MID+' '+n+' items',b);
+}
 /* ---------- tabs ---------- */
 var TABS=[['day','Today',IC.day],['cal','Calendar',IC.cal],['log','Log',IC.log],['ord','Orders',IC.ord],['dump','Dumpsters',IC.dump],['tool','Tools',IC.tool]];
 function render(){
@@ -1253,6 +1297,7 @@ function openSettings(){
   h+='<div><span>Sent to</span><b>WhatsApp + phone</b></div></div></div>';
   h+=listEditor('crew','Crew')+listEditor('vehicles','Vehicles')+listEditor('tools','Tools')+listEditor('types','Work types');
   h+='<div class="field"><label>Assistant key</label><div class="rem"><div><span>'+(getKey()?'Claude API key saved on this phone':'No key yet. Tap Assistant to add one.')+'</span><b>'+(getKey()?'Saved':'')+'</b></div></div>'+(getKey()?'<div class="row"><button class="btn" id="kDel">Remove key</button></div>':'')+'</div>';
+  h+='<div class="field"><label>Sheets</label><div class="listed">'+SHEETS.map(function(x){return '<a class="sheetrow" href="'+sheetUrl(x[1])+'" target="_blank" rel="noopener"><span><span style="font-weight:600">'+esc(x[0])+'</span><br><small style="color:var(--muted)">'+esc(x[2])+'</small></span><b>Open</b></a>'}).join('')+'</div><div class="mt" style="margin-top:4px">To print a whole sheet: open it, then tap the three dots, Share and export, Print.</div></div>';
   h+='<div class="field"><label>App</label><div class="rem"><div><span>Version</span><b>'+APPVER+'</b></div></div><div class="row"><button class="btn" id="appUpd">Update app now</button></div></div>';
   h+='<button class="btn primary" id="sClose">Done</button>';
   openSheet(h);
@@ -1263,8 +1308,9 @@ function openSettings(){
 
 /* ---------- events ---------- */
 document.addEventListener('click',function(e){
-  var t=e.target.closest('[data-aiundo],[data-dm],[data-dmf],[data-eq],[data-eqloc],[data-copysum],[data-notes],[data-markdone],[data-more],[data-movetoday],[data-tab],[data-open],[data-rm],[data-addto]');if(!t)return;
-  if(t.dataset.aiundo)aiUndo(+t.dataset.aiundo);
+  var t=e.target.closest('[data-printday],[data-aiundo],[data-dm],[data-dmf],[data-eq],[data-eqloc],[data-copysum],[data-notes],[data-markdone],[data-more],[data-movetoday],[data-tab],[data-open],[data-rm],[data-addto]');if(!t)return;
+  if(t.dataset.printday)printDay(t.dataset.printday);
+  else if(t.dataset.aiundo)aiUndo(+t.dataset.aiundo);
   else if(t.dataset.dm)openDm(t.dataset.dm);
   else if(t.dataset.dmf){DM.filter=DM.filter===t.dataset.dmf&&t.dataset.dmf!=='active'?'active':t.dataset.dmf;render()}
   else if(t.dataset.eq)openEq(t.dataset.eq);
