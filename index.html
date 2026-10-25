@@ -62,7 +62,7 @@ header .wrap{padding-block:10px 10px;display:grid;gap:8px}
 .iconbtn{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;border:1px solid var(--line);flex:none}
 .iconbtn svg{width:20px;height:20px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{font-size:12px;font-weight:600;padding:3px 8px;border-radius:999px;background:var(--sunk);color:var(--muted)}
+.chip{border:0;font-family:inherit;cursor:pointer;font-size:12px;font-weight:600;padding:3px 8px;border-radius:999px;background:var(--sunk);color:var(--muted)}
 .k-off{background:var(--off-soft);color:var(--off)} .k-erev{background:var(--erev-soft);color:var(--erev)}
 .k-fast{background:var(--fast-soft);color:var(--fast)} .k-chm{background:var(--chm-soft);color:var(--chm)}
 .k-us{background:var(--todo-soft);color:var(--todo)} .k-info{background:var(--sunk);color:var(--muted)}
@@ -279,8 +279,9 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 
 <script>
 (function(){
-var LAT=40.0821, LNG=-74.2097;
-var KEY='workday.v1',APPVER='Oct 25, 2026 (8)';
+var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
+(function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
+var KEY='workday.v1',APPVER='Oct 25, 2026 (9)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Angio','Charlie','Adon'],vehicles:['2019 Ford Box Truck','2013 Silverado','2016 F450 Utility Truck','Geronimo 2016 F550'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -397,8 +398,79 @@ function noWork(s){var a=special(s);for(var i=0;i<a.length;i++)if(a[i].k==='off'
 function isErevType(s){var a=special(s);for(var i=0;i<a.length;i++)if(a[i].k==='erev')return true;return false}
 function topKind(s){var o=['off','erev','fast','chm','us'];var a=special(s);for(var j=0;j<o.length;j++)for(var i=0;i<a.length;i++)if(a[i].k===o[j])return o[j];return ''}
 
-/* ---------- sunset (Lakewood) ---------- */
+/* ---------- zmanim: KosherZmanim (KosherJava), built-in formula as backup ---------- */
+var KZ=null,KZV='',ZC={};
+function loadKZ(){
+  var urls=[['0.9.0','https://unpkg.com/kosher-zmanim@0.9.0/dist/kosher-zmanim.min.js'],['0.9.0','https://cdn.jsdelivr.net/npm/kosher-zmanim@0.9.0/dist/kosher-zmanim.min.js'],['0.8.2','https://unpkg.com/kosher-zmanim@0.8.2/dist/kosher-zmanim.min.js']];
+  function next(i){
+    if(i>=urls.length)return;
+    var sc=document.createElement('script');sc.src=urls[i][1];sc.async=true;
+    sc.onload=function(){if(window.KosherZmanim&&window.KosherZmanim.ComplexZmanimCalendar){try{var T0=todayStr(),t=kzCal(T0).getSeaLevelSunset();if(!t||Math.abs(t.toMillis()-sunsetBuiltin(T0))>10*60000)throw 1;KZ=window.KosherZmanim;KZV=urls[i][0];ZC={};SC={};render()}catch(e){next(i+1)}}else next(i+1)};
+    sc.onerror=function(){next(i+1)};
+    document.head.appendChild(sc);
+  }
+  next(0);
+}
+function kzCal(s){var K=KZ||window.KosherZmanim;var g=new K.GeoLocation(LOCNAME,LAT,LNG,0,'America/New_York');var c=new K.ComplexZmanimCalendar(g);c.setDate(K.DateTime.fromISO(s,{zone:'America/New_York'}));return c}
+function zms(d){return d&&d.toMillis?d.toMillis():null}
 function sunsetMs(s){
+  if(ZC[s])return ZC[s];
+  if(KZ){try{var v=zms(kzCal(s).getSeaLevelSunset());if(v){ZC[s]=v;return v}}catch(e){}}
+  return (ZC[s]=sunsetBuiltin(s));
+}
+function minchaMs(s){return sunsetMs(s)-60*60000}
+function zmanimList(s){
+  var out=[];
+  if(KZ){
+    try{
+      var c=kzCal(s),M=[['Alos (72 min)','getAlos72'],['Netz (sunrise)','getSeaLevelSunrise'],['Sof zman Shma (MGA)','getSofZmanShmaMGA'],['Sof zman Shma (GRA)','getSofZmanShmaGRA'],['Sof zman Tefila (GRA)','getSofZmanTfilaGRA'],['Chatzos','getChatzos'],['Mincha gedola','getMinchaGedola'],['Mincha ketana','getMinchaKetana'],['Plag hamincha','getPlagHamincha'],['Shkia (sunset)','getSeaLevelSunset'],['Tzeis (72 min)','getTzais72']];
+      M.forEach(function(m){try{var v=typeof c[m[1]]==='function'?zms(c[m[1]]()):null;if(v)out.push([m[0],v])}catch(e){}});
+    }catch(e){}
+  }
+  if(!out.length)out.push(['Shkia (sunset)',sunsetMs(s)]);
+  return out;
+}
+function setLocation(name,lat,lng){LAT=lat;LNG=lng;LOCNAME=name;ZC={};SC={};try{localStorage.setItem('workday.loc',JSON.stringify({name:name,lat:lat,lng:lng}))}catch(e){}}
+var PLACES=[['Lakewood, NJ',40.0821,-74.2097],['Jackson, NJ',40.0979,-74.3577],['Toms River, NJ',39.9537,-74.1979],['Brick, NJ',40.0601,-74.1077],['Howell, NJ',40.1834,-74.1963],['Monsey, NY',41.1112,-74.0685],['Brooklyn, NY',40.6782,-73.9442]];
+function openZmanim(s){
+  var h='<h3>Zmanim</h3><div style="color:var(--muted);font-size:14px;margin-top:-6px">'+esc(engLong(s))+' '+MID+' '+esc(hebEn(s))+'<br>'+esc(LOCNAME)+'</div>';
+  h+='<div class="rem">'+zmanimList(s).map(function(z){return '<div><span>'+esc(z[0])+'</span><b>'+clock(z[1])+'</b></div>'}).join('')+'</div>';
+  h+='<div class="rem"><div><span>Mincha reminder (1 hour before shkia)</span><b>'+clock(minchaMs(s))+'</b></div>';
+  var nw=noWork(s),nwNext=noWork(addDays(s,1)),ss=sunsetMs(s);
+  if(nwNext&&!nw)h+='<div><span>Candle lighting (18 min)</span><b>'+clock(ss-18*60000)+'</b></div>';
+  if(nw&&!nwNext)h+='<div><span>Motzei (72 min)</span><b>'+clock(ss+72*60000)+'</b></div>';
+  h+='</div><div class="mt">'+(KZ?'Calculated with KosherJava (KosherZmanim '+esc(KZV)+'), sea level.':'KosherJava has not loaded yet, so this uses the built-in sunset formula. It loads the next time you have signal.')+'</div>';
+  h+='<div class="row"><button class="btn" id="zLoc">Change location</button><button class="btn primary" id="zX">Close</button></div>';
+  openSheet(h);bind('zX',closeSheet);bind('zLoc',function(){openLocation(function(){openZmanim(s)})});
+}
+function openLocation(back){
+  var h='<h3>Location for zmanim</h3><div class="mt" style="margin-top:-6px">Now: '+esc(LOCNAME)+' ('+LAT.toFixed(4)+', '+LNG.toFixed(4)+')</div>';
+  h+='<button class="btn primary" id="lGps">Use my location</button><div id="lOut"></div>';
+  h+='<div class="field"><label>Pick a place</label><div class="listed">'+PLACES.map(function(p,i){return '<button class="sheetrow" data-place="'+i+'" style="width:100%;text-align:left"><span>'+esc(p[0])+'</span><b>'+(p[0]===LOCNAME?'Using':'Use')+'</b></button>'}).join('')+'</div></div>';
+  h+='<div class="field"><label for="lQ">Or type a town or zip</label><div class="addrow"><input id="lQ" placeholder="08701"><button class="btn" id="lFind">Find</button></div><div id="lFOut"></div></div>';
+  h+='<button class="btn" id="lX">Done</button>';
+  openSheet(h);
+  function done(msg){toast(msg);render();back?back():closeSheet()}
+  [].forEach.call(document.querySelectorAll('[data-place]'),function(b){b.onclick=function(){var p=PLACES[+b.getAttribute('data-place')];setLocation(p[0],p[1],p[2]);done('Zmanim set for '+p[0])}});
+  bind('lX',function(){back?back():closeSheet()});
+  bind('lGps',function(){
+    var out=document.getElementById('lOut');
+    if(!navigator.geolocation){out.innerHTML='<div class="warn">This phone did not offer location. Pick a place instead.</div>';return}
+    out.innerHTML='<div class="mt">Finding you...</div>';
+    navigator.geolocation.getCurrentPosition(function(p){setLocation('My location',Math.round(p.coords.latitude*10000)/10000,Math.round(p.coords.longitude*10000)/10000);done('Zmanim set for your location')},
+      function(){out.innerHTML='<div class="warn">Location was not allowed. To allow it: iPhone Settings, Privacy and Security, Location Services, Safari Websites, While Using. Or pick a place below.</div>'},{enableHighAccuracy:false,timeout:15000,maximumAge:600000});
+  });
+  bind('lFind',function(){
+    var q=val('lQ').trim(),out=document.getElementById('lFOut');if(!q)return;
+    if(!connOK()){out.innerHTML='<div class="warn">Looking up a town needs the Google connection. Pick a place above, or use your location.</div>';return}
+    out.innerHTML='<div class="mt">Looking up...</div>';
+    bridge('geocode',{q:q}).then(function(d){var ps=d.places||[];if(!ps.length){out.innerHTML='<div class="warn">Not found. Try the town and state.</div>';return}
+      out.innerHTML=ps.map(function(p,i){return '<button type="button" class="sug" data-gi="'+i+'"><b>'+esc(p.address)+'</b></button>'}).join('');
+      [].forEach.call(out.querySelectorAll('[data-gi]'),function(b){b.onclick=function(){var p=ps[+b.getAttribute('data-gi')];setLocation(p.address,Math.round(p.lat*10000)/10000,Math.round(p.lng*10000)/10000);done('Zmanim set for '+p.address)}});
+    },function(e){out.innerHTML='<div class="warn">'+esc(bridgeErr(e))+'</div>'});
+  });
+}
+function sunsetBuiltin(s){
   var dt=parse(s),y=dt.getFullYear(),rad=Math.PI/180;
   var N=Math.round((Date.UTC(y,dt.getMonth(),dt.getDate())-Date.UTC(y,0,0))/86400000);
   var lh=LNG/15,t=N+((18-lh)/24),M=0.9856*t-3.289;
@@ -490,7 +562,7 @@ var IC={
 function chipsFor(s){
   var a=special(s),h='';
   for(var i=0;i<a.length;i++)h+='<span class="chip k-'+a[i].k+'">'+esc(a[i].n)+'</span>';
-  var z=zmanim(s);for(var j=0;j<z.length;j++)h+='<span class="chip">'+esc(z[j])+'</span>';
+  var z=zmanim(s);if(!noWork(s))h+='<button class="chip" data-zmanim="'+s+'">Mincha '+clock(minchaMs(s))+'</button>';h+='<button class="chip" data-zmanim="'+s+'">Shkia '+clock(sunsetMs(s))+'</button>';for(var j=0;j<z.length;j++)h+='<button class="chip" data-zmanim="'+s+'">'+esc(z[j])+'</button>';
   return h?'<div class="chips">'+h+'</div>':'';
 }
 function renderHeader(){
@@ -1670,11 +1742,13 @@ function openSettings(){
   var T=todayStr(),sat=T;while(dow(sat)!==6)sat=addDays(sat,1);
   var h='<h3>Settings</h3>';
   h+='<div class="field"><label>Google connection</label><button class="sheetrow" id="sConn" style="width:100%;text-align:left"><span><span style="font-weight:600">'+(connOK()?(SYNC.err?'Connected, with a problem':'Connected'):'Not connected')+'</span><br><small style="color:var(--muted)">'+(connOK()?(SYNC.last?'Last sync '+esc(clockAt(SYNC.last)):'Not synced yet'):'Needed for syncing, contacts and address lookup')+'</small></span><b>'+(connOK()?'Manage':'Connect')+'</b></button></div>';
+  h+='<div class="field"><label>Zmanim</label><button class="sheetrow" id="sLoc" style="width:100%;text-align:left"><span><span style="font-weight:600">'+esc(LOCNAME)+'</span><br><small style="color:var(--muted)">'+(KZ?'KosherJava (KosherZmanim '+esc(KZV)+'), sea level':'Built-in formula until KosherJava loads')+'</small></span><b>Change</b></button></div>';
   h+='<div class="field"><label>Reminders</label><div class="rem">';
   h+='<div><span>Morning brief: where you are going, what you are doing</span><b>7:30 AM</b></div>';
   h+='<div><span>Set up tomorrow\'s Trello cards</span><b>8:00 PM</b></div>';
   h+='<div><span>End-of-day summary</span><b>6:00 PM</b></div>';
   h+='<div><span>Summary on Erev Shabbos and Erev Yom Tov: 1 hour before candle lighting, this Friday</span><b>'+(function(){var f=T;while(dow(f)!==5)f=addDays(f,1);return clock(sunsetMs(f)-78*60000)})()+'</b></div>';
+  h+='<div><span>Mincha: 1 hour before shkia, every work day (today)</span><b>'+(noWork(T)?'Off today':clock(minchaMs(T)))+'</b></div>';
   h+='<div><span>Friday night, Shabbos and Yom Tov</span><b>Off</b></div>';
   h+='<div><span>Motzei Shabbos Trello reminder (shkia + 72 min), this week</span><b>'+clock(sunsetMs(sat)+72*60000)+'</b></div>';
   h+='<div><span>Sent to</span><b>WhatsApp + phone</b></div></div></div>';
@@ -1687,13 +1761,15 @@ function openSettings(){
   bind('sClose',function(){closeSheet();render()});
   bind('appUpd',updateApp);
   bind('sConn',openConn);
+  bind('sLoc',function(){openLocation(openSettings)});
   bind('kDel',function(){confirmSheet('Remove the assistant key?','The assistant stops working on this phone until you paste the key again.','Remove key',function(){setKey('');closeSheet();toast('Key removed')})});
 }
 
 /* ---------- events ---------- */
 document.addEventListener('click',function(e){
-  var t=e.target.closest('[data-send],[data-crewedit],[data-printsheet],[data-printday],[data-aiundo],[data-dm],[data-dmf],[data-eq],[data-eqloc],[data-copysum],[data-notes],[data-markdone],[data-more],[data-movetoday],[data-tab],[data-open],[data-rm],[data-addto]');if(!t)return;
-  if(t.dataset.send)openSend(t.dataset.send);
+  var t=e.target.closest('[data-zmanim],[data-send],[data-crewedit],[data-printsheet],[data-printday],[data-aiundo],[data-dm],[data-dmf],[data-eq],[data-eqloc],[data-copysum],[data-notes],[data-markdone],[data-more],[data-movetoday],[data-tab],[data-open],[data-rm],[data-addto]');if(!t)return;
+  if(t.dataset.zmanim)openZmanim(t.dataset.zmanim);
+  else if(t.dataset.send)openSend(t.dataset.send);
   else if(t.dataset.crewedit)openCrewEdit(t.dataset.crewedit,openSettings);
   else if(t.dataset.printsheet){var ps=t.dataset.printsheet;closeSheet();if(ps===SHEETS[0][1])printUpcoming();else if(ps===SHEETS[1][1])printTools(true);else if(ps===SHEETS[2][1])printSupply();else printDumpsters()}
   else if(t.dataset.printday)printDay(t.dataset.printday);
@@ -1793,6 +1869,7 @@ if(!load()){seed();save()}
 try{if(!localStorage.getItem('workday.nosample')){S.cards=S.cards.filter(function(c){return !c.sample});save();localStorage.setItem('workday.nosample','1')}}catch(e){S.cards=S.cards.filter(function(c){return !c.sample})}
 S.cur=todayStr();var n=new Date();S.calY=n.getFullYear();S.calM=n.getMonth();
 render();
+setTimeout(loadKZ,400);
 if(connOK()){setTimeout(function(){syncNow()},800);setInterval(function(){if(!document.hidden)syncNow()},120000)}
 document.addEventListener('visibilitychange',function(){if(!document.hidden&&connOK())syncNow()});
 window.addEventListener('online',function(){if(connOK())syncNow()});
