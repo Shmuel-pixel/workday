@@ -1302,6 +1302,7 @@ function lookupContact(q,outId,onPick){
   out.innerHTML='<div class="mt">Searching your Google contacts...</div>';
   bridge('contacts',{q:q}).then(function(d){
     var ps=d.people||[];
+    if(d.needsSetup){out.innerHTML='<div class="warn">Contact search is not turned on yet. That is one extra step on the iPad later. For now, type the phone number and it will be saved for next time.</div>';return}
     if(!ps.length){out.innerHTML='<div class="warn">No contact named '+esc(q)+' in your Google contacts. Type the phone number yourself and it will be saved for next time.</div>';return}
     out.innerHTML='<div class="mt">Is this the right contact?</div>'+ps.map(function(p,i){return '<div class="sug"><b>'+esc(p.name)+'</b><small>'+esc([p.company,p.phones.join(', ')].filter(function(x){return x}).join(' '+MID+' '))+'</small><span class="row" style="margin-top:6px"><button type="button" class="btn good" data-yes="'+i+'">Yes, use this</button></span></div>'}).join('')+'<button type="button" class="btn" id="cNone">None of these</button>';
     [].forEach.call(out.querySelectorAll('[data-yes]'),function(b){b.onclick=function(){var p=ps[+b.getAttribute('data-yes')];out.innerHTML='';onPick(p)}});
