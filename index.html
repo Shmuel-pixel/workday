@@ -73,7 +73,7 @@ header .wrap{padding-block:10px 10px;display:grid;gap:8px}
 .st-today{background:var(--todo);color:#fff}
 .st-past{background:var(--past-tint);color:var(--muted);border:1px dashed var(--muted)}
 .st-future{background:var(--future-tint);color:var(--todo);border:1px dashed var(--todo)}
-main{padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+main{padding-bottom:calc(140px + env(safe-area-inset-bottom,0px))}
 .toptabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -4px;padding:2px 4px}
 .toptabs::-webkit-scrollbar{display:none}
 .ttab{flex:none;display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;border:1px solid var(--line);font-size:14px;font-weight:600;color:var(--muted);background:var(--bg)}
@@ -163,6 +163,13 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 .qty{font-family:var(--display);font-weight:700;font-variant-numeric:tabular-nums}
 .pill{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap}
 .pill.good{background:var(--done-soft);color:var(--done)}.pill.bad{background:var(--missed-soft);color:var(--missed)}.pill.warn{background:var(--erev-soft);color:var(--erev)}.pill.blue{background:var(--todo-soft);color:var(--todo)}.pill.unk{background:var(--sunk);color:var(--muted)}
+.bub.ai{justify-self:start;background:var(--sunk);color:var(--fg);border-radius:16px 16px 16px 4px}
+.aidone{margin:2px 0 0;padding-left:18px;font-size:14px;display:grid;gap:2px}
+.aidone.warnl{color:var(--erev)}
+.aiundo{justify-self:start;font-size:13px;font-weight:700;color:var(--todo);padding:2px 0}
+.bub.ai small{color:var(--muted);font-size:12px}
+.fab{position:fixed;z-index:7;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(74px + env(safe-area-inset-bottom,0px));height:52px;padding:0 18px;border-radius:26px;background:var(--todo);color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.fab svg{width:20px;height:20px}
 .swhint{font-size:12px;color:var(--muted);text-align:center}
 .grip{width:30px;height:44px;display:grid;place-items:center;color:var(--muted);touch-action:none;cursor:grab}
 .grip svg{width:16px;height:16px}
@@ -242,12 +249,13 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 .rem{display:grid;gap:6px;font-size:14px}
 .rem div{display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border-radius:8px;background:var(--bg)}
 .rem b{font-variant-numeric:tabular-nums}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(90px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;font-size:14px;max-width:calc(100% - 40px)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(136px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;font-size:14px;max-width:calc(100% - 40px)}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 
 <header id="hdr"><div class="wrap" id="hdrIn"></div></header>
 <main id="main"><div class="wrap" id="mainIn"></div></main>
+<button class="fab" id="fab" aria-label="Open the assistant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v11H9l-5 4z"/></svg>Assistant</button>
 <nav class="tabs" id="tabs" aria-label="Pages"></nav>
 <div class="scrim" id="scrim" hidden><div class="sheet" id="sheet"><div class="wrap" id="sheetIn"></div></div></div>
 <div class="toast" id="toast" hidden></div>
@@ -399,7 +407,8 @@ function zmanim(s){
 function save(){try{localStorage.setItem(KEY,JSON.stringify({cards:S.cards,crew:S.crew,vehicles:S.vehicles,types:S.types,tools:S.tools,askHidden:S.askHidden}));return true}catch(e){return false}}
 function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.cards){S.cards=o.cards;S.crew=o.crew||S.crew;S.vehicles=o.vehicles||S.vehicles;S.types=o.types||S.types;S.tools=o.tools||S.tools;S.askHidden=!!o.askHidden;return true}}}catch(e){}return false}
 var uid=0;function nid(){uid++;return 'c'+Date.now().toString(36)+uid}
-function seed(){
+function seed(){S.cards=[]}
+function seedExamplesUnused(){
   var T=todayStr();
   function at(off){var s=addDays(T,off);while(noWork(s))s=addDays(s,off<0?-1:1);return s}
   var L=[
@@ -538,7 +547,7 @@ function renderDay(){
     h+='<div class="calm"><b>'+esc(nw)+'</b><span>No work and no reminders today.</span></div>';
   }else if(r==='today'){
     h+='<div class="swhint">Swipe a card right to mark it done. Swipe a done card left to undo.</div>';
-    h+=zone('todo','To-Do',todo,'',true,'Nothing left. Tap + to add a job, or drag a card back here.');
+    h+=zone('todo','To-Do',todo,'',true,list.length?'Nothing left. Tap + to add a job, or drag a card back here.':'No jobs yet. Tap + or tell the Assistant, for example: tomorrow 8am cleanup at 3 Waswell Ct with Angio.');
     h+=zone('done','Done',done,'',false,'Drag a card here, or use &#8943; &rarr; Mark done.');
   }else if(r==='past'){
     h+=zone('done','Done',done,'',false,'Nothing was marked done this day.');
@@ -972,6 +981,136 @@ function openBill(){
   bind('bClose',closeSheet);
 }
 
+/* ---------- assistant (Claude API from the phone) ---------- */
+var AKEY='workday.apikey',AIH=[],AIBUSY=false,AIMODEL='claude-sonnet-5-5';
+function getKey(){try{return localStorage.getItem(AKEY)||''}catch(e){return ''}}
+function setKey(k){try{if(k)localStorage.setItem(AKEY,k);else localStorage.removeItem(AKEY);return true}catch(e){return false}}
+function nowHM(){var d=new Date();return pad(d.getHours())+':'+pad(d.getMinutes())}
+function aiContext(){
+  var T=todayStr(),L=[];
+  L.push('You are the scheduling assistant inside Shmuel\'s Workday app. Shmuel works for Five Star Services in the Lakewood, NJ area and schedules crews for jobs. Turn what he tells you into changes to his job cards.');
+  L.push('Today is '+engLong(T)+' ('+T+'), '+hebEn(T)+'. The time now is '+fmtTime(nowHM())+'.');
+  L.push('Rules: dates are YYYY-MM-DD and times are HH:MM in 24-hour time. Work out words like tomorrow, Monday or next week from today. Never put a job on a no-work day (listed below); if he asks for one, ask which day instead. Use crew, vehicle, work type and tool names from the lists when they match; otherwise use his words. If a new job is missing the address, date or crew, still add it with what you have and ask for the missing parts in your reply. When he talks about an existing job, use its id from the card list. If more than one card could match, ask which one instead of guessing. Keep the reply short and plain, like a text message.');
+  L.push('Crew: '+S.crew.join(', ')+', Me');
+  L.push('Vehicles: '+S.vehicles.join(', '));
+  L.push('Work types: '+S.types.join(', '));
+  L.push('Tools: '+S.tools.join(', '));
+  var nw=[];for(var i=0;i<30;i++){var s=addDays(T,i),n=noWork(s);if(n)nw.push(s+' '+n)}
+  L.push('No-work days coming up: '+(nw.length?nw.join('; '):'none'));
+  var cs=S.cards.filter(function(c){var n=diff(c.date,T);return n>=-7&&n<=45}).sort(function(a,b){return (a.date+(a.time||'')).localeCompare(b.date+(b.time||''))}).slice(0,120);
+  L.push('Cards (id | date | time | status | type | address | contractor | crew | vehicle):');
+  cs.forEach(function(c){L.push([c.id,c.date,c.time||'-',c.status==='done'?'done':(diff(c.date,T)<0?'missed':'to-do'),c.type,c.address||'-',c.contractor||'-',c.crew||'-',c.vehicle||'-'].join(' | '))});
+  if(!cs.length)L.push('(no cards yet)');
+  L.push('Answer with only a JSON object and nothing else: {"reply":"...","actions":[...]}. Action forms: {"do":"add","date":"","time":"","type":"","address":"","contractor":"","phone":"","crew":"","vehicle":"","materials":[],"tools":[],"note":""}; {"do":"update","id":"","fields":{...only the fields to change}}; {"do":"done","id":""}; {"do":"todo","id":""}; {"do":"move","id":"","date":"","time":""}; {"do":"note","id":"","text":""}; {"do":"delete","id":""}. Use an empty actions list when you only answer a question or need more details first.');
+  return L.join('\n');
+}
+function aiParse(txt){
+  var a=txt.indexOf('{'),b=txt.lastIndexOf('}');
+  if(a<0||b<a)return {reply:txt,actions:[]};
+  try{var o=JSON.parse(txt.slice(a,b+1));if(!o.actions)o.actions=[];return o}catch(e){return {reply:txt,actions:[]}}
+}
+function cardLabel(c){return c.type+(c.address?' at '+c.address.split(',')[0]:'')+', '+engShort(c.date)+(c.time?' '+fmtTime(c.time):'')+(c.crew?' ('+c.crew+')':'')}
+function aiApply(actions){
+  var done=[],skipped=[],T=todayStr();
+  var okField={date:1,time:1,type:1,address:1,contractor:1,phone:1,crew:1,vehicle:1,materials:1,tools:1,notes:1};
+  actions.forEach(function(a){
+    var c=a.id?find(a.id):null;
+    if(a['do']==='add'){
+      if(!a.date){a.date=T}
+      if(noWork(a.date)){skipped.push('Did not add '+(a.type||'job')+' on '+engShort(a.date)+' because it is '+noWork(a.date)+'.');return}
+      var n={id:nid(),date:a.date,time:a.time||'',type:a.type||'Job',address:a.address||'',contractor:a.contractor||'',phone:a.phone||'',crew:a.crew||'',vehicle:a.vehicle||'',materials:a.materials||[],tools:a.tools||[],notes:'',status:'todo',source:'assistant',sample:false,comments:[]};
+      if(a.note)n.comments.push({t:Date.now(),text:a.note});
+      S.cards.push(n);done.push('Added: '+cardLabel(n));return;
+    }
+    if(!c){skipped.push('Could not find one of the jobs it meant.');return}
+    if(a['do']==='done'){c.status='done';done.push('Done: '+cardLabel(c))}
+    else if(a['do']==='todo'){c.status='todo';done.push('Back to To-Do: '+cardLabel(c))}
+    else if(a['do']==='move'){
+      if(a.date&&noWork(a.date)){skipped.push('Did not move it to '+engShort(a.date)+' because it is '+noWork(a.date)+'.');return}
+      if(a.date)c.date=a.date;if(a.time)c.time=a.time;delete c.o;done.push('Moved: '+cardLabel(c));
+    }
+    else if(a['do']==='note'){c.comments=c.comments||[];c.comments.push({t:Date.now(),text:a.text||''});done.push('Note added to '+c.type+(c.address?' at '+c.address.split(',')[0]:''))}
+    else if(a['do']==='update'){
+      var f=a.fields||{};
+      if(f.date&&noWork(f.date)){skipped.push('Did not change the date to '+engShort(f.date)+' because it is '+noWork(f.date)+'.');delete f.date}
+      for(var k in f)if(okField[k])c[k]=f[k];
+      if(f.date||f.time)delete c.o;done.push('Updated: '+cardLabel(c));
+    }
+    else if(a['do']==='delete'){S.cards=S.cards.filter(function(x){return x.id!==c.id});done.push('Deleted: '+cardLabel(c))}
+  });
+  return {done:done,skipped:skipped};
+}
+function aiBubbles(){
+  var h='';
+  if(!AIH.length)h+='<div class="empty" style="text-align:center;align-self:center">Tell me what to do. For example: "Tomorrow 8am cleanup at 3 Waswell Ct, send Angio with Truck 1." Tap the mic on the keyboard to talk instead of typing.</div>';
+  AIH.forEach(function(m,i){
+    if(m.role==='user')h+='<div class="bub"><span>'+esc(m.show||m.content)+'</span></div>';
+    else{
+      h+='<div class="bub ai">'+(m.reply?'<span>'+esc(m.reply)+'</span>':'');
+      if(m.done&&m.done.length)h+='<ul class="aidone">'+m.done.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>';
+      if(m.skipped&&m.skipped.length)h+='<ul class="aidone warnl">'+m.skipped.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>';
+      if(m.undo&&!m.undone)h+='<button class="aiundo" data-aiundo="'+i+'">Undo these changes</button>';
+      if(m.undone)h+='<small>Undone</small>';
+      h+='</div>';
+    }
+  });
+  if(AIBUSY)h+='<div class="bub ai"><span>Working on it...</span></div>';
+  return h;
+}
+function openAI(){
+  var key=getKey(),h='<h3>Assistant</h3>';
+  if(!key){
+    h+='<p style="margin:0;color:var(--muted);font-size:14px">Paste your Claude API key once (it starts with sk-ant-). It is saved only on this phone. You made it at console.anthropic.com under API Keys.</p>';
+    h+='<div class="field"><label for="kIn">API key</label><input id="kIn" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="sk-ant-..."></div><div id="kWarn"></div>';
+    h+='<div class="row"><button class="btn primary" id="kSave">Save key</button><button class="btn" id="aiClose">Close</button></div>';
+    openSheet(h);
+    bind('aiClose',closeSheet);
+    bind('kSave',function(){var v=val('kIn').trim();if(v.indexOf('sk-ant-')!==0){document.getElementById('kWarn').innerHTML='<div class="warn">That does not look like a Claude key. It should start with sk-ant-.</div>';return}if(!setKey(v)){document.getElementById('kWarn').innerHTML='<div class="warn">This phone would not save the key. Check that private browsing is off.</div>';return}openAI()});
+    return;
+  }
+  h+='<div class="thread" id="aiThr">'+aiBubbles()+'</div>';
+  h+='<div class="compose" style="grid-template-columns:1fr auto"><textarea id="aiTxt" rows="2" placeholder="Tell the assistant what to do"></textarea><button class="send" id="aiSend">Send</button></div>';
+  h+='<div class="row" style="justify-content:space-between"><button class="btn" id="aiClose">Close</button><button class="btn" id="aiClear">Start over</button></div>';
+  openSheet(h);
+  var thr=document.getElementById('aiThr');thr.scrollTop=thr.scrollHeight;
+  var ta=document.getElementById('aiTxt');
+  bind('aiClose',function(){closeSheet();render()});
+  bind('aiClear',function(){AIH=[];openAI()});
+  bind('aiSend',function(){var t=ta.value.trim();if(!t||AIBUSY)return;aiSend(t)});
+}
+function aiRedraw(){var thr=document.getElementById('aiThr');if(!thr)return;thr.innerHTML=aiBubbles();thr.scrollTop=thr.scrollHeight}
+function aiSend(text){
+  var key=getKey();if(!key){openAI();return}
+  AIH.push({role:'user',content:text});AIBUSY=true;
+  var ta=document.getElementById('aiTxt');if(ta)ta.value='';
+  aiRedraw();
+  var msgs=AIH.filter(function(m){return !m.fail}).slice(-12).map(function(m){return {role:m.role,content:m.role==='user'?m.content:(m.raw||m.reply||'')}});
+  while(msgs.length&&msgs[0].role!=='user')msgs.shift();
+  fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:AIMODEL,max_tokens:1500,system:aiContext(),messages:msgs})})
+  .then(function(r){return r.json().then(function(j){return {ok:r.ok,status:r.status,j:j}})})
+  .then(function(res){
+    AIBUSY=false;
+    if(!res.ok){
+      var msg=res.status===401?'The key was not accepted. Open Settings, remove the key, and paste it again.':res.status===402||(res.j&&res.j.error&&/credit/i.test(res.j.error.message||''))?'Your Claude API account is out of credit. Add credit at console.anthropic.com under Billing.':(res.status===429||res.status===529)?'The assistant is busy. Wait a minute and send it again.':'The assistant could not answer (error '+res.status+'). Send it again in a minute.';
+      AIH.push({role:'assistant',reply:msg,raw:msg,fail:true});AIH.splice(AIH.length-2,1);
+      if(ta)ta.value=text;aiRedraw();return;
+    }
+    var txt=(res.j.content||[]).filter(function(b){return b.type==='text'}).map(function(b){return b.text}).join('');
+    var o=aiParse(txt),before=JSON.stringify(S.cards);
+    var out=aiApply(o.actions||[]);
+    var changed=out.done.length>0;
+    if(changed){save();render()}
+    AIH.push({role:'assistant',reply:o.reply||'',raw:txt,done:out.done,skipped:out.skipped,undo:changed?before:null});
+    aiRedraw();
+  })
+  .catch(function(){
+    AIBUSY=false;AIH.pop();
+    AIH.push({role:'assistant',reply:'No connection right now, so nothing was sent. Your message is back in the box. Send it again when you have signal.',raw:'',fail:true});
+    var t2=document.getElementById('aiTxt');if(t2)t2.value=text;aiRedraw();
+  });
+}
+function aiUndo(i){var m=AIH[i];if(!m||!m.undo||m.undone)return;try{S.cards=JSON.parse(m.undo)}catch(e){return}m.undone=true;save();render();aiRedraw();toast('Changes undone')}
+
 /* ---------- tabs ---------- */
 var TABS=[['day','Today',IC.day],['cal','Calendar',IC.cal],['log','Log',IC.log],['ord','Orders',IC.ord],['dump','Dumpsters',IC.dump],['tool','Tools',IC.tool]];
 function render(){
@@ -1105,17 +1244,18 @@ function openSettings(){
   h+='<div><span>Motzei Shabbos Trello reminder (shkia + 72 min), this week</span><b>'+clock(sunsetMs(sat)+72*60000)+'</b></div>';
   h+='<div><span>Sent to</span><b>WhatsApp + phone</b></div></div></div>';
   h+=listEditor('crew','Crew')+listEditor('vehicles','Vehicles')+listEditor('tools','Tools')+listEditor('types','Work types');
-  h+='<div class="field"><label>Start over</label><div class="row"><button class="btn" id="reseed">Reload example cards</button></div></div>';
+  h+='<div class="field"><label>Assistant key</label><div class="rem"><div><span>'+(getKey()?'Claude API key saved on this phone':'No key yet. Tap Assistant to add one.')+'</span><b>'+(getKey()?'Saved':'')+'</b></div></div>'+(getKey()?'<div class="row"><button class="btn" id="kDel">Remove key</button></div>':'')+'</div>';
   h+='<button class="btn primary" id="sClose">Done</button>';
   openSheet(h);
   bind('sClose',function(){closeSheet();render()});
-  bind('reseed',function(){confirmSheet('Reload example cards?','This replaces all cards with the examples.','Reload',function(){seed();S.askHidden=false;save();closeSheet();render();toast('Examples loaded')})});
+  bind('kDel',function(){confirmSheet('Remove the assistant key?','The assistant stops working on this phone until you paste the key again.','Remove key',function(){setKey('');closeSheet();toast('Key removed')})});
 }
 
 /* ---------- events ---------- */
 document.addEventListener('click',function(e){
-  var t=e.target.closest('[data-dm],[data-dmf],[data-eq],[data-eqloc],[data-copysum],[data-notes],[data-markdone],[data-more],[data-movetoday],[data-tab],[data-open],[data-rm],[data-addto]');if(!t)return;
-  if(t.dataset.dm)openDm(t.dataset.dm);
+  var t=e.target.closest('[data-aiundo],[data-dm],[data-dmf],[data-eq],[data-eqloc],[data-copysum],[data-notes],[data-markdone],[data-more],[data-movetoday],[data-tab],[data-open],[data-rm],[data-addto]');if(!t)return;
+  if(t.dataset.aiundo)aiUndo(+t.dataset.aiundo);
+  else if(t.dataset.dm)openDm(t.dataset.dm);
   else if(t.dataset.dmf){DM.filter=DM.filter===t.dataset.dmf&&t.dataset.dmf!=='active'?'active':t.dataset.dmf;render()}
   else if(t.dataset.eq)openEq(t.dataset.eq);
   else if(t.dataset.eqloc){EQ.loc=t.dataset.eqloc;render()}
@@ -1129,6 +1269,7 @@ document.addEventListener('click',function(e){
   else if(t.dataset.rm){var p=t.dataset.rm.split(':');S[p[0]].splice(+p[1],1);save();openSettings()}
   else if(t.dataset.addto){var k=t.dataset.addto,inp=document.getElementById('add-'+k),v=inp.value.trim();if(v&&S[k].indexOf(v)<0){S[k].push(v);save()}openSettings()}
 });
+document.getElementById('fab').onclick=openAI;
 document.getElementById('scrim').addEventListener('click',function(e){if(e.target.id==='scrim')closeSheet()});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeSheet()});
 
@@ -1206,6 +1347,7 @@ document.addEventListener('touchend',function(){
 /* ---------- start ---------- */
 eqLoad();dmLoad();
 if(!load()){seed();save()}
+try{if(!localStorage.getItem('workday.nosample')){S.cards=S.cards.filter(function(c){return !c.sample});save();localStorage.setItem('workday.nosample','1')}}catch(e){S.cards=S.cards.filter(function(c){return !c.sample})}
 S.cur=todayStr();var n=new Date();S.calY=n.getFullYear();S.calM=n.getMonth();
 render();
 })();
