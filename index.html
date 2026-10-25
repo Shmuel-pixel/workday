@@ -263,7 +263,7 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 <script>
 (function(){
 var LAT=40.0821, LNG=-74.2097;
-var KEY='workday.v1';
+var KEY='workday.v1',APPVER='Oct 25, 2026 (3)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Angio','Charlie','Adon'],vehicles:['Truck 1','Truck 2','Van'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -1232,6 +1232,14 @@ function listEditor(key,label){
   h+='</div><div class="addrow"><input id="add-'+key+'" placeholder="Add '+label.toLowerCase().replace(/s$/,'')+'"><button class="btn" data-addto="'+key+'">Add</button></div></div>';
   return h;
 }
+function updateApp(){
+  if(!navigator.onLine){toast('No signal. Connect to update.');return}
+  toast('Updating...');
+  var p=[];
+  try{if(window.caches)p.push(caches.keys().then(function(ks){return Promise.all(ks.map(function(k){return caches.delete(k)}))}))}catch(e){}
+  try{if(navigator.serviceWorker)p.push(navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.update().catch(function(){})}))}))}catch(e){}
+  Promise.all(p).catch(function(){}).then(function(){location.replace(location.pathname+'?v='+Date.now())});
+}
 function openSettings(){
   var T=todayStr(),sat=T;while(dow(sat)!==6)sat=addDays(sat,1);
   var h='<h3>Settings</h3>';
@@ -1245,9 +1253,11 @@ function openSettings(){
   h+='<div><span>Sent to</span><b>WhatsApp + phone</b></div></div></div>';
   h+=listEditor('crew','Crew')+listEditor('vehicles','Vehicles')+listEditor('tools','Tools')+listEditor('types','Work types');
   h+='<div class="field"><label>Assistant key</label><div class="rem"><div><span>'+(getKey()?'Claude API key saved on this phone':'No key yet. Tap Assistant to add one.')+'</span><b>'+(getKey()?'Saved':'')+'</b></div></div>'+(getKey()?'<div class="row"><button class="btn" id="kDel">Remove key</button></div>':'')+'</div>';
+  h+='<div class="field"><label>App</label><div class="rem"><div><span>Version</span><b>'+APPVER+'</b></div></div><div class="row"><button class="btn" id="appUpd">Update app now</button></div></div>';
   h+='<button class="btn primary" id="sClose">Done</button>';
   openSheet(h);
   bind('sClose',function(){closeSheet();render()});
+  bind('appUpd',updateApp);
   bind('kDel',function(){confirmSheet('Remove the assistant key?','The assistant stops working on this phone until you paste the key again.','Remove key',function(){setKey('');closeSheet();toast('Key removed')})});
 }
 
