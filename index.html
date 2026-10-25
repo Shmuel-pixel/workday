@@ -247,7 +247,9 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 .field{display:grid;gap:4px}
 .field label{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
 .field input,.field select,.field textarea{padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;width:100%;box-sizing:border-box;min-width:0}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.two>.field{min-width:0}
+.field input[type=date],.field input[type=time]{-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;display:block;min-height:44px;text-align:left}
 .menuitem{text-align:left;padding:13px 12px;border-radius:10px;background:var(--bg);font-weight:600}
 .menuitem.red{color:var(--missed)}
 .warn{background:var(--erev-soft);color:var(--erev);border-radius:8px;padding:10px;font-size:14px;font-weight:600}
@@ -274,8 +276,8 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 <script>
 (function(){
 var LAT=40.0821, LNG=-74.2097;
-var KEY='workday.v1',APPVER='Oct 25, 2026 (6)';
-var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Angio','Charlie','Adon'],vehicles:['Truck 1','Truck 2','Van'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
+var KEY='workday.v1',APPVER='Oct 25, 2026 (7)';
+var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Angio','Charlie','Adon'],vehicles:['2019 Ford Box Truck','2013 Silverado','2016 F450 Utility Truck','Geronimo 2016 F550'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
 function pad(n){return (n<10?'0':'')+n}
@@ -416,7 +418,7 @@ function zmanim(s){
 
 /* ---------- storage ---------- */
 function save(skip){if(!skip&&typeof trackChanges==='function')trackChanges();try{localStorage.setItem(KEY,JSON.stringify({cards:S.cards,crew:S.crew,vehicles:S.vehicles,types:S.types,tools:S.tools,askHidden:S.askHidden}));return true}catch(e){return false}}
-function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.cards){S.cards=o.cards;S.crew=o.crew||S.crew;S.vehicles=o.vehicles||S.vehicles;S.types=o.types||S.types;S.tools=o.tools||S.tools;S.askHidden=!!o.askHidden;return true}}}catch(e){}return false}
+function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.cards){S.cards=o.cards;S.crew=o.crew||S.crew;S.vehicles=o.vehicles||S.vehicles;S.types=o.types||S.types;if(S.vehicles.join()==='Truck 1,Truck 2,Van')S.vehicles=['2019 Ford Box Truck','2013 Silverado','2016 F450 Utility Truck','Geronimo 2016 F550'];if(S.types.join()==='Cleanup,Deck repair,Dumpster drop,Dumpster pickup,Estimate,Material pickup,Gutter cleanout,Install')S.types=['Cleanup','Moving materials','Core drilling','Concrete cutting','Interior demo','Full house demo','Site work','Excavation','Underground utilities','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Deck repair','Gutter cleanout','Install','Other'];S.tools=o.tools||S.tools;S.askHidden=!!o.askHidden;return true}}}catch(e){}return false}
 var uid=0;function nid(){uid++;return 'c'+Date.now().toString(36)+uid}
 function seed(){S.cards=[]}
 function seedExamplesUnused(){
