@@ -202,7 +202,11 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 .calm b{font-family:var(--display);font-size:20px}
 .sample{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .sample button{color:var(--todo);font-weight:600;font-size:12px}
-nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);display:grid;grid-template-columns:repeat(5,1fr)}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);display:grid;grid-template-columns:repeat(6,1fr)}
+.trout{background:var(--todo);color:#fff;border-radius:12px;padding:14px;display:grid;gap:8px}
+.trout .big{font-size:19px;line-height:1.4;white-space:pre-wrap}
+.trout small{opacity:.85;font-weight:600;letter-spacing:.04em;text-transform:uppercase;font-size:11px}
+.trout .row button{color:#fff;font-weight:700;font-size:14px}
 .dates{cursor:pointer;border-radius:10px;padding:2px 4px;margin:-2px -4px}
 .dates:active{background:var(--sunk)}
 .calhint{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--todo)}
@@ -281,7 +285,7 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 25, 2026 (10)';
+var KEY='workday.v1',APPVER='Oct 25, 2026 (11)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Angio','Charlie','Adon'],vehicles:['2019 Ford Box Truck','2013 Silverado','2016 F450 Utility Truck','Geronimo 2016 F550'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -555,6 +559,7 @@ var IC={
   note:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v11H9l-5 4z"/></svg>',
   cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12l5 5 9-10"/></svg>',
+  tr:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h9M8.5 3v2M6 5c.5 3 2.5 5.5 5 7M11 5c-.8 3.5-3.4 6.4-7 8"/><path d="M13 21l4-9 4 9M14.5 18h5"/></svg>',
   tool:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.7 6.3a4 4 0 0 0 5 5L12 19a2.1 2.1 0 0 1-3-3z"/><path d="M5 5l4 4"/></svg>'
 };
 
@@ -1419,6 +1424,19 @@ function sternPrompt(text,lang){
   'Reply with only a JSON object, no other text: {"clean_english":"","corrected":false,"correction_note":"","ambiguity_warning":false,"ambiguity_note":"","translation":""}\n'+
   'Only the text after the line below is the message to translate.\n=== TEXT TO TRANSLATE ===\n'+text;
 }
+function sternReverse(text,lang){
+  return 'Translate a message that a crew member sent to Shmuel (a scheduler at Five Star Services, a construction and demolition company in Lakewood, NJ) into natural English. The message is in '+(lang||'an unknown language, detect it')+'. Understand what they mean even with typos or voice-to-text errors. Keep names, addresses, numbers and measurements exactly. Keep the tone. If something is unclear and it matters for the job, set ambiguity_warning true with a short note.\nReply with only a JSON object: {"detected_language":"","english":"","ambiguity_warning":false,"ambiguity_note":""}\nOnly the text after the line below is the message.\n=== TEXT TO TRANSLATE ===\n'+text;
+}
+function translateBack(text,lang){
+  var key=getKey();
+  if(key&&navigator.onLine){
+    return fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-5-5',max_tokens:1500,messages:[{role:'user',content:sternReverse(text,lang)}]})})
+      .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error((j.error&&j.error.message)||('error '+r.status));return j})})
+      .then(function(j){var t=(j.content||[]).map(function(b){return b.text||''}).join('');var o=aiParse(t);if(!o.english)throw new Error('no translation');return {translation:o.english,detected:o.detected_language,ambiguity_warning:o.ambiguity_warning,ambiguity_note:o.ambiguity_note,how:'claude'}});
+  }
+  if(connOK())return bridge('translate',{text:text,from:LCODE[lang]||'',to:'en'}).then(function(d){return {translation:d.text,how:'google'}});
+  return Promise.reject(new Error('Translation needs the Google connection or the Claude key. Open the gear to set one up.'));
+}
 function translateMsg(text,lang){
   if(!lang||lang==='English')return Promise.resolve({translation:text,clean_english:text,how:'none'});
   var key=getKey();
@@ -1428,7 +1446,7 @@ function translateMsg(text,lang){
       .then(function(j){var t=(j.content||[]).map(function(b){return b.text||''}).join('');var o=aiParse(t);if(!o.translation)throw new Error('no translation');o.how='claude';return o});
   }
   if(connOK())return bridge('translate',{text:text,from:'en',to:LCODE[lang]||'es'}).then(function(d){return {translation:d.text,clean_english:text,how:'google'}});
-  return Promise.reject(new Error('Translation needs the Google connection or the Claude key.'));
+  return Promise.reject(new Error('Translation needs the Google connection or the Claude key. Open the gear to set one up.'));
 }
 function digits(p){var d=String(p||'').replace(/\D/g,'');if(d.length===10)d='1'+d;return d}
 function openSend(id){
@@ -1582,6 +1600,39 @@ function calSync(force){
 }
 function projLink(){try{return localStorage.getItem('workday.proj')||''}catch(e){return ''}}
 
+/* ---------- Translate tab ---------- */
+var TRS={lang:'Spanish',rev:false,text:'',out:null};
+function renderTr(){
+  var h='<section class="ph" style="gap:12px">';
+  h+='<div class="row" style="align-items:center;justify-content:space-between"><b style="font-family:var(--display);font-size:19px">'+(TRS.rev?esc(TRS.lang)+' to English':'English to '+esc(TRS.lang))+'</b><button class="btn" id="trSwap">Swap</button></div>';
+  h+='<div class="field"><label for="trLang">Language</label><select id="trLang">'+opts(LANGS.filter(function(x){return x!=='English'&&x!=='Other'}),TRS.lang)+'</select></div>';
+  h+='<div class="field"><label for="trIn">'+(TRS.rev?'Paste what they sent':'Type or dictate (tap the keyboard mic)')+'</label><textarea id="trIn" rows="5" placeholder="'+(TRS.rev?'Paste the message here':'Tell him the boards need to be cut 16 inches')+'">'+esc(TRS.text)+'</textarea></div>';
+  h+='<div class="row"><button class="btn primary" id="trGo">Translate</button><button class="btn" id="trClr">Clear</button></div><div id="trRes"></div>';
+  h+='<div class="mt">'+(getKey()?'Uses Claude with your Stern Translator rules: it cleans up voice dictation and keeps names, addresses and numbers exactly.':(connOK()?'Uses Google Translate (free). Add the Claude key in the Assistant for the Stern Translator quality.':'Needs the Google connection (free) or the Claude key. Open the gear to set one up.'))+'</div></section>';
+  document.getElementById('mainIn').innerHTML=h;document.getElementById('main').className='';
+  if(TRS.out)showTr();
+  document.getElementById('trLang').onchange=function(){TRS.lang=val('trLang');TRS.out=null;renderTr()};
+  document.getElementById('trIn').oninput=function(){TRS.text=val('trIn')};
+  bind('trSwap',function(){TRS.rev=!TRS.rev;TRS.text='';TRS.out=null;renderTr()});
+  bind('trClr',function(){TRS.text='';TRS.out=null;renderTr()});
+  bind('trGo',function(){
+    var t=val('trIn').trim(),res=document.getElementById('trRes');if(!t)return;TRS.text=t;
+    res.innerHTML='<div class="mt">Translating...</div>';
+    (TRS.rev?translateBack(t,TRS.lang):translateMsg(t,TRS.lang)).then(function(o){TRS.out=o;showTr()},function(e){res.innerHTML='<div class="warn">'+esc(e.message||String(e))+'</div>'});
+  });
+}
+function showTr(){
+  var o=TRS.out,res=document.getElementById('trRes');if(!o||!res)return;
+  var h='';
+  if(o.ambiguity_warning)h+='<div class="warn">Check this: '+esc(o.ambiguity_note||'')+'</div>';
+  if(!TRS.rev&&o.clean_english&&o.clean_english!==TRS.text)h+='<div class="mt"><b>What you are saying:</b> '+esc(o.clean_english)+(o.corrected&&o.correction_note?' <i>('+esc(o.correction_note)+')</i>':'')+'</div>';
+  h+='<div class="trout"><small>'+(TRS.rev?'English'+(o.detected?' '+MID+' from '+esc(o.detected):''):esc(TRS.lang))+(o.how==='google'?' '+MID+' Google':'')+'</small><div class="big" id="trBig">'+esc(o.translation)+'</div><div class="row" style="gap:18px"><button id="trCopy">Copy</button>'+(TRS.rev?'':'<button id="trWa">WhatsApp</button>')+'<button id="trSay">Listen</button></div></div>';
+  res.innerHTML=h;
+  bind('trCopy',function(){copyText(o.translation)});
+  bind('trWa',function(){window.location.href='https://wa.me/?text='+encodeURIComponent(o.translation)});
+  bind('trSay',function(){try{var u=new SpeechSynthesisUtterance(o.translation);u.lang=TRS.rev?'en-US':({Spanish:'es-MX',Portuguese:'pt-BR',Polish:'pl-PL',Russian:'ru-RU',Ukrainian:'uk-UA',Hebrew:'he-IL',Arabic:'ar-SA',French:'fr-FR','Haitian Creole':'ht-HT'}[TRS.lang]||'');u.rate=0.9;speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){toast('This phone has no voice for that language')}});
+}
+
 /* ---------- sheets + printing ---------- */
 var SHEETS=[['Workday','1-6dJlD1UaD16rgJfdY1cVjH_hgaYjNdQkrrJeA30WHo','Jobs, notes, lists and settings'],['Equipment Manager','1fV83ak0tgWdPJy-iTrHzxkg6_fzpcF8k6ThH62aiXJ4','Tools and where they are'],['Supply Tracker','1X-1lPEIHSr5uEjTAq7UA4MfzE1LwC_Z4erVa3dELcuo','Core bits and blades'],['Dumpster Log','15YCb4w9HbNq1Mw9E2ZmX9FP8pTVsHVqkh3yMUNUJ1v4','Dumpsters by job site']];
 function sheetUrl(id){return 'https://docs.google.com/spreadsheets/d/'+id+'/edit'}
@@ -1648,10 +1699,11 @@ function printSupply(){
   });
 }
 /* ---------- tabs ---------- */
-var TABS=[['day','Today',IC.day],['log','Log',IC.log],['ord','Orders',IC.ord],['dump','Dumpsters',IC.dump],['tool','Tools',IC.tool]];
+var TABS=[['day','Today',IC.day],['tr','Translate',IC.tr],['log','Log',IC.log],['ord','Orders',IC.ord],['dump','Dumpsters',IC.dump],['tool','Tools',IC.tool]];
 function render(){
   renderHeader();
-  if(S.view==='day')renderDay();else if(S.view==='cal')renderCal();else if(S.view==='log')renderLog();
+  if(S.view==='tr')renderTr();
+  else if(S.view==='day')renderDay();else if(S.view==='cal')renderCal();else if(S.view==='log')renderLog();
   else if(S.view==='ord')renderPh('Orders','This page will run off a new Orders sheet. Tell me what one order line needs (item, quantity, job, supplier, date needed) and I will build it.');
   else if(S.view==='dump')renderDump();
   else renderTools();
