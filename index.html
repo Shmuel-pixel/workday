@@ -281,7 +281,7 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 25, 2026 (9)';
+var KEY='workday.v1',APPVER='Oct 25, 2026 (10)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Angio','Charlie','Adon'],vehicles:['2019 Ford Box Truck','2013 Silverado','2016 F450 Utility Truck','Geronimo 2016 F550'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -418,7 +418,7 @@ function sunsetMs(s){
   if(KZ){try{var v=zms(kzCal(s).getSeaLevelSunset());if(v){ZC[s]=v;return v}}catch(e){}}
   return (ZC[s]=sunsetBuiltin(s));
 }
-function minchaMs(s){return sunsetMs(s)-60*60000}
+function minchaMs(s){return sunsetMs(s)-(typeof remMin==='function'?remMin('mincha'):60)*60000}
 function zmanimList(s){
   var out=[];
   if(KZ){
@@ -435,10 +435,10 @@ var PLACES=[['Lakewood, NJ',40.0821,-74.2097],['Jackson, NJ',40.0979,-74.3577],[
 function openZmanim(s){
   var h='<h3>Zmanim</h3><div style="color:var(--muted);font-size:14px;margin-top:-6px">'+esc(engLong(s))+' '+MID+' '+esc(hebEn(s))+'<br>'+esc(LOCNAME)+'</div>';
   h+='<div class="rem">'+zmanimList(s).map(function(z){return '<div><span>'+esc(z[0])+'</span><b>'+clock(z[1])+'</b></div>'}).join('')+'</div>';
-  h+='<div class="rem"><div><span>Mincha reminder (1 hour before shkia)</span><b>'+clock(minchaMs(s))+'</b></div>';
+  h+='<div class="rem"><div><span>Mincha reminder ('+remMin('mincha')+' min before shkia)</span><b>'+clock(minchaMs(s))+'</b></div>';
   var nw=noWork(s),nwNext=noWork(addDays(s,1)),ss=sunsetMs(s);
-  if(nwNext&&!nw)h+='<div><span>Candle lighting (18 min)</span><b>'+clock(ss-18*60000)+'</b></div>';
-  if(nw&&!nwNext)h+='<div><span>Motzei (72 min)</span><b>'+clock(ss+72*60000)+'</b></div>';
+  if(nwNext&&!nw)h+='<div><span>Candle lighting ('+remMin('candle')+' min)</span><b>'+clock(ss-remMin('candle')*60000)+'</b></div>';
+  if(nw&&!nwNext)h+='<div><span>Motzei ('+remMin('motzei')+' min)</span><b>'+clock(ss+remMin('motzei')*60000)+'</b></div>';
   h+='</div><div class="mt">'+(KZ?'Calculated with KosherJava (KosherZmanim '+esc(KZV)+'), sea level.':'KosherJava has not loaded yet, so this uses the built-in sunset formula. It loads the next time you have signal.')+'</div>';
   h+='<div class="row"><button class="btn" id="zLoc">Change location</button><button class="btn primary" id="zX">Close</button></div>';
   openSheet(h);bind('zX',closeSheet);bind('zLoc',function(){openLocation(function(){openZmanim(s)})});
@@ -487,8 +487,8 @@ function clock(ms){return tf.format(new Date(ms))}
 function zmanim(s){
   var o=[],ss=sunsetMs(s);
   var nw=noWork(s),nwNext=noWork(addDays(s,1));
-  if(nwNext&&!nw)o.push('Candles '+clock(ss-18*60000));
-  if(nw&&!nwNext)o.push('Motzei (72 min) '+clock(ss+72*60000));
+  if(nwNext&&!nw)o.push('Candles '+clock(ss-remMin('candle')*60000));
+  if(nw&&!nwNext)o.push('Motzei ('+remMin('motzei')+' min) '+clock(ss+remMin('motzei')*60000));
   return o;
 }
 
@@ -1153,6 +1153,7 @@ function aiBubbles(){
   return h;
 }
 function openAI(){
+  if(!getKey()&&projLink()){window.location.href=projLink();return}
   var key=getKey(),h='<h3>Assistant</h3>';
   if(!key){
     h+='<p style="margin:0;color:var(--muted);font-size:14px">Paste your Claude API key once (it starts with sk-ant-). It is saved only on this phone. You made it at console.anthropic.com under API Keys.</p>';
@@ -1282,7 +1283,7 @@ function syncNow(manual){
   Object.keys(SYNC.tomb).forEach(function(id){var old=null;for(var i=0;i<SYNC.rows.length;i++)if(SYNC.rows[i]['ID']===id)old=SYNC.rows[i];var r=old?JSON.parse(JSON.stringify(old)):{'ID':id};r['Deleted']=SYNC.tomb[id];r['Updated']=SYNC.tomb[id];push.push(r)});
   var p=push.length?bridge('saveCards',{cards:push}):Promise.resolve();
   return p.then(function(){SYNC.dirty={};SYNC.tomb={};return pushNotes()}).then(function(){return bridge('getAll')}).then(function(d){
-    mergeAll(d);SYNC.last=Date.now();SYNC.err='';SYNC.busy=false;syncSave();save(true);render();if(manual)toast('Synced with Google');
+    mergeAll(d);SYNC.last=Date.now();SYNC.err='';SYNC.busy=false;syncSave();save(true);render();if(manual)toast('Synced with Google');calSync(false).catch(function(e){SYNC.err=bridgeErr(e)});
   },function(e){SYNC.busy=false;SYNC.err=bridgeErr(e);syncSave();if(manual)toast(SYNC.err)});
 }
 function pushNotes(){
@@ -1318,6 +1319,7 @@ function mergeAll(d){
   var L=d['Lists']||[];function col(k){return L.map(function(r){return r[k]}).filter(function(x){return x})}
   var v=col('Vehicles'),w=col('Work Types'),t2=col('Tools');if(v.length)S.vehicles=v;if(w.length)S.types=w;if(t2.length)S.tools=t2;
   /* things waiting for approval from WhatsApp or email */
+  remFromSheet(d['Settings']||[]);
   S.suggest=(d['Suggestions']||[]).filter(function(r){return (r['Status']||'').toLowerCase()==='waiting'});
 }
 /* push a master-list change, or queue it for later */
@@ -1515,6 +1517,70 @@ function openConn(){
   bind('cnTest',function(){var out=document.getElementById('cnOut');out.innerHTML='<div class="mt">Testing...</div>';bridge('ping').then(function(d){out.innerHTML='<div class="mt">Working. Connected as '+esc(d.user||'you')+'.</div>'},function(e){out.innerHTML='<div class="warn">'+esc(bridgeErr(e))+'</div>'})});
   bind('cnOff',function(){confirmSheet('Disconnect Google?','Your cards stay on this phone. They stop syncing until you connect again.','Disconnect',function(){CONN=null;try{localStorage.removeItem(CKEY)}catch(e){}mcpP=null;closeSheet();toast('Disconnected')})});
 }
+
+/* ---------- reminders (editable) + Google Calendar ---------- */
+var REMDEF=[['brief','Morning brief','time','07:30','Where you are going and what you are doing'],['trello','Trello reminder','time','20:00','Set up tomorrow\'s Trello cards'],['summary','End-of-day summary','time','18:00','The day\'s summary, with materials and tools'],['erev','Erev summary','min','60','On Erev Shabbos and Erev Yom Tov: minutes before candle lighting'],['mincha','Mincha','min','60','Minutes before shkia, every work day'],['motzei','Motzei Shabbos Trello reminder','min','72','Minutes after shkia on Motzei Shabbos and Yom Tov'],['candle','Candle lighting','min','18','Minutes before shkia']];
+var REM={},REMDIRTY=false;
+function remLoad(){REMDEF.forEach(function(d){REM[d[0]]={v:d[3],on:true}});try{var o=JSON.parse(localStorage.getItem('workday.rem')||'null');if(o)for(var k in o)if(REM[k])REM[k]=o[k];REMDIRTY=!!(o&&o._dirty)}catch(e){}}
+function remSave(){try{var o=JSON.parse(JSON.stringify(REM));o._dirty=REMDIRTY;localStorage.setItem('workday.rem',JSON.stringify(o))}catch(e){}}
+function remMin(k){var n=parseInt(REM[k]&&REM[k].v,10);return isNaN(n)?0:n}
+function remFromSheet(rows){if(REMDIRTY)return;REMDEF.forEach(function(d){rows.forEach(function(r){if(r['Setting']===d[1]&&r['Value']!==''){REM[d[0]]={v:String(r['Value']),on:String(r['On']||'yes').toLowerCase()!=='no'}}})});remSave()}
+function remEditor(){
+  var h='<div class="field"><label>Reminders</label><div class="listed">';
+  REMDEF.forEach(function(d){var r=REM[d[0]];
+    h+='<div class="li" style="gap:10px;align-items:center"><span style="min-width:0"><span style="font-weight:600">'+esc(d[1])+'</span><br><small style="color:var(--muted)">'+esc(d[4])+'</small></span><span class="row" style="gap:8px;flex-wrap:nowrap;align-items:center">'+
+      (d[2]==='time'?'<input type="time" id="rv-'+d[0]+'" value="'+esc(r.v)+'" style="width:96px;padding:6px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:inherit">':'<input type="number" inputmode="numeric" id="rv-'+d[0]+'" value="'+esc(r.v)+'" style="width:58px;padding:6px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:inherit"><small>min</small>')+
+      (d[0]==='candle'?'':'<label class="tchk" style="padding:6px 9px"><input type="checkbox" id="ro-'+d[0]+'"'+(r.on?' checked':'')+'>On</label>')+'</span></div>';
+  });
+  var T=todayStr();
+  h+='</div><div class="mt" style="margin-top:4px">Today: '+(noWork(T)?esc(noWork(T))+', no reminders.':'mincha '+clock(minchaMs(T))+'.')+' No reminders on Friday night, Shabbos or Yom Tov.</div>';
+  h+='<div class="mt">Reminders go on your Google Calendar ("Workday Reminders") with an alert, so your phone notifies you. Jobs go on "Workday Jobs".'+(connOK()?'':' This starts once Google is connected.')+'</div>';
+  h+='<div class="row"><button class="btn primary" id="remSave">Save reminders</button></div></div>';
+  return h;
+}
+function saveRem(){
+  REMDEF.forEach(function(d){var v=document.getElementById('rv-'+d[0]),o=document.getElementById('ro-'+d[0]);if(v&&v.value!=='')REM[d[0]].v=v.value;if(o)REM[d[0]].on=o.checked});
+  REMDIRTY=true;remSave();ZC={};
+  if(connOK()){
+    var rows=REMDEF.map(function(d){return [d[1],REM[d[0]].v,REM[d[0]].on?'yes':'no',d[4]]});
+    bridge('updateValues',{book:'workday',range:'Settings!A2:D8',values:rows}).then(function(){REMDIRTY=false;remSave();return calSync(true)}).then(function(){toast('Reminders saved and updated on Google Calendar')},function(e){toast(bridgeErr(e))});
+  }else toast('Reminders saved on this phone');
+  openSettings();
+}
+function atTime(d,hm){var p=String(hm||'00:00').split(':');return parse(d).getTime()+(+p[0])*3600000+(+p[1]||0)*60000}
+function remEvents(days){
+  var T=todayStr(),now=Date.now(),out=[];
+  function add(kind,d,ms,title){if(ms>now)out.push({key:'r-'+kind+'-'+d,sig:String(ms),title:title,start:ms,end:ms+10*60000,alert:0})}
+  for(var i=0;i<days;i++){
+    var d=addDays(T,i),nw=noWork(d),nwNext=noWork(addDays(d,1)),ss=sunsetMs(d),cl=ss-remMin('candle')*60000;
+    if(!nw){
+      if(REM.brief.on)add('brief',d,atTime(d,REM.brief.v),'Morning brief - open Workday');
+      if(REM.mincha.on)add('mincha',d,ss-remMin('mincha')*60000,'Daven mincha (shkia '+clock(ss)+')');
+      if(nwNext){if(REM.erev.on)add('summary',d,Math.min(atTime(d,REM.summary.v),cl-remMin('erev')*60000),'Day summary before '+(dow(d)===5?'Shabbos':'Yom Tov')+' (candles '+clock(cl)+')')}
+      else{if(REM.summary.on)add('summary',d,atTime(d,REM.summary.v),'End-of-day summary');if(REM.trello.on)add('trello',d,atTime(d,REM.trello.v),'Set up tomorrow\'s Trello cards')}
+    }else if(!nwNext&&REM.motzei.on)add('trello',d,ss+remMin('motzei')*60000,'Set up tomorrow\'s Trello cards (Motzei '+(dow(d)===6?'Shabbos':'Yom Tov')+')');
+  }
+  return out;
+}
+function hashStr(x){var h=5381;for(var i=0;i<x.length;i++)h=((h<<5)+h+x.charCodeAt(i))|0;return String(h>>>0)}
+function jobEvents(from,to){
+  return S.cards.filter(function(c){return c.date&&c.date>=from&&c.date<=to}).map(function(c){
+    var title=(c.status==='done'?'Done: ':'')+c.type+(c.address?' - '+c.address.split(',')[0]:'')+(c.crew?' ('+c.crew+')':'');
+    var e={key:'j-'+c.id,title:title,loc:c.address||'',desc:jobMessage(c),alert:null};
+    if(c.time){e.start=atTime(c.date,c.time);e.end=e.start+60*60000}else{e.allDay=true;e.start=parse(c.date).getTime()}
+    e.sig=hashStr(JSON.stringify([e.title,e.start,e.loc,e.desc,e.allDay?1:0]));return e;
+  });
+}
+var CALHASH='';try{CALHASH=localStorage.getItem('workday.calhash')||''}catch(e){}
+function calSync(force){
+  if(!connOK())return Promise.resolve();
+  var T=todayStr(),from=addDays(T,-1),to=addDays(T,31);
+  var pay={from:parse(from).getTime(),to:parse(addDays(to,1)).getTime(),reminders:remEvents(14),jobs:jobEvents(from,to)};
+  var h=hashStr(JSON.stringify([pay.reminders,pay.jobs]));
+  if(!force&&h===CALHASH)return Promise.resolve();
+  return bridge('syncCalendar',pay).then(function(){CALHASH=h;try{localStorage.setItem('workday.calhash',h)}catch(e){}});
+}
+function projLink(){try{return localStorage.getItem('workday.proj')||''}catch(e){return ''}}
 
 /* ---------- sheets + printing ---------- */
 var SHEETS=[['Workday','1-6dJlD1UaD16rgJfdY1cVjH_hgaYjNdQkrrJeA30WHo','Jobs, notes, lists and settings'],['Equipment Manager','1fV83ak0tgWdPJy-iTrHzxkg6_fzpcF8k6ThH62aiXJ4','Tools and where they are'],['Supply Tracker','1X-1lPEIHSr5uEjTAq7UA4MfzE1LwC_Z4erVa3dELcuo','Core bits and blades'],['Dumpster Log','15YCb4w9HbNq1Mw9E2ZmX9FP8pTVsHVqkh3yMUNUJ1v4','Dumpsters by job site']];
@@ -1743,16 +1809,9 @@ function openSettings(){
   var h='<h3>Settings</h3>';
   h+='<div class="field"><label>Google connection</label><button class="sheetrow" id="sConn" style="width:100%;text-align:left"><span><span style="font-weight:600">'+(connOK()?(SYNC.err?'Connected, with a problem':'Connected'):'Not connected')+'</span><br><small style="color:var(--muted)">'+(connOK()?(SYNC.last?'Last sync '+esc(clockAt(SYNC.last)):'Not synced yet'):'Needed for syncing, contacts and address lookup')+'</small></span><b>'+(connOK()?'Manage':'Connect')+'</b></button></div>';
   h+='<div class="field"><label>Zmanim</label><button class="sheetrow" id="sLoc" style="width:100%;text-align:left"><span><span style="font-weight:600">'+esc(LOCNAME)+'</span><br><small style="color:var(--muted)">'+(KZ?'KosherJava (KosherZmanim '+esc(KZV)+'), sea level':'Built-in formula until KosherJava loads')+'</small></span><b>Change</b></button></div>';
-  h+='<div class="field"><label>Reminders</label><div class="rem">';
-  h+='<div><span>Morning brief: where you are going, what you are doing</span><b>7:30 AM</b></div>';
-  h+='<div><span>Set up tomorrow\'s Trello cards</span><b>8:00 PM</b></div>';
-  h+='<div><span>End-of-day summary</span><b>6:00 PM</b></div>';
-  h+='<div><span>Summary on Erev Shabbos and Erev Yom Tov: 1 hour before candle lighting, this Friday</span><b>'+(function(){var f=T;while(dow(f)!==5)f=addDays(f,1);return clock(sunsetMs(f)-78*60000)})()+'</b></div>';
-  h+='<div><span>Mincha: 1 hour before shkia, every work day (today)</span><b>'+(noWork(T)?'Off today':clock(minchaMs(T)))+'</b></div>';
-  h+='<div><span>Friday night, Shabbos and Yom Tov</span><b>Off</b></div>';
-  h+='<div><span>Motzei Shabbos Trello reminder (shkia + 72 min), this week</span><b>'+clock(sunsetMs(sat)+72*60000)+'</b></div>';
-  h+='<div><span>Sent to</span><b>WhatsApp + phone</b></div></div></div>';
+  h+=remEditor();
   h+=crewEditor()+listEditor('vehicles','Vehicles')+listEditor('tools','Tools')+listEditor('types','Work types');
+  h+='<div class="field"><label for="projIn">Claude Project link (the Assistant button opens it)</label><div class="addrow"><input id="projIn" autocapitalize="off" spellcheck="false" placeholder="https://claude.ai/project/..." value="'+esc(projLink())+'"><button class="btn" id="projSave">Save</button></div></div>';
   h+='<div class="field"><label>Assistant key</label><div class="rem"><div><span>'+(getKey()?'Claude API key saved on this phone':'No key yet. Tap Assistant to add one.')+'</span><b>'+(getKey()?'Saved':'')+'</b></div></div>'+(getKey()?'<div class="row"><button class="btn" id="kDel">Remove key</button></div>':'')+'</div>';
   h+='<div class="field"><label>Sheets</label><div class="listed">'+SHEETS.map(function(x){return '<div class="sheetrow"><span><span style="font-weight:600">'+esc(x[0])+'</span><br><small style="color:var(--muted)">'+esc(x[2])+'</small></span><span class="row" style="gap:14px"><button data-printsheet="'+x[1]+'" style="color:var(--todo);font-weight:700;font-size:13px">Print</button><a href="'+sheetUrl(x[1])+'" target="_blank" rel="noopener" style="color:var(--todo);font-weight:700;font-size:13px;text-decoration:none">Open</a></span></div>'}).join('')+'</div><div class="mt" style="margin-top:4px">Print makes a clean list straight from the app. Workday prints the next 2 weeks of jobs.</div></div>';
   h+='<div class="field"><label>App</label><div class="rem"><div><span>Version</span><b>'+APPVER+'</b></div></div><div class="row"><button class="btn" id="appUpd">Update app now</button></div></div>';
@@ -1762,6 +1821,8 @@ function openSettings(){
   bind('appUpd',updateApp);
   bind('sConn',openConn);
   bind('sLoc',function(){openLocation(openSettings)});
+  bind('remSave',saveRem);
+  bind('projSave',function(){var v=val('projIn').trim();if(v&&!/^https:\/\/claude\.ai\//.test(v)){toast('Paste the link to your Claude Project (it starts with https://claude.ai/)');return}try{if(v)localStorage.setItem('workday.proj',v);else localStorage.removeItem('workday.proj')}catch(e){}toast(v?'Project link saved':'Project link removed');openSettings()});
   bind('kDel',function(){confirmSheet('Remove the assistant key?','The assistant stops working on this phone until you paste the key again.','Remove key',function(){setKey('');closeSheet();toast('Key removed')})});
 }
 
@@ -1864,7 +1925,7 @@ document.addEventListener('touchend',function(){
 });
 
 /* ---------- start ---------- */
-connLoad();eqLoad();dmLoad();
+connLoad();remLoad();eqLoad();dmLoad();
 if(!load()){seed();save()}
 try{if(!localStorage.getItem('workday.nosample')){S.cards=S.cards.filter(function(c){return !c.sample});save();localStorage.setItem('workday.nosample','1')}}catch(e){S.cards=S.cards.filter(function(c){return !c.sample})}
 S.cur=todayStr();var n=new Date();S.calY=n.getFullYear();S.calM=n.getMonth();
