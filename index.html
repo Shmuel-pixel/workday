@@ -175,6 +175,11 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 .sheetrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--bg);color:var(--fg);text-decoration:none}
 .sheetrow b{color:var(--todo);font-size:13px}
 @media print{@page{margin:0.5in}body>*:not(#printArea){display:none!important}#printArea{display:block!important;color:#000;background:#fff;font:11pt/1.4 Arial,Helvetica,sans-serif}#printArea h1{font-size:18pt;margin:0}#printArea .ph2{color:#555;margin:2pt 0 12pt;font-size:10.5pt}#printArea h2{font-size:13pt;margin:14pt 0 2pt;padding-bottom:3pt;border-bottom:2px solid #000}#printArea .pb{padding:7pt 0;border-bottom:1px solid #bbb;page-break-inside:avoid}#printArea .pt{font-size:12pt;font-weight:bold;margin-bottom:3pt}#printArea .pt span{font-weight:normal;color:#444}#printArea .pr{display:grid;grid-template-columns:1.25in 1fr;gap:1pt 10pt}#printArea .pr b{color:#555;font-weight:bold}#printArea .pst{float:right;font-weight:bold;font-size:10pt;border:1px solid #000;padding:0 5pt}#printArea .psum{margin-top:12pt}#printArea .foot{color:#666;font-size:9pt;margin-top:14pt}}
+.sug{display:grid;gap:2px;text-align:left;width:100%;padding:9px 10px;border-radius:8px;background:var(--bg);border:1px solid var(--line);margin-top:4px;font-size:14px;color:var(--fg)}
+.sug small{color:var(--muted);font-size:12px}
+.sugs{display:grid}
+.minilink{color:var(--todo);font-weight:600;font-size:13px;text-decoration:none;background:none;padding:4px 0}
+.addr a{color:inherit}
 .swhint{font-size:12px;color:var(--muted);text-align:center}
 .grip{width:30px;height:44px;display:grid;place-items:center;color:var(--muted);touch-action:none;cursor:grab}
 .grip svg{width:16px;height:16px}
@@ -269,7 +274,7 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 <script>
 (function(){
 var LAT=40.0821, LNG=-74.2097;
-var KEY='workday.v1',APPVER='Oct 25, 2026 (5)';
+var KEY='workday.v1',APPVER='Oct 25, 2026 (6)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Angio','Charlie','Adon'],vehicles:['Truck 1','Truck 2','Van'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -410,7 +415,7 @@ function zmanim(s){
 }
 
 /* ---------- storage ---------- */
-function save(){try{localStorage.setItem(KEY,JSON.stringify({cards:S.cards,crew:S.crew,vehicles:S.vehicles,types:S.types,tools:S.tools,askHidden:S.askHidden}));return true}catch(e){return false}}
+function save(skip){if(!skip&&typeof trackChanges==='function')trackChanges();try{localStorage.setItem(KEY,JSON.stringify({cards:S.cards,crew:S.crew,vehicles:S.vehicles,types:S.types,tools:S.tools,askHidden:S.askHidden}));return true}catch(e){return false}}
 function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.cards){S.cards=o.cards;S.crew=o.crew||S.crew;S.vehicles=o.vehicles||S.vehicles;S.types=o.types||S.types;S.tools=o.tools||S.tools;S.askHidden=!!o.askHidden;return true}}}catch(e){}return false}
 var uid=0;function nid(){uid++;return 'c'+Date.now().toString(36)+uid}
 function seed(){S.cards=[]}
@@ -512,8 +517,8 @@ function cardHtml(c,mode){
   var h='<div class="'+cls+'" data-id="'+c.id+'">';
   h+='<div class="grip" data-grip="'+c.id+'" aria-label="Drag to move">'+IC.grip+'</div>';
   h+='<div class="cbody"><div class="line1"><span class="time">'+esc(fmtTime(c.time))+'</span><span class="ttl">'+esc(c.type)+'</span></div>';
-  if(c.address)h+='<div class="addr">'+esc(c.address)+'</div>';
-  var meta='';if(c.contractor)meta+='<span>'+esc(c.contractor)+'</span>';if(c.phone)meta+='<span>'+esc(c.phone)+'</span>';
+  if(c.address)h+='<div class="addr"><a href="'+mapUrl(c.address)+'" target="_blank" rel="noopener">'+esc(c.address)+'</a></div>';
+  var meta='';if(c.contractor)meta+='<span>'+esc(c.contractor)+'</span>';if(c.foreman)meta+='<span>'+esc(c.foreman)+'</span>';if(c.phone)meta+='<span>'+esc(c.phone)+'</span>';
   if(meta)h+='<div class="meta">'+meta+'</div>';
   var mats=c.materials||[],tls=c.tools||[];
   if(mats.length)h+='<div class="mt"><b>Materials:</b> '+esc(mats.join(', '))+'</div>';
@@ -525,7 +530,7 @@ function cardHtml(c,mode){
   h+='<button class="more" data-more="'+c.id+'" aria-label="Options">'+IC.more+'</button>';
   var cm=c.comments||[];
   if(cm.length){var lc=cm[cm.length-1];h+='<div class="last">'+(lc.img?'[Photo] ':'')+esc(lc.text||'')+'</div>'}
-  h+='<div class="cfoot"><button class="fbtn" data-notes="'+c.id+'">'+IC.note+'Notes'+(cm.length?' ('+cm.length+')':'')+'</button>';
+  h+='<div class="cfoot"><button class="fbtn" data-notes="'+c.id+'">'+IC.note+'Notes'+(cm.length?' ('+cm.length+')':'')+'</button><button class="fbtn go" data-send="'+c.id+'">Send to crew</button>';
   if(mode==='missed')h+='<button class="fbtn ok" data-markdone="'+c.id+'">'+IC.check+'Mark done</button><button class="fbtn go" data-movetoday="'+c.id+'">Move to today &rarr;</button>';
   h+='</div>';
   return h+'</div>';
@@ -666,7 +671,7 @@ var MID=String.fromCharCode(183);
 function eqLoad(){try{var r=localStorage.getItem('workday.eq');if(r){var o=JSON.parse(r);EQ.rows=o.rows||[];EQ.locs=o.locs||[];EQ.at=o.at||0;if(EQ.rows.length)EQ.state='cached'}}catch(e){}}
 function eqSave(){try{localStorage.setItem('workday.eq',JSON.stringify({rows:EQ.rows,locs:EQ.locs,at:EQ.at}))}catch(e){}}
 var mcpP=null;
-function getMcp(){if(!mcpP){try{mcpP=(window.claude&&window.claude.use)?window.claude.use('mcp'):Promise.resolve(null)}catch(e){mcpP=Promise.resolve(null)}}return mcpP}
+function getMcp(){if(!mcpP){try{mcpP=(window.claude&&window.claude.use)?window.claude.use('mcp'):Promise.resolve(null)}catch(e){mcpP=Promise.resolve(null)}mcpP=mcpP.then(function(m){return m||(connOK()?SHIM:null)})}return mcpP}
 function parseEq(values){
   var out=[];
   for(var i=1;i<values.length;i++){var v=values[i];if(!v||!v[0])continue;
@@ -857,7 +862,7 @@ function dmRefresh(){getMcp().then(function(mcp){if(!mcp)return;toast('Refreshin
 function dsCls(s){if(s==='Picked Up')return 'unk';if(s==='Pickup Requested')return 'warn';if(s==='Delivered')return 'good';return 'blue'}
 function isActive(r){return r.status!=='Picked Up'}
 function daysOn(r){if(!r.del)return null;var end=r.pick||todayStr();var n=diff(end,r.del);return n<0?null:n}
-function dmSiteList(){var o=DM.sites.slice();DM.rows.forEach(function(r){if(r.site&&o.indexOf(r.site)<0)o.push(r.site)});return o}
+function dmSiteList(){var o=DM.sites.slice();(typeof MASTER!=='undefined'?MASTER.sites:[]).forEach(function(s){if(o.indexOf(s.address)<0)o.push(s.address)});DM.rows.forEach(function(r){if(r.site&&o.indexOf(r.site)<0)o.push(r.site)});return o}
 function dshort(d){if(!d||!/^\d{4}-\d\d-\d\d$/.test(d))return d||'';return engShort(d)}
 function renderDump(){
   dmStart();
@@ -906,7 +911,7 @@ function openDm(id){
     if(nx)h+='<button class="btn good" id="dmNext">'+nx[1]+'</button>';
   }
   var sl=dmSiteList();
-  h+='<div class="field"><label for="mSite">Job site</label><select id="mSite">'+opts(sl,r.site,sl.length?'':'Pick a job site')+'<option value="__new">+ New job site</option></select><input id="mSiteNew" placeholder="Address of the new job site" hidden style="margin-top:6px"></div>';
+  h+='<div class="field"><label for="mSite">Job site</label><select id="mSite">'+opts(sl,r.site,sl.length?'':'Pick a job site')+'<option value="__new">+ New job site</option></select><input id="mSiteNew" placeholder="Address of the new job site" hidden style="margin-top:6px"><button type="button" class="minilink" id="mSiteL" hidden>Look up full address</button><div id="mSiteOut"></div></div>';
   h+='<div class="two"><div class="field"><label for="mCo">Company</label><select id="mCo">'+opts(DM.cos,r.co)+'</select></div><div class="field"><label for="mSize">Size</label><select id="mSize">'+opts(DM.sizes,r.size)+'</select></div></div>';
   h+='<div class="two"><div class="field"><label for="mStat">Status</label><select id="mStat">'+opts(DSTAT,r.status)+'</select></div><div class="field"><label for="mNum">Dumpster number</label><input id="mNum" value="'+esc(r.num)+'"></div></div>';
   h+='<div class="two">'+dateField('mOrd','Ordered',r.ord)+dateField('mDel','Delivered',r.del)+'</div>';
@@ -916,7 +921,8 @@ function openDm(id){
   h+='<div id="mWarn"></div><div class="row"><button class="btn primary" id="mSave">Save to log</button><button class="btn" id="mCancel">Cancel</button></div>';
   openSheet(h);
   var ss=document.getElementById('mSite'),sn=document.getElementById('mSiteNew');
-  ss.onchange=function(){sn.hidden=ss.value!=='__new';if(!sn.hidden)sn.focus()};
+  ss.onchange=function(){sn.hidden=ss.value!=='__new';document.getElementById('mSiteL').hidden=sn.hidden;if(!sn.hidden)sn.focus()};
+  bind('mSiteL',function(){lookupAddress(sn.value,'mSiteOut',function(a){sn.value=a})});
   bind('mCancel',closeSheet);
   function collect(){
     var site=ss.value==='__new'?sn.value.trim():ss.value;
@@ -954,7 +960,7 @@ function dmWrite(old,v,isNew){
       });
     }).then(function(){
       if(isNew){var nr={row:0,id:id};for(var k in v)nr[k]=v[k];DM.rows.push(nr)}else{for(var k2 in v)old[k2]=v[k2]}
-      dmSave();closeSheet();render();toast(isNew?'Dumpster logged':'Saved: '+v.status);
+      if(v.site)rememberJob({address:v.site});dmSave();closeSheet();render();toast(isNew?'Dumpster logged':'Saved: '+v.status);
       mcp.invalidate(GS,'get_values').catch(function(){});
     },function(e){
       var c=e&&e.code;
@@ -1004,13 +1010,14 @@ function aiContext(){
   L.push('Vehicles: '+S.vehicles.join(', '));
   L.push('Work types: '+S.types.join(', '));
   L.push('Tools: '+S.tools.join(', '));
+  if(typeof MASTER!=='undefined'){L.push('Contractors: '+(MASTER.contractors.map(function(x){return x.name}).join(', ')||'none yet'));L.push('Foremen (contractor - foreman - phone): '+(MASTER.foremen.map(function(f){return f.contractor+' - '+f.name+' - '+(f.phone||'no phone')}).join('; ')||'none yet'));L.push('Known job sites (address - contractor): '+(MASTER.sites.slice(0,60).map(function(x){return x.address+' - '+(x.contractor||'?')}).join('; ')||'none yet'))}
   var nw=[];for(var i=0;i<30;i++){var s=addDays(T,i),n=noWork(s);if(n)nw.push(s+' '+n)}
   L.push('No-work days coming up: '+(nw.length?nw.join('; '):'none'));
   var cs=S.cards.filter(function(c){var n=diff(c.date,T);return n>=-7&&n<=45}).sort(function(a,b){return (a.date+(a.time||'')).localeCompare(b.date+(b.time||''))}).slice(0,120);
   L.push('Cards (id | date | time | status | type | address | contractor | crew | vehicle):');
   cs.forEach(function(c){L.push([c.id,c.date,c.time||'-',c.status==='done'?'done':(diff(c.date,T)<0?'missed':'to-do'),c.type,c.address||'-',c.contractor||'-',c.crew||'-',c.vehicle||'-'].join(' | '))});
   if(!cs.length)L.push('(no cards yet)');
-  L.push('Answer with only a JSON object and nothing else: {"reply":"...","actions":[...]}. Action forms: {"do":"add","date":"","time":"","type":"","address":"","contractor":"","phone":"","crew":"","vehicle":"","materials":[],"tools":[],"note":""}; {"do":"update","id":"","fields":{...only the fields to change}}; {"do":"done","id":""}; {"do":"todo","id":""}; {"do":"move","id":"","date":"","time":""}; {"do":"note","id":"","text":""}; {"do":"delete","id":""}. Use an empty actions list when you only answer a question or need more details first.');
+  L.push('Answer with only a JSON object and nothing else: {"reply":"...","actions":[...]}. Action forms: {"do":"add","date":"","time":"","type":"","address":"","contractor":"","foreman":"","phone":"","crew":"","vehicle":"","materials":[],"tools":[],"note":""}; {"do":"update","id":"","fields":{...only the fields to change}}; {"do":"done","id":""}; {"do":"todo","id":""}; {"do":"move","id":"","date":"","time":""}; {"do":"note","id":"","text":""}; {"do":"delete","id":""}. Use an empty actions list when you only answer a question or need more details first.');
   return L.join('\n');
 }
 function aiParse(txt){
@@ -1021,15 +1028,15 @@ function aiParse(txt){
 function cardLabel(c){return c.type+(c.address?' at '+c.address.split(',')[0]:'')+', '+engShort(c.date)+(c.time?' '+fmtTime(c.time):'')+(c.crew?' ('+c.crew+')':'')}
 function aiApply(actions){
   var done=[],skipped=[],T=todayStr();
-  var okField={date:1,time:1,type:1,address:1,contractor:1,phone:1,crew:1,vehicle:1,materials:1,tools:1,notes:1};
+  var okField={date:1,time:1,type:1,address:1,contractor:1,foreman:1,phone:1,crew:1,vehicle:1,materials:1,tools:1,notes:1};
   actions.forEach(function(a){
     var c=a.id?find(a.id):null;
     if(a['do']==='add'){
       if(!a.date){a.date=T}
       if(noWork(a.date)){skipped.push('Did not add '+(a.type||'job')+' on '+engShort(a.date)+' because it is '+noWork(a.date)+'.');return}
-      var n={id:nid(),date:a.date,time:a.time||'',type:a.type||'Job',address:a.address||'',contractor:a.contractor||'',phone:a.phone||'',crew:a.crew||'',vehicle:a.vehicle||'',materials:a.materials||[],tools:a.tools||[],notes:'',status:'todo',source:'assistant',sample:false,comments:[]};
+      var n={id:nid(),date:a.date,time:a.time||'',type:a.type||'Job',address:a.address||'',contractor:a.contractor||'',foreman:a.foreman||'',phone:a.phone||'',crew:a.crew||'',vehicle:a.vehicle||'',materials:a.materials||[],tools:a.tools||[],notes:'',status:'todo',source:'assistant',sample:false,comments:[]};
       if(a.note)n.comments.push({t:Date.now(),text:a.note});
-      S.cards.push(n);done.push('Added: '+cardLabel(n));return;
+      S.cards.push(n);if(typeof rememberJob==='function')rememberJob(n);done.push('Added: '+cardLabel(n));return;
     }
     if(!c){skipped.push('Could not find one of the jobs it meant.');return}
     if(a['do']==='done'){c.status='done';done.push('Done: '+cardLabel(c))}
@@ -1119,6 +1126,315 @@ function aiSend(text){
   });
 }
 function aiUndo(i){var m=AIH[i];if(!m||!m.undo||m.undone)return;try{S.cards=JSON.parse(m.undo)}catch(e){return}m.undone=true;save();render();aiRedraw();toast('Changes undone')}
+
+/* ---------- Google connection (Workday Connect) ---------- */
+var CKEY='workday.conn',SKEY='workday.sync';
+var CONN=null,SYNC={sig:{},dirty:{},tomb:{},rows:[],last:0,busy:false,err:''};
+var MASTER={contractors:[],foremen:[],sites:[],crew:[]};
+function connLoad(){try{var c=JSON.parse(localStorage.getItem(CKEY)||'null');if(c&&c.url&&c.token)CONN=c}catch(e){}
+  try{var s=JSON.parse(localStorage.getItem(SKEY)||'null');if(s){SYNC.sig=s.sig||{};SYNC.dirty=s.dirty||{};SYNC.tomb=s.tomb||{};SYNC.rows=s.rows||[];SYNC.last=s.last||0;if(s.master)MASTER=s.master}}catch(e){}}
+function syncSave(){try{localStorage.setItem(SKEY,JSON.stringify({sig:SYNC.sig,dirty:SYNC.dirty,tomb:SYNC.tomb,rows:SYNC.rows,last:SYNC.last,master:MASTER}))}catch(e){}}
+function connOK(){return !!(CONN&&CONN.url&&CONN.token)}
+function bridge(action,args){
+  if(!connOK())return Promise.reject({code:'not_connected',message:'Google is not connected'});
+  return fetch(CONN.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:CONN.token,action:action,args:args||{}})})
+    .then(function(r){return r.text()})
+    .then(function(t){var j;try{j=JSON.parse(t)}catch(e){throw {code:'bad_reply',message:'Workday Connect did not answer correctly. Check that it is deployed for Anyone.'}}
+      if(!j.ok)throw {code:j.error==='bad_token'?'bad_token':'tool_error',message:j.error};return j.data});
+}
+function bridgeErr(e){
+  var c=e&&e.code;
+  if(c==='bad_token')return 'The connection code does not match. Paste the code again from the Workday Connect page.';
+  if(c==='not_connected')return 'Google is not connected yet. Open the gear and connect it.';
+  if(c==='bad_reply')return e.message;
+  if(c==='tool_error')return 'Google said: '+(e.message||'something went wrong');
+  return navigator.onLine?'Could not reach Workday Connect. Try again in a minute.':'No signal right now. It will sync when you are back online.';
+}
+function stampNow(){var d=new Date();return ymd(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())}
+
+/* shim so Tools and Dumpsters use the connection when the Claude connector is not here */
+var BOOKID={'1fV83ak0tgWdPJy-iTrHzxkg6_fzpcF8k6ThH62aiXJ4':'equipment','15YCb4w9HbNq1Mw9E2ZmX9FP8pTVsHVqkh3yMUNUJ1v4':'dumpsters','1X-1lPEIHSr5uEjTAq7UA4MfzE1LwC_Z4erVa3dELcuo':'supply','1-6dJlD1UaD16rgJfdY1cVjH_hgaYjNdQkrrJeA30WHo':'workday'};
+var SHIM=(function(){
+  var watches=[];
+  function run(tool,input){
+    var book=BOOKID[input.spreadsheetId];if(!book)return Promise.reject({code:'tool_error',message:'unknown sheet'});
+    var act=tool==='get_values'?'getValues':tool==='update_values'?'updateValues':tool==='append_values'?'appendValues':'';
+    if(!act)return Promise.reject({code:'bad_request',message:'unknown tool'});
+    return bridge(act,{book:book,range:input.range,values:input.values}).then(function(d){return {payload:d,content:[]}},function(e){throw {code:e.code==='bad_token'?'needs_reauth':(e.code==='tool_error'?'tool_error':'server_unavailable'),message:bridgeErr(e)}});
+  }
+  function fire(w){run('get_values',w.input).then(function(r){if(!w.dead)w.h({type:'data',result:r})},function(e){if(!w.dead)w.h({type:'error',error:e})})}
+  return {
+    callTool:function(server,tool,input){return run(tool,input)},
+    watchTool:function(server,tool,input,h,opts){var w={input:input,h:h,dead:false};watches.push(w);setTimeout(function(){fire(w)},0);var iv=opts&&opts.refetchInterval?setInterval(function(){if(!document.hidden)fire(w)},Math.max(30000,opts.refetchInterval)):null;return function(){w.dead=true;if(iv)clearInterval(iv)}},
+    invalidate:function(){watches.forEach(function(w){if(!w.dead)fire(w)});return Promise.resolve()}
+  };
+})();
+
+/* ---------- card <-> sheet row ---------- */
+function cardRow(c,deleted){
+  return {'ID':c.id,'Date':c.date||'','Time':c.time||'','Status':c.status||'todo','Work Type':c.type||'','Address':c.address||'','Contractor':c.contractor||'','Foreman':c.foreman||'','Phone':c.phone||'','Crew':c.crew||'','Vehicle':c.vehicle||'','Materials':(c.materials||[]).join('; '),'Tools':(c.tools||[]).join('; '),'Notes':c.notes||'','Source':c.source||'manual','Order':c.o==null?'':String(c.o),'Created':c.created||'','Updated':c.updated||stampNow(),'Deleted':deleted||''};
+}
+function rowCard(r,old){
+  var c=old||{comments:[]};
+  c.id=r['ID'];c.date=r['Date'];c.time=r['Time'];c.status=r['Status']==='done'?'done':'todo';c.type=r['Work Type'];c.address=r['Address'];c.contractor=r['Contractor'];c.foreman=r['Foreman'];c.phone=r['Phone'];c.crew=r['Crew'];c.vehicle=r['Vehicle'];
+  c.materials=r['Materials']?r['Materials'].split(/;\s*/).filter(function(x){return x}):[];c.tools=r['Tools']?r['Tools'].split(/;\s*/).filter(function(x){return x}):[];
+  c.notes=r['Notes'];c.source=r['Source']||'manual';if(r['Order']!==''&&r['Order']!=null)c.o=+r['Order'];else delete c.o;c.created=r['Created'];c.updated=r['Updated'];c.sample=false;c.comments=c.comments||[];
+  return c;
+}
+function cardSig(c){var r=cardRow(c);delete r['Updated'];return JSON.stringify(r)}
+/* called from save(): stamp changed cards, remember deleted ones */
+function trackChanges(){
+  var seen={};
+  S.cards.forEach(function(c){
+    seen[c.id]=1;var g=cardSig(c);
+    if(!c.created)c.created=stampNow();
+    if(SYNC.sig[c.id]!==g){c.updated=stampNow();SYNC.sig[c.id]=g;SYNC.dirty[c.id]=1}
+  });
+  Object.keys(SYNC.sig).forEach(function(id){if(!seen[id]){SYNC.tomb[id]=stampNow();delete SYNC.sig[id];delete SYNC.dirty[id]}});
+  syncSave();schedSync();
+}
+var syncT=null;function schedSync(){if(!connOK())return;clearTimeout(syncT);syncT=setTimeout(syncNow,2500)}
+function syncNow(manual){
+  if(!connOK()||SYNC.busy)return Promise.resolve();
+  if(!navigator.onLine){if(manual)toast('No signal. It will sync when you are back online.');return Promise.resolve()}
+  SYNC.busy=true;
+  var push=[];
+  Object.keys(SYNC.dirty).forEach(function(id){var c=find(id);if(c)push.push(cardRow(c))});
+  Object.keys(SYNC.tomb).forEach(function(id){var old=null;for(var i=0;i<SYNC.rows.length;i++)if(SYNC.rows[i]['ID']===id)old=SYNC.rows[i];var r=old?JSON.parse(JSON.stringify(old)):{'ID':id};r['Deleted']=SYNC.tomb[id];r['Updated']=SYNC.tomb[id];push.push(r)});
+  var p=push.length?bridge('saveCards',{cards:push}):Promise.resolve();
+  return p.then(function(){SYNC.dirty={};SYNC.tomb={};return pushNotes()}).then(function(){return bridge('getAll')}).then(function(d){
+    mergeAll(d);SYNC.last=Date.now();SYNC.err='';SYNC.busy=false;syncSave();save(true);render();if(manual)toast('Synced with Google');
+  },function(e){SYNC.busy=false;SYNC.err=bridgeErr(e);syncSave();if(manual)toast(SYNC.err)});
+}
+function pushNotes(){
+  var jobs=[];
+  S.cards.forEach(function(c){(c.comments||[]).forEach(function(m){if(!m.synced){if(!m.id)m.id='n'+m.t.toString(36)+Math.floor(Math.random()*1000);jobs.push({c:c,m:m})}})});
+  var chain=Promise.resolve();
+  jobs.forEach(function(j){chain=chain.then(function(){var d=new Date(j.m.t);return bridge('addNote',{cardId:j.c.id,time:ymd(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes()),text:j.m.text||'',photo:j.m.img||'',noteId:j.m.id,by:j.m.by||'Shmuel'}).then(function(r){j.m.synced=1;if(r&&r.photoUrl)j.m.photoUrl=r.photoUrl})})});
+  return chain;
+}
+function mergeAll(d){
+  var rows=d['Cards']||[];SYNC.rows=rows;
+  rows.forEach(function(r){
+    if(!r['ID'])return;var c=find(r['ID']);
+    if(r['Deleted']){if(c&&(!c.updated||c.updated<=r['Deleted'])){S.cards=S.cards.filter(function(x){return x.id!==r['ID']});delete SYNC.sig[r['ID']]}return}
+    if(SYNC.tomb[r['ID']])return;
+    if(!c){c=rowCard(r);S.cards.push(c);SYNC.sig[c.id]=cardSig(c)}
+    else if(!SYNC.dirty[c.id]&&(r['Updated']||'')>(c.updated||'')){rowCard(r,c);SYNC.sig[c.id]=cardSig(c)}
+  });
+  /* notes added elsewhere (Claude chat, WhatsApp service) */
+  (d['Notes']||[]).forEach(function(n){
+    var c=find(n['Card ID']);if(!c)return;c.comments=c.comments||[];
+    var nid2=n['Note ID'];if(nid2&&c.comments.some(function(m){return m.id===nid2}))return;
+    if(!nid2&&c.comments.some(function(m){return m.text===n['Text']&&m.synced}))return;
+    var t=Date.parse(String(n['Time']).replace(' ','T'))||Date.now();
+    c.comments.push({id:nid2||('s'+t),t:t,text:n['Text']||'',photoUrl:n['Photo']||'',by:n['Added By']||'',synced:1});
+    c.comments.sort(function(a,b){return a.t-b.t});
+  });
+  MASTER.contractors=(d['Contractors']||[]).map(function(r){return {name:r['Contractor'],phone:r['Office Phone']||'',email:r['Email']||'',notes:r['Notes']||''}}).filter(function(x){return x.name});
+  MASTER.foremen=(d['Foremen']||[]).map(function(r){return {contractor:r['Contractor'],name:r['Foreman'],phone:r['Phone']||'',email:r['Email']||''}}).filter(function(x){return x.name});
+  MASTER.sites=(d['Job Sites']||[]).map(function(r){return {address:r['Address'],contractor:r['Contractor']||'',foreman:r['Foreman']||'',notes:r['Notes']||'',last:r['Last Used']||''}}).filter(function(x){return x.address});
+  MASTER.crew=(d['Crew']||[]).map(function(r){return {name:r['Name'],phone:r['Phone']||'',lang:r['Language']||''}}).filter(function(x){return x.name});
+  if(MASTER.crew.length)S.crew=MASTER.crew.map(function(x){return x.name});
+  var L=d['Lists']||[];function col(k){return L.map(function(r){return r[k]}).filter(function(x){return x})}
+  var v=col('Vehicles'),w=col('Work Types'),t2=col('Tools');if(v.length)S.vehicles=v;if(w.length)S.types=w;if(t2.length)S.tools=t2;
+  /* things waiting for approval from WhatsApp or email */
+  S.suggest=(d['Suggestions']||[]).filter(function(r){return (r['Status']||'').toLowerCase()==='waiting'});
+}
+/* push a master-list change, or queue it for later */
+function masterPush(action,args){
+  if(!connOK())return;
+  bridge(action,args).catch(function(e){SYNC.err=bridgeErr(e)});
+}
+
+/* ---------- master lists (contractors, foremen, sites) ---------- */
+function norm(s){return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'')}
+function findContractor(n){var k=norm(n);for(var i=0;i<MASTER.contractors.length;i++)if(norm(MASTER.contractors[i].name)===k)return MASTER.contractors[i];return null}
+function findForeman(con,n){var k=norm(n),kc=norm(con);for(var i=0;i<MASTER.foremen.length;i++){var f=MASTER.foremen[i];if(norm(f.name)===k&&(!kc||norm(f.contractor)===kc))return f}return null}
+function findSite(a){var k=norm(a);for(var i=0;i<MASTER.sites.length;i++)if(norm(MASTER.sites[i].address)===k)return MASTER.sites[i];return null}
+function rememberJob(v){
+  var today=todayStr();
+  if(v.contractor&&!findContractor(v.contractor)){MASTER.contractors.push({name:v.contractor,phone:'',email:'',notes:''});masterPush('addRow',{tab:'Contractors',row:{'Contractor':v.contractor,'Added':today}})}
+  if(v.foreman&&!findForeman(v.contractor,v.foreman)){MASTER.foremen.push({contractor:v.contractor,name:v.foreman,phone:v.phone||'',email:''});masterPush('addRow',{tab:'Foremen',row:{'Contractor':v.contractor,'Foreman':v.foreman,'Phone':v.phone||'','Added':today}})}
+  if(v.address){
+    var s=findSite(v.address);
+    if(!s){MASTER.sites.push({address:v.address,contractor:v.contractor||'',foreman:v.foreman||'',notes:'',last:today});masterPush('addRow',{tab:'Job Sites',row:{'Address':v.address,'Contractor':v.contractor||'','Foreman':v.foreman||'','Added':today,'Last Used':today}})}
+    else{var ch={'Address':s.address,'Last Used':today};s.last=today;if(!s.contractor&&v.contractor){s.contractor=v.contractor;ch['Contractor']=v.contractor}if(!s.foreman&&v.foreman){s.foreman=v.foreman;ch['Foreman']=v.foreman}masterPush('updateRow',{tab:'Job Sites',key:'Address',value:s.address,row:ch})}
+  }
+  syncSave();
+}
+function mapUrl(a){return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(a)}
+function allSites(){var o=MASTER.sites.map(function(s){return s.address});S.cards.forEach(function(c){if(c.address&&o.indexOf(c.address)<0)o.push(c.address)});DM.rows.forEach(function(r){if(r.site&&o.indexOf(r.site)<0)o.push(r.site)});return o}
+
+/* a search box with suggestions under it */
+function suggestBox(inputId,boxId,getList,onPick){
+  var inp=document.getElementById(inputId),box=document.getElementById(boxId);if(!inp||!box)return;
+  function show(){
+    var q=norm(inp.value),list=getList().filter(function(x){return !q||norm(x.label).indexOf(q)>=0}).slice(0,6);
+    if(!list.length||document.activeElement!==inp){box.innerHTML='';return}
+    box.innerHTML=list.map(function(x,i){return '<button type="button" class="sug" data-i="'+i+'"><b>'+esc(x.label)+'</b>'+(x.sub?'<small>'+esc(x.sub)+'</small>':'')+'</button>'}).join('');
+    [].forEach.call(box.querySelectorAll('.sug'),function(b){b.onmousedown=function(ev){ev.preventDefault()};b.onclick=function(){var it=list[+b.getAttribute('data-i')];inp.value=it.value||it.label;box.innerHTML='';onPick(it)}});
+  }
+  inp.addEventListener('input',show);inp.addEventListener('focus',show);inp.addEventListener('blur',function(){setTimeout(function(){box.innerHTML=''},150)});
+}
+
+/* address lookup through Google (free) */
+function lookupAddress(q,outId,onPick){
+  var out=document.getElementById(outId);
+  if(!q.trim()){out.innerHTML='<div class="warn">Type part of the address first, like 5 Collingswood.</div>';return}
+  if(!connOK()){out.innerHTML='<div class="warn">Address lookup needs the Google connection. Open the gear to connect it.</div>';return}
+  out.innerHTML='<div class="mt">Looking up...</div>';
+  bridge('geocode',{q:q}).then(function(d){
+    var ps=d.places||[];
+    if(!ps.length){out.innerHTML='<div class="warn">No match found. Check the street name, or add the town.</div>';return}
+    out.innerHTML='<div class="mt">Tap the right address:</div>'+ps.map(function(p,i){return '<button type="button" class="sug" data-i="'+i+'"><b>'+esc(p.address)+'</b>'+(p.partial?'<small>Close match, check it</small>':'')+'</button>'}).join('');
+    [].forEach.call(out.querySelectorAll('.sug'),function(b){b.onclick=function(){var p=ps[+b.getAttribute('data-i')];out.innerHTML='';onPick(p.address)}});
+  },function(e){out.innerHTML='<div class="warn">'+esc(bridgeErr(e))+'</div>'});
+}
+
+/* Google Contacts lookup with confirm */
+function lookupContact(q,outId,onPick){
+  var out=document.getElementById(outId);
+  if(!q.trim()){out.innerHTML='<div class="warn">Type the foreman\'s name first.</div>';return}
+  if(!connOK()){out.innerHTML='<div class="warn">Contact search needs the Google connection. Open the gear to connect it.</div>';return}
+  out.innerHTML='<div class="mt">Searching your Google contacts...</div>';
+  bridge('contacts',{q:q}).then(function(d){
+    var ps=d.people||[];
+    if(!ps.length){out.innerHTML='<div class="warn">No contact named '+esc(q)+' in your Google contacts. Type the phone number yourself and it will be saved for next time.</div>';return}
+    out.innerHTML='<div class="mt">Is this the right contact?</div>'+ps.map(function(p,i){return '<div class="sug"><b>'+esc(p.name)+'</b><small>'+esc([p.company,p.phones.join(', ')].filter(function(x){return x}).join(' '+MID+' '))+'</small><span class="row" style="margin-top:6px"><button type="button" class="btn good" data-yes="'+i+'">Yes, use this</button></span></div>'}).join('')+'<button type="button" class="btn" id="cNone">None of these</button>';
+    [].forEach.call(out.querySelectorAll('[data-yes]'),function(b){b.onclick=function(){var p=ps[+b.getAttribute('data-yes')];out.innerHTML='';onPick(p)}});
+    bind('cNone',function(){out.innerHTML=''});
+  },function(e){out.innerHTML='<div class="warn">'+esc(bridgeErr(e))+'</div>'});
+}
+
+/* ---------- send to crew + translation ---------- */
+var LANGS=['English','Spanish','Portuguese','Polish','Haitian Creole','Russian','Ukrainian','Hebrew','Yiddish','Arabic','French','Other'];
+var LCODE={Spanish:'es',Portuguese:'pt',Polish:'pl','Haitian Creole':'ht',Russian:'ru',Ukrainian:'uk',Hebrew:'iw',Yiddish:'yi',Arabic:'ar',French:'fr',English:'en'};
+function crewInfo(n){for(var i=0;i<MASTER.crew.length;i++)if(MASTER.crew[i].name===n)return MASTER.crew[i];return {name:n,phone:'',lang:''}}
+function jobMessage(c){
+  var T=todayStr(),n=diff(c.date,T),when=n===0?'Today':n===1?'Tomorrow':engShort(c.date);
+  var L=[when+(c.time?' '+fmtTime(c.time):'')+' - '+c.type];
+  if(c.address){L.push(c.address);L.push(mapUrl(c.address))}
+  if(c.contractor||c.foreman)L.push('Contractor: '+[c.contractor,c.foreman?'foreman '+c.foreman:'',c.phone].filter(function(x){return x}).join(', '));
+  if(c.vehicle)L.push('Truck: '+c.vehicle);
+  if((c.tools||[]).length)L.push('Bring: '+c.tools.join(', '));
+  if((c.materials||[]).length)L.push('Materials: '+c.materials.join(', '));
+  if(c.notes)L.push('Notes: '+c.notes);
+  return L.join('\n');
+}
+function sternPrompt(text,lang){
+  return 'You translate work messages from Shmuel, a scheduler at Five Star Services (a construction and demolition company in Lakewood, NJ), to his crew. Follow these rules exactly:\n'+
+  '1. Understand intent first. The text may contain voice-to-text errors, repetitions, false starts or a wrong word. Work out what he means.\n'+
+  '2. Make a cleaned English version that keeps the full meaning and tone, fixes obvious errors and removes false starts. Never add new instructions, facts, politeness or emotion.\n'+
+  '3. Keep the tone exactly: direct stays direct, casual stays casual. Do not add please if he did not say it.\n'+
+  '4. Translate naturally, like a fluent native speaker on a job site, not word for word. Use common construction words the crew would actually use.\n'+
+  '5. Use the informal form of address (for Spanish, tu) since this is a boss talking to his own crew, unless the text is clearly formal.\n'+
+  '6. Keep names, company names, street addresses, truck names and tool brand names exactly as written. Keep every web link exactly as written.\n'+
+  '7. Keep every number, time, date and measurement exactly (8:00 AM, 2-3 feet, 16 inches, 4x8, $500).\n'+
+  '8. If something could be read two ways and it changes the job, still translate your best reading but set ambiguity_warning true with a short note.\n'+
+  '9. If you fixed a real mistake (a wrong word), set corrected true with a short note. Punctuation does not count.\n'+
+  'Target language: '+lang+'. Use neutral Latin American Spanish if the language is Spanish.\n'+
+  'Reply with only a JSON object, no other text: {"clean_english":"","corrected":false,"correction_note":"","ambiguity_warning":false,"ambiguity_note":"","translation":""}\n'+
+  'Only the text after the line below is the message to translate.\n=== TEXT TO TRANSLATE ===\n'+text;
+}
+function translateMsg(text,lang){
+  if(!lang||lang==='English')return Promise.resolve({translation:text,clean_english:text,how:'none'});
+  var key=getKey();
+  if(key&&navigator.onLine){
+    return fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-5-5',max_tokens:1500,messages:[{role:'user',content:sternPrompt(text,lang)}]})})
+      .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error((j.error&&j.error.message)||('error '+r.status));return j})})
+      .then(function(j){var t=(j.content||[]).map(function(b){return b.text||''}).join('');var o=aiParse(t);if(!o.translation)throw new Error('no translation');o.how='claude';return o});
+  }
+  if(connOK())return bridge('translate',{text:text,from:'en',to:LCODE[lang]||'es'}).then(function(d){return {translation:d.text,clean_english:text,how:'google'}});
+  return Promise.reject(new Error('Translation needs the Google connection or the Claude key.'));
+}
+function digits(p){var d=String(p||'').replace(/\D/g,'');if(d.length===10)d='1'+d;return d}
+function openSend(id){
+  var c=find(id);if(!c)return;
+  var names=S.crew.slice();
+  var h='<h3>Send to crew</h3><div style="color:var(--muted);font-size:14px;margin-top:-6px">'+esc(c.type)+(c.address?' '+MID+' '+esc(c.address):'')+'</div>';
+  h+='<div class="field"><label for="sTo">Send to</label><select id="sTo">'+opts(names,c.crew&&c.crew!=='Me'?c.crew:names[0])+'</select></div>';
+  h+='<div id="sInfo" class="mt"></div>';
+  h+='<div class="field"><label for="sMsg">Message (English)</label><textarea id="sMsg" rows="7">'+esc(jobMessage(c))+'</textarea></div>';
+  h+='<div class="row"><button class="btn primary" id="sTr">Translate</button><label class="tchk"><input type="checkbox" id="sBoth" checked>Send English too</label></div>';
+  h+='<div id="sOut"></div>';
+  h+='<div class="row"><button class="btn good" id="sWa">WhatsApp</button><button class="btn" id="sShare">Share with photos</button><button class="btn" id="sClose">Close</button></div><div id="sWarn"></div>';
+  openSheet(h);
+  var tr=null;
+  function info(){var ci=crewInfo(val('sTo'));document.getElementById('sInfo').innerHTML=esc(ci.name)+': '+(ci.phone?esc(ci.phone):'no phone number saved yet')+' '+MID+' '+(ci.lang?esc(ci.lang):'language not set')+' <button type="button" id="sEditCrew" style="color:var(--todo);font-weight:600">Change</button>';bind('sEditCrew',function(){openCrewEdit(val('sTo'),function(){openSend(id)})});tr=null;document.getElementById('sOut').innerHTML=''}
+  document.getElementById('sTo').onchange=info;info();
+  bind('sClose',closeSheet);
+  bind('sTr',function(){
+    var ci=crewInfo(val('sTo')),lang=ci.lang||'Spanish',out=document.getElementById('sOut');
+    out.innerHTML='<div class="mt">Translating to '+esc(lang)+'...</div>';
+    translateMsg(val('sMsg'),lang).then(function(o){
+      tr={lang:lang,text:o.translation,clean:o.clean_english||val('sMsg')};
+      var x='';if(o.ambiguity_warning)x+='<div class="warn">Check this: '+esc(o.ambiguity_note||'')+'</div>';
+      if(o.corrected)x+='<div class="mt">Fixed: '+esc(o.correction_note||'')+'</div>';
+      x+='<div class="field"><label for="sTrTxt">'+esc(lang)+(o.how==='google'?' (Google Translate)':'')+'</label><textarea id="sTrTxt" rows="7">'+esc(o.translation)+'</textarea></div>';
+      out.innerHTML=x;
+    },function(e){out.innerHTML='<div class="warn">'+esc(e.message||String(e))+'</div>'});
+  });
+  function finalText(){var t=document.getElementById('sTrTxt');var en=val('sMsg');if(!t)return en;return document.getElementById('sBoth').checked?t.value+'\n\n---\n'+en:t.value}
+  bind('sWa',function(){
+    var ci=crewInfo(val('sTo')),d=digits(ci.phone);
+    if(!d){document.getElementById('sWarn').innerHTML='<div class="warn">Add '+esc(ci.name)+'\'s phone number first (tap Change above), or use Share.</div>';return}
+    window.location.href='https://wa.me/'+d+'?text='+encodeURIComponent(finalText());
+  });
+  bind('sShare',function(){
+    var text=finalText(),files=[];
+    (c.comments||[]).forEach(function(m,i){if(m.img){try{var b=atob(m.img.split(',')[1]),a=new Uint8Array(b.length);for(var k=0;k<b.length;k++)a[k]=b.charCodeAt(k);files.push(new File([a],'job-photo-'+(i+1)+'.jpg',{type:'image/jpeg'}))}catch(e){}}});
+    var data={text:text};if(files.length&&navigator.canShare&&navigator.canShare({files:files}))data.files=files;
+    if(navigator.share)navigator.share(data).catch(function(){});else copyText(text);
+  });
+}
+function openCrewEdit(name,back){
+  var ci=crewInfo(name);
+  var h='<h3>'+esc(name)+'</h3><div class="field"><label for="ceP">WhatsApp number</label><input id="ceP" type="tel" value="'+esc(ci.phone)+'" placeholder="732-555-0100"></div>';
+  h+='<div class="field"><label for="ceL">Language for messages</label><select id="ceL">'+opts(LANGS,ci.lang||'','Choose a language')+'</select></div>';
+  h+='<div class="row"><button class="btn primary" id="ceS">Save</button><button class="btn" id="ceX">Cancel</button></div>';
+  openSheet(h);
+  bind('ceX',function(){back?back():closeSheet()});
+  bind('ceS',function(){
+    var p=val('ceP').trim(),l=val('ceL');var ex=null;MASTER.crew.forEach(function(x){if(x.name===name)ex=x});
+    if(ex){ex.phone=p;ex.lang=l}else MASTER.crew.push({name:name,phone:p,lang:l});syncSave();
+    masterPush('updateRow',{tab:'Crew',key:'Name',value:name,row:{'Name':name,'Phone':p,'Language':l}});
+    toast('Saved');back?back():closeSheet();
+  });
+}
+
+/* ---------- connection screen ---------- */
+function openConn(){
+  var h='<h3>Google connection</h3>';
+  if(connOK()){
+    h+='<div class="rem"><div><span>Status</span><b>'+(SYNC.err?'Problem':'Connected')+'</b></div><div><span>Last sync</span><b>'+(SYNC.last?esc(clockAt(SYNC.last)):'Not yet')+'</b></div></div>';
+    if(SYNC.err)h+='<div class="warn">'+esc(SYNC.err)+'</div>';
+    h+='<div class="row"><button class="btn primary" id="cnSync">Sync now</button><button class="btn" id="cnTest">Test</button><button class="btn" id="cnOff">Disconnect</button></div><div id="cnOut"></div>';
+  }else{
+    h+='<p style="margin:0;color:var(--muted);font-size:14px">Open your Workday Connect page, tap Copy code, and paste it here.</p>';
+    h+='<div class="field"><label for="cnCode">Connection code</label><textarea id="cnCode" rows="4" autocapitalize="off" spellcheck="false" placeholder="https://script.google.com/macros/s/.../exec#..."></textarea></div>';
+    h+='<div class="row"><button class="btn primary" id="cnGo">Connect</button></div><div id="cnOut"></div>';
+  }
+  h+='<button class="btn" id="cnClose">Close</button>';
+  openSheet(h);
+  bind('cnClose',function(){closeSheet();render()});
+  bind('cnGo',function(){
+    var v=val('cnCode').trim(),m=v.match(/^(https:\/\/script\.google(?:usercontent)?\.com\/[^\s#]+)#([A-Za-z0-9]+)$/);
+    var out=document.getElementById('cnOut');
+    if(!m){out.innerHTML='<div class="warn">That is not a Workday Connect code. It starts with https://script.google.com and has a # near the end.</div>';return}
+    CONN={url:m[1],token:m[2]};out.innerHTML='<div class="mt">Checking...</div>';
+    bridge('ping').then(function(d){
+      try{localStorage.setItem(CKEY,JSON.stringify(CONN))}catch(e){}
+      mcpP=null;EQ.started=false;DM.started=false;
+      S.cards.forEach(function(c){SYNC.dirty[c.id]=1});
+      out.innerHTML='<div class="mt">Connected as '+esc(d.user||'you')+'. Syncing...</div>';
+      syncNow(true).then(function(){openConn()});
+    },function(e){CONN=null;out.innerHTML='<div class="warn">'+esc(bridgeErr(e))+'</div>'});
+  });
+  bind('cnSync',function(){syncNow(true).then(function(){openConn()})});
+  bind('cnTest',function(){var out=document.getElementById('cnOut');out.innerHTML='<div class="mt">Testing...</div>';bridge('ping').then(function(d){out.innerHTML='<div class="mt">Working. Connected as '+esc(d.user||'you')+'.</div>'},function(e){out.innerHTML='<div class="warn">'+esc(bridgeErr(e))+'</div>'})});
+  bind('cnOff',function(){confirmSheet('Disconnect Google?','Your cards stay on this phone. They stop syncing until you connect again.','Disconnect',function(){CONN=null;try{localStorage.removeItem(CKEY)}catch(e){}mcpP=null;closeSheet();toast('Disconnected')})});
+}
 
 /* ---------- sheets + printing ---------- */
 var SHEETS=[['Workday','1-6dJlD1UaD16rgJfdY1cVjH_hgaYjNdQkrrJeA30WHo','Jobs, notes, lists and settings'],['Equipment Manager','1fV83ak0tgWdPJy-iTrHzxkg6_fzpcF8k6ThH62aiXJ4','Tools and where they are'],['Supply Tracker','1X-1lPEIHSr5uEjTAq7UA4MfzE1LwC_Z4erVa3dELcuo','Core bits and blades'],['Dumpster Log','15YCb4w9HbNq1Mw9E2ZmX9FP8pTVsHVqkh3yMUNUJ1v4','Dumpsters by job site']];
@@ -1210,6 +1526,7 @@ function openMenu(id){
   if(c.date!==T)h+='<button class="menuitem" id="mToday">Move to today</button>';
   h+='<button class="menuitem" id="mTom">Move to next work day</button>';
   h+='<div class="two"><button class="menuitem" id="mUp">Move up</button><button class="menuitem" id="mDown">Move down</button></div>';
+  h+='<button class="menuitem" id="mSend">Send to crew</button>';
   h+='<button class="menuitem" id="mNotes">Notes and photos</button>';
   h+='<button class="menuitem" id="mEdit">Edit details</button>';
   h+='<button class="menuitem red" id="mDel">Delete card</button>';
@@ -1222,6 +1539,7 @@ function openMenu(id){
   bind('mTom',function(){var s=addDays(c.date<T?T:c.date,1);while(noWork(s))s=addDays(s,1);c.date=s;delete c.o;save();closeSheet();render();toast('Moved to '+engShort(s))});
   bind('mEdit',function(){openEdit(id)});
   bind('mNotes',function(){openNotes(id)});
+  bind('mSend',function(){openSend(id)});
   bind('mUp',function(){if(moveBy(id,-1)){save();closeSheet();render()}else toast('Already at the top')});
   bind('mDown',function(){if(moveBy(id,1)){save();closeSheet();render()}else toast('Already at the bottom')});
   bind('mDel',function(){confirmSheet('Delete this card?',c.type+' at '+c.address,'Delete',function(){S.cards=S.cards.filter(function(x){return x.id!==id});save();closeSheet();render();toast('Card deleted')})});
@@ -1233,8 +1551,10 @@ function openEdit(id){
   var h='<h3>'+(id?'Edit job':'New job')+'</h3>';
   h+='<div class="two"><div class="field"><label for="fDate">Date</label><input id="fDate" type="date" value="'+esc(c.date)+'"></div><div class="field"><label for="fTime">Time</label><input id="fTime" type="time" value="'+esc(c.time)+'"></div></div>';
   h+='<div class="field"><label for="fType">Work type</label><select id="fType">'+opts(S.types,c.type)+'</select></div>';
-  h+='<div class="field"><label for="fAddr">Address</label><input id="fAddr" value="'+esc(c.address)+'" placeholder="3 Waswell Ct, Lakewood"></div>';
-  h+='<div class="two"><div class="field"><label for="fCon">Contractor</label><input id="fCon" value="'+esc(c.contractor)+'"></div><div class="field"><label for="fPh">Phone</label><input id="fPh" type="tel" value="'+esc(c.phone)+'"></div></div>';
+  h+='<div class="field"><label for="fAddr">Address</label><input id="fAddr" autocomplete="off" value="'+esc(c.address)+'" placeholder="Start typing, like 5 Collingswood"><div class="sugs" id="fAddrS"></div><div class="row" style="gap:14px"><button type="button" class="minilink" id="fAddrL">Look up full address</button><a class="minilink" id="fMap" target="_blank" rel="noopener" href="'+(c.address?mapUrl(c.address):'#')+'"'+(c.address?'':' hidden')+'>Open in Maps</a></div><div id="fAddrOut"></div></div>';
+  h+='<div class="field"><label for="fCon">Contractor</label><input id="fCon" autocomplete="off" value="'+esc(c.contractor)+'" placeholder="Search or type a new contractor"><div class="sugs" id="fConS"></div></div>';
+  h+='<div class="two"><div class="field"><label for="fFor">Foreman</label><input id="fFor" autocomplete="off" value="'+esc(c.foreman||'')+'" placeholder="Who you are talking to"><div class="sugs" id="fForS"></div></div><div class="field"><label for="fPh">Foreman phone</label><input id="fPh" type="tel" value="'+esc(c.phone)+'"></div></div>';
+  h+='<button type="button" class="minilink" id="fForL">Find foreman in Google Contacts</button><div id="fForOut"></div>';
   h+='<div class="two"><div class="field"><label for="fCrew">Crew</label><select id="fCrew">'+opts(S.crew.concat(['Me']),c.crew,'Choose crew')+'</select></div><div class="field"><label for="fVeh">Vehicle</label><select id="fVeh">'+opts(S.vehicles,c.vehicle,'No vehicle')+'</select></div></div>';
   h+='<div class="field"><label for="fMat">Materials (one per line, with amount)</label><textarea id="fMat" rows="3" placeholder="Contractor bags, 2 boxes">'+esc((c.materials||[]).join('\n'))+'</textarea></div>';
   var tsel=c.tools||[],th='';S.tools.concat(tsel.filter(function(x){return S.tools.indexOf(x)<0})).forEach(function(tn,i){th+='<label class="tchk"><input type="checkbox" name="fTool" id="fTool'+i+'" value="'+esc(tn)+'"'+(tsel.indexOf(tn)>=0?' checked':'')+'>'+esc(tn)+'</label>'});
@@ -1244,16 +1564,23 @@ function openEdit(id){
   h+='<div id="fWarn"></div><div class="row"><button class="btn primary" id="fSave">Save</button><button class="btn" id="fCancel">Cancel</button></div>';
   openSheet(h);
   var ea=document.getElementById('fEqAdd');if(ea)ea.onchange=function(){var v=ea.value;if(!v)return;var box=document.getElementById('fTools');var n=box.querySelectorAll('input').length;var lb=document.createElement('label');lb.className='tchk';lb.innerHTML='<input type="checkbox" name="fTool" id="fTool'+n+'" checked value="'+esc(v)+'">'+esc(v);box.appendChild(lb);ea.value=''};
+  function setMap(){var a=val('fAddr').trim(),m=document.getElementById('fMap');m.hidden=!a;m.href=a?mapUrl(a):'#'}
+  document.getElementById('fAddr').addEventListener('input',setMap);
+  suggestBox('fAddr','fAddrS',function(){return allSites().map(function(a){var st=findSite(a);return {label:a,sub:st&&st.contractor?st.contractor+(st.foreman?', '+st.foreman:''):''}})},function(it){var st=findSite(it.label);if(st){if(st.contractor&&!val('fCon'))document.getElementById('fCon').value=st.contractor;if(st.foreman&&!val('fFor')){document.getElementById('fFor').value=st.foreman;var f=findForeman(st.contractor,st.foreman);if(f&&f.phone&&!val('fPh'))document.getElementById('fPh').value=f.phone}}setMap()});
+  bind('fAddrL',function(){lookupAddress(val('fAddr'),'fAddrOut',function(a){document.getElementById('fAddr').value=a;setMap()})});
+  suggestBox('fCon','fConS',function(){var l=MASTER.contractors.map(function(x){return {label:x.name,sub:x.phone}});S.cards.forEach(function(k){if(k.contractor&&!l.some(function(y){return norm(y.label)===norm(k.contractor)}))l.push({label:k.contractor})});var q=val('fCon').trim();if(q&&!l.some(function(y){return norm(y.label)===norm(q)}))l.push({label:q,sub:'+ New contractor'});return l},function(){});
+  suggestBox('fFor','fForS',function(){var con=val('fCon').trim();var l=MASTER.foremen.filter(function(f){return !con||norm(f.contractor)===norm(con)}).map(function(f){return {label:f.name,sub:[f.contractor,f.phone].filter(function(x){return x}).join(' '+MID+' '),f:f}});var q=val('fFor').trim();if(q&&!l.some(function(y){return norm(y.label)===norm(q)}))l.push({label:q,sub:'+ New foreman'+(con?' for '+con:'')});return l},function(it){if(it.f&&it.f.phone)document.getElementById('fPh').value=it.f.phone});
+  bind('fForL',function(){lookupContact(val('fFor'),'fForOut',function(p){document.getElementById('fFor').value=p.name;if(p.phones[0])document.getElementById('fPh').value=p.phones[0]})});
   var forced=false;
   bind('fCancel',closeSheet);
   bind('fSave',function(){
-    var v={date:val('fDate'),time:val('fTime'),type:val('fType'),address:val('fAddr').trim(),contractor:val('fCon').trim(),phone:val('fPh').trim(),crew:val('fCrew'),vehicle:val('fVeh'),notes:val('fNotes'),materials:val('fMat').split('\n').map(function(x){return x.trim()}).filter(function(x){return x}),tools:[].slice.call(document.querySelectorAll('input[name=fTool]:checked')).map(function(x){return x.value})};
+    var v={date:val('fDate'),time:val('fTime'),type:val('fType'),address:val('fAddr').trim(),contractor:val('fCon').trim(),foreman:val('fFor').trim(),phone:val('fPh').trim(),crew:val('fCrew'),vehicle:val('fVeh'),notes:val('fNotes'),materials:val('fMat').split('\n').map(function(x){return x.trim()}).filter(function(x){return x}),tools:[].slice.call(document.querySelectorAll('input[name=fTool]:checked')).map(function(x){return x.value})};
     if(!v.date){document.getElementById('fWarn').innerHTML='<div class="warn">Pick a date for this job.</div>';return}
     var miss=[];if(!v.address)miss.push('address');if(!v.time)miss.push('time');if(!v.crew)miss.push('crew');
     if(miss.length&&!forced){forced=true;document.getElementById('fWarn').innerHTML='<div class="warn">No '+miss.join(', ')+' yet. Are you sure? Tap Save again to keep it this way.</div>';return}
     if(noWork(v.date)&&!forced){forced=true;document.getElementById('fWarn').innerHTML='<div class="warn">'+esc(engShort(v.date))+' is '+esc(noWork(v.date))+'. Tap Save again if you really want it there.</div>';return}
     if(id){if(v.date!==c.date||v.time!==c.time)delete c.o;for(var k in v)c[k]=v[k];c.sample=false}else{v.id=nid();v.status='todo';v.source='manual';v.sample=false;S.cards.push(v)}
-    save();closeSheet();render();toast(id?'Saved':'Job added');
+    rememberJob(v);save();closeSheet();render();toast(id?'Saved':'Job added');
   });
 }
 function val(id){return document.getElementById(id).value}
@@ -1263,7 +1590,7 @@ function threadHtml(c){
   var cm=c.comments||[],h='',lastDay='';
   if(!cm.length)return '<div class="empty" style="text-align:center;align-self:center">No notes yet. Type a note or add a photo below.</div>';
   cm.forEach(function(m){var dd=ymd(new Date(m.t));if(dd!==lastDay){h+='<div class="tday">'+esc(engShort(dd))+'</div>';lastDay=dd}
-    h+='<div class="bub">'+(m.img?'<img src="'+m.img+'" alt="Job photo">':'')+(m.text?'<span>'+esc(m.text)+'</span>':'')+'<time>'+stamp(m.t)+'</time></div>'});
+    h+='<div class="bub">'+(m.img?'<img src="'+m.img+'" alt="Job photo">':(m.photoUrl?'<a href="'+esc(m.photoUrl)+'" target="_blank" rel="noopener" style="color:#fff;font-weight:700">Open photo</a>':''))+(m.text?'<span>'+esc(m.text)+'</span>':'')+'<time>'+stamp(m.t)+'</time></div>'});
   return h;
 }
 function openNotes(id){
@@ -1300,6 +1627,23 @@ function shrink(file,cb){
   };im.onerror=function(){toast('That photo could not be opened. Try a different one.')};im.src=r.result};
   r.readAsDataURL(file);
 }
+function crewEditor(){
+  var h='<div class="field"><label>Crew</label><div class="listed">';
+  S.crew.forEach(function(v,i){var ci=crewInfo(v);h+='<div class="li"><span>'+esc(v)+'<br><small style="color:var(--muted)">'+esc([ci.phone,ci.lang].filter(function(x){return x}).join(' '+MID+' ')||'No phone or language yet')+'</small></span><span class="row" style="gap:12px"><button data-crewedit="'+esc(v)+'" style="color:var(--todo)">Edit</button><button data-rm="crew:'+i+'">Remove</button></span></div>'});
+  h+='</div><div class="addrow"><input id="add-crew" placeholder="Add crew member"><button class="btn" data-addto="crew">Add</button></div></div>';
+  return h;
+}
+function pushLists(key){
+  if(!connOK())return;
+  if(key==='crew'){
+    var rows=[['Name','Phone','Language','Notes']];S.crew.forEach(function(n){var ci=crewInfo(n);rows.push([n,ci.phone||'',ci.lang||'',''])});while(rows.length<60)rows.push(['','','','']);
+    MASTER.crew=S.crew.map(function(n){return crewInfo(n)});syncSave();
+    bridge('updateValues',{book:'workday',range:'Crew!A1:D60',values:rows}).catch(function(e){SYNC.err=bridgeErr(e)});return;
+  }
+  var colmap={vehicles:['A','Vehicles'],types:['B','Work Types'],tools:['C','Tools']},cm=colmap[key];if(!cm)return;
+  var vals=[[cm[1]]];S[key].forEach(function(x){vals.push([x])});while(vals.length<60)vals.push(['']);
+  bridge('updateValues',{book:'workday',range:'Lists!'+cm[0]+'1:'+cm[0]+'60',values:vals}).catch(function(e){SYNC.err=bridgeErr(e)});
+}
 function listEditor(key,label){
   var h='<div class="field"><label>'+label+'</label><div class="listed">';
   S[key].forEach(function(v,i){h+='<div class="li"><span>'+esc(v)+'</span><button data-rm="'+key+':'+i+'">Remove</button></div>'});
@@ -1317,6 +1661,7 @@ function updateApp(){
 function openSettings(){
   var T=todayStr(),sat=T;while(dow(sat)!==6)sat=addDays(sat,1);
   var h='<h3>Settings</h3>';
+  h+='<div class="field"><label>Google connection</label><button class="sheetrow" id="sConn" style="width:100%;text-align:left"><span><span style="font-weight:600">'+(connOK()?(SYNC.err?'Connected, with a problem':'Connected'):'Not connected')+'</span><br><small style="color:var(--muted)">'+(connOK()?(SYNC.last?'Last sync '+esc(clockAt(SYNC.last)):'Not synced yet'):'Needed for syncing, contacts and address lookup')+'</small></span><b>'+(connOK()?'Manage':'Connect')+'</b></button></div>';
   h+='<div class="field"><label>Reminders</label><div class="rem">';
   h+='<div><span>Morning brief: where you are going, what you are doing</span><b>7:30 AM</b></div>';
   h+='<div><span>Set up tomorrow\'s Trello cards</span><b>8:00 PM</b></div>';
@@ -1325,7 +1670,7 @@ function openSettings(){
   h+='<div><span>Friday night, Shabbos and Yom Tov</span><b>Off</b></div>';
   h+='<div><span>Motzei Shabbos Trello reminder (shkia + 72 min), this week</span><b>'+clock(sunsetMs(sat)+72*60000)+'</b></div>';
   h+='<div><span>Sent to</span><b>WhatsApp + phone</b></div></div></div>';
-  h+=listEditor('crew','Crew')+listEditor('vehicles','Vehicles')+listEditor('tools','Tools')+listEditor('types','Work types');
+  h+=crewEditor()+listEditor('vehicles','Vehicles')+listEditor('tools','Tools')+listEditor('types','Work types');
   h+='<div class="field"><label>Assistant key</label><div class="rem"><div><span>'+(getKey()?'Claude API key saved on this phone':'No key yet. Tap Assistant to add one.')+'</span><b>'+(getKey()?'Saved':'')+'</b></div></div>'+(getKey()?'<div class="row"><button class="btn" id="kDel">Remove key</button></div>':'')+'</div>';
   h+='<div class="field"><label>Sheets</label><div class="listed">'+SHEETS.map(function(x){return '<div class="sheetrow"><span><span style="font-weight:600">'+esc(x[0])+'</span><br><small style="color:var(--muted)">'+esc(x[2])+'</small></span><span class="row" style="gap:14px"><button data-printsheet="'+x[1]+'" style="color:var(--todo);font-weight:700;font-size:13px">Print</button><a href="'+sheetUrl(x[1])+'" target="_blank" rel="noopener" style="color:var(--todo);font-weight:700;font-size:13px;text-decoration:none">Open</a></span></div>'}).join('')+'</div><div class="mt" style="margin-top:4px">Print makes a clean list straight from the app. Workday prints the next 2 weeks of jobs.</div></div>';
   h+='<div class="field"><label>App</label><div class="rem"><div><span>Version</span><b>'+APPVER+'</b></div></div><div class="row"><button class="btn" id="appUpd">Update app now</button></div></div>';
@@ -1333,13 +1678,16 @@ function openSettings(){
   openSheet(h);
   bind('sClose',function(){closeSheet();render()});
   bind('appUpd',updateApp);
+  bind('sConn',openConn);
   bind('kDel',function(){confirmSheet('Remove the assistant key?','The assistant stops working on this phone until you paste the key again.','Remove key',function(){setKey('');closeSheet();toast('Key removed')})});
 }
 
 /* ---------- events ---------- */
 document.addEventListener('click',function(e){
-  var t=e.target.closest('[data-printsheet],[data-printday],[data-aiundo],[data-dm],[data-dmf],[data-eq],[data-eqloc],[data-copysum],[data-notes],[data-markdone],[data-more],[data-movetoday],[data-tab],[data-open],[data-rm],[data-addto]');if(!t)return;
-  if(t.dataset.printsheet){var ps=t.dataset.printsheet;closeSheet();if(ps===SHEETS[0][1])printUpcoming();else if(ps===SHEETS[1][1])printTools(true);else if(ps===SHEETS[2][1])printSupply();else printDumpsters()}
+  var t=e.target.closest('[data-send],[data-crewedit],[data-printsheet],[data-printday],[data-aiundo],[data-dm],[data-dmf],[data-eq],[data-eqloc],[data-copysum],[data-notes],[data-markdone],[data-more],[data-movetoday],[data-tab],[data-open],[data-rm],[data-addto]');if(!t)return;
+  if(t.dataset.send)openSend(t.dataset.send);
+  else if(t.dataset.crewedit)openCrewEdit(t.dataset.crewedit,openSettings);
+  else if(t.dataset.printsheet){var ps=t.dataset.printsheet;closeSheet();if(ps===SHEETS[0][1])printUpcoming();else if(ps===SHEETS[1][1])printTools(true);else if(ps===SHEETS[2][1])printSupply();else printDumpsters()}
   else if(t.dataset.printday)printDay(t.dataset.printday);
   else if(t.dataset.aiundo)aiUndo(+t.dataset.aiundo);
   else if(t.dataset.dm)openDm(t.dataset.dm);
@@ -1353,8 +1701,8 @@ document.addEventListener('click',function(e){
   else if(t.dataset.movetoday){var c=find(t.dataset.movetoday);c.date=todayStr();delete c.o;save();render();toast('Moved to today')}
   else if(t.dataset.tab){S.view=t.dataset.tab;if(S.view==='day'&&!S.cur)S.cur=todayStr();if(S.view==='log')S.logFocus=null;render();window.scrollTo(0,0)}
   else if(t.dataset.open)openDate(t.dataset.open);
-  else if(t.dataset.rm){var p=t.dataset.rm.split(':');S[p[0]].splice(+p[1],1);save();openSettings()}
-  else if(t.dataset.addto){var k=t.dataset.addto,inp=document.getElementById('add-'+k),v=inp.value.trim();if(v&&S[k].indexOf(v)<0){S[k].push(v);save()}openSettings()}
+  else if(t.dataset.rm){var p=t.dataset.rm.split(':');S[p[0]].splice(+p[1],1);save();pushLists(p[0]);openSettings()}
+  else if(t.dataset.addto){var k=t.dataset.addto,inp=document.getElementById('add-'+k),v=inp.value.trim();if(v&&S[k].indexOf(v)<0){S[k].push(v);save();pushLists(k)}openSettings()}
 });
 document.getElementById('fab').onclick=openAI;
 document.getElementById('scrim').addEventListener('click',function(e){if(e.target.id==='scrim')closeSheet()});
@@ -1432,11 +1780,14 @@ document.addEventListener('touchend',function(){
 });
 
 /* ---------- start ---------- */
-eqLoad();dmLoad();
+connLoad();eqLoad();dmLoad();
 if(!load()){seed();save()}
 try{if(!localStorage.getItem('workday.nosample')){S.cards=S.cards.filter(function(c){return !c.sample});save();localStorage.setItem('workday.nosample','1')}}catch(e){S.cards=S.cards.filter(function(c){return !c.sample})}
 S.cur=todayStr();var n=new Date();S.calY=n.getFullYear();S.calM=n.getMonth();
 render();
+if(connOK()){setTimeout(function(){syncNow()},800);setInterval(function(){if(!document.hidden)syncNow()},120000)}
+document.addEventListener('visibilitychange',function(){if(!document.hidden&&connOK())syncNow()});
+window.addEventListener('online',function(){if(connOK())syncNow()});
 })();
 </script>
 
