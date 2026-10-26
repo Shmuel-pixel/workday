@@ -9,4 +9,4 @@ The small online service behind the Messages tab in Workday. It runs free on Clo
 
 No keys live in this code. The app key, webhook verify token and notification keys are made on first use and kept in the service's own storage. The WhatsApp token is entered from Workday (Settings, Messages).
 
-Deploys automatically from GitHub (`.github/workflows/deploy-messages.yml`) once the repository has two secrets: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+Deploys automatically from GitHub (`.github/workflows/deploy-messages.yml`) once the repository has the secret `CLOUDFLARE_API_TOKEN`.

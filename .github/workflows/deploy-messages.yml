@@ -13,13 +13,11 @@ jobs:
         id: chk
         env:
           T: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          A: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          if [ -n "$T" ] && [ -n "$A" ]; then echo "ok=1" >> "$GITHUB_OUTPUT"; else echo "::warning::Add the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID secrets, then run this again."; fi
+          if [ -n "$T" ]; then echo "ok=1" >> "$GITHUB_OUTPUT"; else echo "::warning::Add the CLOUDFLARE_API_TOKEN secret, then run this again."; fi
       - name: Deploy to Cloudflare
         if: steps.chk.outputs.ok == '1'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: worker
