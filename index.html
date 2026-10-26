@@ -301,8 +301,8 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 26, 2026 (15)';
-var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Angio','Charlie','Adon'],vehicles:['2019 Ford Box Truck','2013 Silverado','2016 F450 Utility Truck','Geronimo 2016 F550'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
+var KEY='workday.v1',APPVER='Oct 26, 2026 (16)';
+var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
 function pad(n){return (n<10?'0':'')+n}
@@ -658,7 +658,7 @@ function renderDay(){
     h+='<div class="calm"><b>'+esc(nw)+'</b><span>No work and no reminders today.</span></div>';
   }else if(r==='today'){
     h+='<div class="swhint">Swipe a card right to mark it done. Swipe a done card left to undo.</div>';
-    h+=zone('todo','To-Do',todo,'',true,list.length?'Nothing left. Tap + to add a job, or drag a card back here.':'No jobs yet. Tap + or tell the Assistant, for example: tomorrow 8am cleanup at 3 Waswell Ct with Angio.');
+    h+=zone('todo','To-Do',todo,'',true,list.length?'Nothing left. Tap + to add a job, or drag a card back here.':'No jobs yet. Tap + or tell the Assistant, for example: tomorrow 8am cleanup at 3 Waswell Ct with Anjio.');
     h+=zone('done','Done',done,'',false,'Drag a card here, or use &#8943; &rarr; Mark done.');
   }else if(r==='past'){
     h+=zone('done','Done',done,'',false,'Nothing was marked done this day.');
@@ -818,7 +818,7 @@ function openSheetView(id,tab){
 /* ---------- Five Star card maker (squagle) fill-in ---------- */
 var FIVESTAR_URL='https://telematics.squagle.com/five-star/';
 function fiveStarData(c){
-  return {date:c.date,site:(c.address||'').split(',')[0].trim(),crew:c.crew&&c.crew!=='Me'?c.crew:'',size:c.crewSize||'',vehicles:c.vehicle?[c.vehicle]:[],contractor:c.contractor||'',desc:c.type+(c.notes?': '+c.notes:''),materials:c.materials||[]};
+  return {date:c.date,site:(c.address||'').split(',')[0].trim(),crew:c.crew&&c.crew!=='Me'?c.crew:'',size:c.crewSize||'',vehicles:c.vehicle?[c.vehicle]:(crewInfo(c.crew).truck?[crewInfo(c.crew).truck]:[]),contractor:c.contractor||'',desc:c.type+(c.notes?': '+c.notes:''),materials:c.materials||[]};
 }
 function openFiveStar(id){
   var c=find(id);if(!c)return;
@@ -1254,7 +1254,7 @@ function aiApply(actions){
 }
 function aiBubbles(){
   var h='';
-  if(!AIH.length)h+='<div class="empty" style="text-align:center;align-self:center">Tell me what to do. For example: "Tomorrow 8am cleanup at 3 Waswell Ct, send Angio with Truck 1." Tap the mic on the keyboard to talk instead of typing.</div>';
+  if(!AIH.length)h+='<div class="empty" style="text-align:center;align-self:center">Tell me what to do. For example: "Tomorrow 8am cleanup at 3 Waswell Ct, send Anjio with the 2016 Ford Transit." Tap the mic on the keyboard to talk instead of typing.</div>';
   AIH.forEach(function(m,i){
     if(m.role==='user')h+='<div class="bub"><span>'+esc(m.show||m.content)+'</span></div>';
     else{
@@ -1431,7 +1431,7 @@ function mergeAll(d){
   MASTER.contractors=(d['Contractors']||[]).map(function(r){return {name:r['Contractor'],phone:r['Office Phone']||'',email:r['Email']||'',notes:r['Notes']||''}}).filter(function(x){return x.name});
   MASTER.foremen=(d['Foremen']||[]).map(function(r){return {contractor:r['Contractor'],name:r['Foreman'],phone:r['Phone']||'',email:r['Email']||''}}).filter(function(x){return x.name});
   MASTER.sites=(d['Job Sites']||[]).map(function(r){return {address:r['Address'],contractor:r['Contractor']||'',foreman:r['Foreman']||'',notes:r['Notes']||'',last:r['Last Used']||''}}).filter(function(x){return x.address});
-  MASTER.crew=(d['Crew']||[]).map(function(r){return {name:r['Name'],phone:r['Phone']||'',lang:r['Language']||''}}).filter(function(x){return x.name});
+  MASTER.crew=(d['Crew']||[]).map(function(r){return {name:r['Name'],phone:r['Phone']||'',lang:r['Language']||'',truck:r['Truck']||''}}).filter(function(x){return x.name});
   if(MASTER.crew.length)S.crew=MASTER.crew.map(function(x){return x.name});
   var L=d['Lists']||[];function col(k){return L.map(function(r){return r[k]}).filter(function(x){return x})}
   var v=col('Vehicles'),w=col('Work Types'),t2=col('Tools');if(v.length)S.vehicles=v;if(w.length)S.types=w;if(t2.length)S.tools=t2;
@@ -1509,7 +1509,7 @@ function lookupContact(q,outId,onPick){
 /* ---------- send to crew + translation ---------- */
 var LANGS=['English','Spanish','Portuguese','Polish','Haitian Creole','Russian','Ukrainian','Hebrew','Yiddish','Arabic','French','Other'];
 var LCODE={Spanish:'es',Portuguese:'pt',Polish:'pl','Haitian Creole':'ht',Russian:'ru',Ukrainian:'uk',Hebrew:'iw',Yiddish:'yi',Arabic:'ar',French:'fr',English:'en'};
-function crewInfo(n){for(var i=0;i<MASTER.crew.length;i++)if(MASTER.crew[i].name===n)return MASTER.crew[i];return {name:n,phone:'',lang:''}}
+function crewInfo(n){for(var i=0;i<MASTER.crew.length;i++)if(MASTER.crew[i].name===n)return MASTER.crew[i];return {name:n,phone:'',lang:'',truck:''}}
 function jobMessage(c){
   var T=todayStr(),n=diff(c.date,T),when=n===0?'Today':n===1?'Tomorrow':engShort(c.date);
   var L=[when+(c.time?' '+fmtTime(c.time):'')+' - '+c.type];
@@ -1604,13 +1604,14 @@ function openCrewEdit(name,back){
   var ci=crewInfo(name);
   var h='<h3>'+esc(name)+'</h3><div class="field"><label for="ceP">WhatsApp number</label><input id="ceP" type="tel" value="'+esc(ci.phone)+'" placeholder="732-555-0100"></div>';
   h+='<div class="field"><label for="ceL">Language for messages</label><select id="ceL">'+opts(LANGS,ci.lang||'','Choose a language')+'</select></div>';
+  h+='<div class="field"><label for="ceT">Usual truck</label><select id="ceT">'+opts(S.vehicles,ci.truck||'','No usual truck')+'</select></div>';
   h+='<div class="row"><button class="btn primary" id="ceS">Save</button><button class="btn" id="ceX">Cancel</button></div>';
   openSheet(h);
   bind('ceX',function(){back?back():closeSheet()});
   bind('ceS',function(){
-    var p=val('ceP').trim(),l=val('ceL');var ex=null;MASTER.crew.forEach(function(x){if(x.name===name)ex=x});
-    if(ex){ex.phone=p;ex.lang=l}else MASTER.crew.push({name:name,phone:p,lang:l});syncSave();
-    masterPush('updateRow',{tab:'Crew',key:'Name',value:name,row:{'Name':name,'Phone':p,'Language':l}});
+    var p=val('ceP').trim(),l=val('ceL'),tk=val('ceT');var ex=null;MASTER.crew.forEach(function(x){if(x.name===name)ex=x});
+    if(ex){ex.phone=p;ex.lang=l;ex.truck=tk}else MASTER.crew.push({name:name,phone:p,lang:l,truck:tk});syncSave();
+    masterPush('updateRow',{tab:'Crew',key:'Name',value:name,row:{'Name':name,'Phone':p,'Language':l,'Truck':tk}});
     toast('Saved');back?back():closeSheet();
   });
 }
@@ -1883,6 +1884,7 @@ function openEdit(id){
   suggestBox('fCon','fConS',function(){var l=MASTER.contractors.map(function(x){return {label:x.name,sub:x.phone}});S.cards.forEach(function(k){if(k.contractor&&!l.some(function(y){return norm(y.label)===norm(k.contractor)}))l.push({label:k.contractor})});var q=val('fCon').trim();if(q&&!l.some(function(y){return norm(y.label)===norm(q)}))l.push({label:q,sub:'+ New contractor'});return l},function(){});
   suggestBox('fFor','fForS',function(){var con=val('fCon').trim();var l=MASTER.foremen.filter(function(f){return !con||norm(f.contractor)===norm(con)}).map(function(f){return {label:f.name,sub:[f.contractor,f.phone].filter(function(x){return x}).join(' '+MID+' '),f:f}});var q=val('fFor').trim();if(q&&!l.some(function(y){return norm(y.label)===norm(q)}))l.push({label:q,sub:'+ New foreman'+(con?' for '+con:'')});return l},function(it){if(it.f&&it.f.phone)document.getElementById('fPh').value=it.f.phone});
   bind('fForL',function(){lookupContact(val('fFor'),'fForOut',function(p){document.getElementById('fFor').value=p.name;if(p.phones[0])document.getElementById('fPh').value=p.phones[0]})});
+  document.getElementById('fCrew').addEventListener('change',function(){var t=crewInfo(val('fCrew')).truck;if(t&&!val('fVeh')){var vs=document.getElementById('fVeh');if(S.vehicles.indexOf(t)>=0)vs.value=t}});
   var forced=false;
   bind('fCancel',closeSheet);
   bind('fSave',function(){
@@ -1941,16 +1943,16 @@ function shrink(file,cb){
 }
 function crewEditor(){
   var h='<div class="field"><label>Crew</label><div class="listed">';
-  S.crew.forEach(function(v,i){var ci=crewInfo(v);h+='<div class="li"><span>'+esc(v)+'<br><small style="color:var(--muted)">'+esc([ci.phone,ci.lang].filter(function(x){return x}).join(' '+MID+' ')||'No phone or language yet')+'</small></span><span class="row" style="gap:12px"><button data-crewedit="'+esc(v)+'" style="color:var(--todo)">Edit</button><button data-rm="crew:'+i+'">Remove</button></span></div>'});
+  S.crew.forEach(function(v,i){var ci=crewInfo(v);h+='<div class="li"><span>'+esc(v)+'<br><small style="color:var(--muted)">'+esc([ci.phone,ci.lang,ci.truck].filter(function(x){return x}).join(' '+MID+' ')||'No phone or language yet')+'</small></span><span class="row" style="gap:12px"><button data-crewedit="'+esc(v)+'" style="color:var(--todo)">Edit</button><button data-rm="crew:'+i+'">Remove</button></span></div>'});
   h+='</div><div class="addrow"><input id="add-crew" placeholder="Add crew member"><button class="btn" data-addto="crew">Add</button></div></div>';
   return h;
 }
 function pushLists(key){
   if(!connOK())return;
   if(key==='crew'){
-    var rows=[['Name','Phone','Language','Notes']];S.crew.forEach(function(n){var ci=crewInfo(n);rows.push([n,ci.phone||'',ci.lang||'',''])});while(rows.length<60)rows.push(['','','','']);
+    var rows=[['Name','Phone','Language','Notes','Truck']];S.crew.forEach(function(n){var ci=crewInfo(n);rows.push([n,ci.phone||'',ci.lang||'','',ci.truck||''])});while(rows.length<60)rows.push(['','','','','']);
     MASTER.crew=S.crew.map(function(n){return crewInfo(n)});syncSave();
-    bridge('updateValues',{book:'workday',range:'Crew!A1:D60',values:rows}).catch(function(e){SYNC.err=bridgeErr(e)});return;
+    bridge('updateValues',{book:'workday',range:'Crew!A1:E60',values:rows}).catch(function(e){SYNC.err=bridgeErr(e)});return;
   }
   var colmap={vehicles:['A','Vehicles'],types:['B','Work Types'],tools:['C','Tools']},cm=colmap[key];if(!cm)return;
   var vals=[[cm[1]]];S[key].forEach(function(x){vals.push([x])});while(vals.length<60)vals.push(['']);
