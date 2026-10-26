@@ -98,6 +98,7 @@ export class Box extends DurableObject {
     this.sql.exec('CREATE INDEX IF NOT EXISTS msgs_chat ON msgs (chat, ts)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS media (id TEXT PRIMARY KEY, mime TEXT, data BLOB, ts INTEGER)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS subs (endpoint TEXT PRIMARY KEY, sub TEXT, ts INTEGER)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS rems (key TEXT PRIMARY KEY, t INTEGER, title TEXT)');
   }
 
   get(k) { var r = this.sql.exec('SELECT v FROM kv WHERE k=?', k).toArray(); return r.length ? r[0].v : null; }
@@ -130,6 +131,7 @@ export class Box extends DurableObject {
       if (p === '/vapid') return json({ key: await this.vapidPublic() });
       if (p === '/subscribe' && req.method === 'POST') return json(this.subscribe(await req.json()));
       if (p === '/push-test' && req.method === 'POST') return json(await this.pushAll());
+      if (p === '/reminders' && req.method === 'POST') return json(await this.setReminders(await req.json()));
       if (p === '/test/incoming' && req.method === 'POST') return json(await this.testIncoming(await req.json()));
       if (p.indexOf('/media/') === 0) return await this.media(decodeURIComponent(p.slice(7)));
       return err('Not found', 404);
@@ -260,6 +262,9 @@ export class Box extends DurableObject {
     return { ok: true };
   }
   notify() {
+    var nt = this.get('notice'), n = nt ? JSON.parse(nt) : null;
+    var lastIn = this.sql.exec('SELECT MAX(ts) AS t FROM msgs WHERE dir=\'in\'').toArray()[0].t || 0;
+    if (n && n.ts > Date.now() - 15 * 60000 && n.ts >= lastIn) return { kind: 'rem', title: 'Workday', body: n.title, count: 0 };
     var u = this.sql.exec('SELECT COALESCE(SUM(unread),0) AS n FROM chats').toArray()[0].n;
     var last = this.sql.exec('SELECT m.chat, m.text, m.type, c.name FROM msgs m LEFT JOIN chats c ON c.chat=m.chat WHERE m.dir=\'in\' ORDER BY m.ts DESC LIMIT 1').toArray()[0];
     if (!last) return { count: u, title: 'Workday', body: 'New message' };
@@ -374,6 +379,32 @@ export class Box extends DurableObject {
       } catch (e) { errors.push(String(e)); }
     }));
     return { sent: sent, subs: subs.length, errors: errors };
+  }
+
+  /* ---------- reminders (mincha, summaries, Trello...) ---------- */
+  async setReminders(b) {
+    var items = (b && b.items) || [], now = Date.now();
+    this.sql.exec('DELETE FROM rems');
+    var self = this;
+    items.forEach(function (it) { if (it && it.key && +it.t > now) self.sql.exec('INSERT OR REPLACE INTO rems (key,t,title) VALUES (?,?,?)', String(it.key), Math.round(+it.t), String(it.title || 'Reminder')); });
+    await this.nextAlarm();
+    var next = this.sql.exec('SELECT t,title FROM rems ORDER BY t LIMIT 1').toArray()[0] || null;
+    return { ok: true, count: this.sql.exec('SELECT COUNT(*) AS n FROM rems').toArray()[0].n, next: next };
+  }
+  async nextAlarm() {
+    var n = this.sql.exec('SELECT MIN(t) AS t FROM rems').toArray()[0].t;
+    if (n) await this.ctx.storage.setAlarm(n); else await this.ctx.storage.deleteAlarm();
+  }
+  async alarm() {
+    var now = Date.now();
+    var due = this.sql.exec('SELECT key,t,title FROM rems WHERE t<=? ORDER BY t', now + 30000).toArray();
+    for (var i = 0; i < due.length; i++) {
+      this.sql.exec('DELETE FROM rems WHERE key=?', due[i].key);
+      if (due[i].t < now - 30 * 60000) continue; /* too late, skip */
+      this.put('notice', JSON.stringify({ title: due[i].title, ts: now }));
+      await this.pushAll();
+    }
+    await this.nextAlarm();
   }
 
   /* ---------- test mode ---------- */
