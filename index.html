@@ -180,6 +180,13 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 .sugs{display:grid}
 .minilink{color:var(--todo);font-weight:600;font-size:13px;text-decoration:none;background:none;padding:4px 0}
 .addr a{color:inherit}
+.svwrap{overflow:auto;max-height:58vh;border:1px solid var(--line);border-radius:10px;background:var(--surface);-webkit-overflow-scrolling:touch}
+.svt{border-collapse:separate;border-spacing:0;font-size:13px;min-width:100%}
+.svt th,.svt td{padding:6px 9px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);white-space:nowrap;text-align:left;vertical-align:top;max-width:240px;overflow:hidden;text-overflow:ellipsis}
+.svt th{position:sticky;top:0;background:var(--sunk);font-weight:700;z-index:1}
+.svt td.rn,.svt th.rn{position:sticky;left:0;background:var(--sunk);color:var(--muted);font-variant-numeric:tabular-nums;z-index:2}
+.svt tr.new td{background:var(--done-soft)}
+.svtabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}.svtabs::-webkit-scrollbar{display:none}
 .swhint{font-size:12px;color:var(--muted);text-align:center}
 .grip{width:30px;height:44px;display:grid;place-items:center;color:var(--muted);touch-action:none;cursor:grab}
 .grip svg{width:16px;height:16px}
@@ -294,7 +301,7 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 25, 2026 (12)';
+var KEY='workday.v1',APPVER='Oct 25, 2026 (13)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Angio','Charlie','Adon'],vehicles:['2019 Ford Box Truck','2013 Silverado','2016 F450 Utility Truck','Geronimo 2016 F550'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -770,6 +777,43 @@ function openDatePick(){
   });
 }
 
+/* ---------- View sheet: a live mirror of the real spreadsheet ---------- */
+var SVTABS={
+  '1-6dJlD1UaD16rgJfdY1cVjH_hgaYjNdQkrrJeA30WHo':['Workday',['Cards','Notes','Contractors','Foremen','Job Sites','Crew','Lists','Settings','Suggestions']],
+  '1fV83ak0tgWdPJy-iTrHzxkg6_fzpcF8k6ThH62aiXJ4':['Equipment Manager',['Equipment','Locations','History','Tasks']],
+  '15YCb4w9HbNq1Mw9E2ZmX9FP8pTVsHVqkh3yMUNUJ1v4':['Dumpster Log',['Dumpsters','Job Sites','Companies','Sizes']],
+  '1X-1lPEIHSr5uEjTAq7UA4MfzE1LwC_Z4erVa3dELcuo':['Supply Tracker',['Stock','Log','Orders','Audits']]
+};
+var SVPREV={};
+function openSheetView(id,tab){
+  var meta=SVTABS[id];if(!meta)return;tab=tab||meta[1][0];
+  var h='<div class="row" style="justify-content:space-between;align-items:center"><h3>'+esc(meta[0])+'</h3>'+sheetLink(id,'Open in Sheets')+'</div>';
+  h+='<div class="svtabs">'+meta[1].map(function(t){return '<button class="ttab'+(t===tab?' on':'')+'" data-svtab="'+esc(t)+'">'+esc(t)+'</button>'}).join('')+'</div>';
+  h+='<div class="mt" id="svInfo">Reading the sheet from Google...</div><div class="svwrap" id="svBody"></div>';
+  h+='<div class="row"><button class="btn primary" id="svRef">Refresh</button><button class="btn" id="svX">Close</button></div>';
+  openSheet(h);
+  [].forEach.call(document.querySelectorAll('[data-svtab]'),function(b){b.onclick=function(){openSheetView(id,b.getAttribute('data-svtab'))}});
+  bind('svX',closeSheet);bind('svRef',function(){openSheetView(id,tab)});
+  var info=document.getElementById('svInfo'),body=document.getElementById('svBody');
+  getMcp().then(function(mcp){
+    if(!mcp){info.innerHTML=esc(window.claude?'Open this inside the Claude app to view the sheet.':'Viewing the sheet here needs the Google connection (Workday Connect). Until then, tap Open in Sheets.');body.hidden=true;return}
+    var rng=(/\s/.test(tab)?"'"+tab+"'":tab)+'!A1:Z1000';
+    mcp.callTool(GS,'get_values',{spreadsheetId:id,range:rng},{cache:false}).then(function(res){
+      var v=(res.payload&&res.payload.values)||[];
+      if(!v.length){info.textContent='This tab is empty.';body.innerHTML='';return}
+      var key=id+'|'+tab,prev=SVPREV[key]||null,seen={};
+      if(prev)prev.forEach(function(r){seen[r.join('\u0001')]=1});
+      var w=0;v.forEach(function(r){if(r.length>w)w=r.length});
+      var t='<table class="svt"><thead><tr><th class="rn">1</th>';for(var j=0;j<w;j++)t+='<th>'+esc(v[0][j]==null?'':v[0][j])+'</th>';t+='</tr></thead><tbody>';
+      var changed=0;
+      for(var i=1;i<v.length;i++){var r=v[i],isNew=prev&&!seen[r.join('\u0001')];if(isNew)changed++;t+='<tr'+(isNew?' class="new"':'')+'><td class="rn">'+(i+1)+'</td>';for(var k=0;k<w;k++)t+='<td>'+esc(r[k]==null?'':r[k])+'</td>';t+='</tr>'}
+      body.innerHTML=t+'</tbody></table>';
+      SVPREV[key]=v;
+      var d=new Date();info.textContent=(v.length-1)+' rows '+MID+' read from Google at '+fmtTime(pad(d.getHours())+':'+pad(d.getMinutes()))+(prev?(changed?' '+MID+' '+changed+' row'+(changed>1?'s':'')+' changed since you last looked (green)':' '+MID+' no changes since you last looked'):'');
+    },function(e){info.textContent=e&&DENY[e.code]?eqErrText(e):'Could not read the sheet. Tap Refresh to try again.'});
+  });
+}
+
 /* ---------- log ---------- */
 function renderLog(){
   var T=todayStr(),q=S.query.toLowerCase();
@@ -777,7 +821,7 @@ function renderLog(){
   if(q)old=old.filter(function(c){return (c.type+' '+c.address+' '+c.contractor+' '+c.crew+' '+c.notes).toLowerCase().indexOf(q)>=0});
   var days={};old.forEach(function(c){(days[c.date]=days[c.date]||[]).push(c)});
   var keys=Object.keys(days).sort().reverse();
-  var h='<input class="search" id="q" type="search" placeholder="Search address, contractor, crew" value="'+esc(S.query)+'">';
+  var h='<div class="row" style="justify-content:flex-end"><button class="btn" data-sheetview="1-6dJlD1UaD16rgJfdY1cVjH_hgaYjNdQkrrJeA30WHo">View Workday sheet</button></div><input class="search" id="q" type="search" placeholder="Search address, contractor, crew" value="'+esc(S.query)+'">';
   if(!keys.length)h+='<div class="ph"><h2>Nothing in the Log yet</h2><p>Days move here once they are more than a week old. Everything stays searchable.</p></div>';
   keys.forEach(function(k){
     var l=days[k].sort(byTime);
@@ -854,7 +898,7 @@ function clockAt(ms){var d=new Date(ms);return engShort(ymd(d))+', '+fmtTime(pad
 function renderTools(){
   eqStart();
   var h='',st=EQ.state;
-  h+='<div class="eqbar"><div><b>Five Star equipment sheet</b><span>'+(st==='loading'?'Loading...':EQ.at?'Updated '+esc(clockAt(EQ.at)):'')+'</span></div><span class="row">'+sheetLink('1fV83ak0tgWdPJy-iTrHzxkg6_fzpcF8k6ThH62aiXJ4')+'<button class="btn" id="eqRef">Refresh</button></span></div>';
+  h+='<div class="eqbar"><div><b>Five Star equipment sheet</b><span>'+(st==='loading'?'Loading...':EQ.at?'Updated '+esc(clockAt(EQ.at)):'')+'</span></div><span class="row"><button class="btn" data-sheetview="1fV83ak0tgWdPJy-iTrHzxkg6_fzpcF8k6ThH62aiXJ4">View sheet</button><button class="btn" id="eqRef">Refresh</button></span></div>';
   if(st==='nomcp')h+='<div class="warn">'+(window.claude?'Open this page inside the Claude app to load the equipment sheet.':'This tab connects to your equipment sheet in the next setup step (Google sign-in).')+'</div>';
   else if(st==='approve')h+='<div class="ask"><p>'+esc(eqErrText(EQ.err))+'</p><div class="row"><button class="btn primary" id="eqOk">Allow and load</button></div></div>';
   else if((st==='denied'||st==='err'||st==='cached')&&EQ.err)h+='<div class="warn">'+esc(eqErrText(EQ.err))+'</div>';
@@ -938,7 +982,7 @@ function eqWrite(old,v,isNew){
     }).then(function(){
       if(isNew)EQ.rows.push({row:0,id:id,group:v.group,item:v.item,brand:v.brand,model:v.model,blade:v.blade,qty:v.qty,power:v.power,cond:v.cond,loc:locDesc(v.group),action:v.action,notes:v.notes,serial:v.serial,status:v.cond,updated:ts});
       else{for(var k in v)old[k]=v[k];old.loc=locDesc(v.group);old.status=v.cond;old.updated=ts}
-      eqSave();closeSheet();render();toast(isNew?'Added to the sheet':'Saved to the sheet');
+      eqSave();closeSheet();render();toast((isNew?'Added to the sheet':'Saved to the sheet')+'. Tap View sheet to check it.');
       mcp.invalidate(GS,'get_values').catch(function(){});
     },function(e){
       var c=e&&e.code;
@@ -998,7 +1042,7 @@ function dshort(d){if(!d||!/^\d{4}-\d\d-\d\d$/.test(d))return d||'';return engSh
 function renderDump(){
   dmStart();
   var h='',st=DM.state;
-  h+='<div class="eqbar"><div><b>Dumpster Log</b><span>'+(st==='loading'?'Loading...':DM.at?'Updated '+esc(clockAt(DM.at)):'')+'</span></div><span class="row">'+sheetLink(DSID)+'<button class="btn" id="dmRef">Refresh</button></span></div>';
+  h+='<div class="eqbar"><div><b>Dumpster Log</b><span>'+(st==='loading'?'Loading...':DM.at?'Updated '+esc(clockAt(DM.at)):'')+'</span></div><span class="row"><button class="btn" data-sheetview="'+DSID+'">View sheet</button><button class="btn" id="dmRef">Refresh</button></span></div>';
   if(st==='nomcp')h+='<div class="warn">'+(window.claude?'Open this page inside the Claude app to load the dumpster log.':'This tab connects to your Dumpster Log in the next setup step (Google sign-in).')+'</div>';
   else if(st==='approve')h+='<div class="ask"><p>'+esc(dmErrText(DM.err))+'</p><div class="row"><button class="btn primary" id="dmOk">Allow and load</button></div></div>';
   else if(DM.err&&(st==='denied'||st==='err'||st==='cached'))h+='<div class="warn">'+esc(dmErrText(DM.err))+'</div>';
@@ -1091,7 +1135,7 @@ function dmWrite(old,v,isNew){
       });
     }).then(function(){
       if(isNew){var nr={row:0,id:id};for(var k in v)nr[k]=v[k];DM.rows.push(nr)}else{for(var k2 in v)old[k2]=v[k2]}
-      if(v.site)rememberJob({address:v.site});dmSave();closeSheet();render();toast(isNew?'Dumpster logged':'Saved: '+v.status);
+      if(v.site)rememberJob({address:v.site});dmSave();closeSheet();render();toast((isNew?'Dumpster logged':'Saved: '+v.status)+'. Tap View sheet to check it.');
       mcp.invalidate(GS,'get_values').catch(function(){});
     },function(e){
       var c=e&&e.code;
@@ -1912,7 +1956,7 @@ function openSettings(){
   h+=crewEditor()+listEditor('vehicles','Vehicles')+listEditor('tools','Tools')+listEditor('types','Work types');
   h+='<div class="field"><label for="projIn">Claude Project link (the Assistant button opens it)</label><div class="addrow"><input id="projIn" autocapitalize="off" spellcheck="false" placeholder="https://claude.ai/project/..." value="'+esc(projLink())+'"><button class="btn" id="projSave">Save</button></div></div>';
   h+='<div class="field"><label>Assistant key</label><div class="rem"><div><span>'+(getKey()?'Claude API key saved on this phone':'No key yet. Tap Assistant to add one.')+'</span><b>'+(getKey()?'Saved':'')+'</b></div></div>'+(getKey()?'<div class="row"><button class="btn" id="kDel">Remove key</button></div>':'')+'</div>';
-  h+='<div class="field"><label>Sheets</label><div class="listed">'+SHEETS.map(function(x){return '<div class="sheetrow"><span><span style="font-weight:600">'+esc(x[0])+'</span><br><small style="color:var(--muted)">'+esc(x[2])+'</small></span><span class="row" style="gap:14px"><button data-printsheet="'+x[1]+'" style="color:var(--todo);font-weight:700;font-size:13px">Print</button><a href="'+sheetUrl(x[1])+'" target="_blank" rel="noopener" style="color:var(--todo);font-weight:700;font-size:13px;text-decoration:none">Open</a></span></div>'}).join('')+'</div><div class="mt" style="margin-top:4px">Print makes a clean list straight from the app. Workday prints the next 2 weeks of jobs.</div></div>';
+  h+='<div class="field"><label>Sheets</label><div class="listed">'+SHEETS.map(function(x){return '<div class="sheetrow"><span><span style="font-weight:600">'+esc(x[0])+'</span><br><small style="color:var(--muted)">'+esc(x[2])+'</small></span><span class="row" style="gap:14px"><button data-sheetview="'+x[1]+'" style="color:var(--todo);font-weight:700;font-size:13px">View</button><button data-printsheet="'+x[1]+'" style="color:var(--todo);font-weight:700;font-size:13px">Print</button><a href="'+sheetUrl(x[1])+'" target="_blank" rel="noopener" style="color:var(--todo);font-weight:700;font-size:13px;text-decoration:none">Open</a></span></div>'}).join('')+'</div><div class="mt" style="margin-top:4px">Print makes a clean list straight from the app. Workday prints the next 2 weeks of jobs.</div></div>';
   h+='<div class="field"><label>App</label><div class="rem"><div><span>Version</span><b>'+APPVER+'</b></div></div><div class="row"><button class="btn" id="appUpd">Update app now</button></div></div>';
   h+='<button class="btn primary" id="sClose">Done</button>';
   openSheet(h);
@@ -1927,8 +1971,9 @@ function openSettings(){
 
 /* ---------- events ---------- */
 document.addEventListener('click',function(e){
-  var t=e.target.closest('[data-zmanim],[data-send],[data-crewedit],[data-printsheet],[data-printday],[data-aiundo],[data-dm],[data-dmf],[data-eq],[data-eqloc],[data-copysum],[data-notes],[data-markdone],[data-more],[data-movetoday],[data-tab],[data-open],[data-rm],[data-addto]');if(!t)return;
-  if(t.dataset.zmanim)openZmanim(t.dataset.zmanim);
+  var t=e.target.closest('[data-sheetview],[data-zmanim],[data-send],[data-crewedit],[data-printsheet],[data-printday],[data-aiundo],[data-dm],[data-dmf],[data-eq],[data-eqloc],[data-copysum],[data-notes],[data-markdone],[data-more],[data-movetoday],[data-tab],[data-open],[data-rm],[data-addto]');if(!t)return;
+  if(t.dataset.sheetview)openSheetView(t.dataset.sheetview);
+  else if(t.dataset.zmanim)openZmanim(t.dataset.zmanim);
   else if(t.dataset.send)openSend(t.dataset.send);
   else if(t.dataset.crewedit)openCrewEdit(t.dataset.crewedit,openSettings);
   else if(t.dataset.printsheet){var ps=t.dataset.printsheet;closeSheet();if(ps===SHEETS[0][1])printUpcoming();else if(ps===SHEETS[1][1])printTools(true);else if(ps===SHEETS[2][1])printSupply();else printDumpsters()}
