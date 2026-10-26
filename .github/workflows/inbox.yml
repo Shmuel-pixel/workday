@@ -16,9 +16,9 @@ jobs:
       DROP: ${{ inputs.drop }}
     steps:
       - name: Inbox key
-        run: curl -sS "$URL/inbox-key"; echo
+        run: echo "::notice title=inbox-key::$(curl -sS "$URL/inbox-key")"
       - name: Deliver
         if: inputs.drop != ''
         run: |
           printf '%s' "$DROP" > drop.json
-          curl -sS -X POST -H 'Content-Type: application/json' --data-binary @drop.json "$URL/drop"; echo
+          echo "::notice title=drop::$(curl -sS -X POST -H 'Content-Type: application/json' --data-binary @drop.json "$URL/drop")"
