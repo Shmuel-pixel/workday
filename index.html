@@ -335,7 +335,7 @@ body.msgmode .msgq,body.msgmode .msgtest,body.msgmode .compose,body.msgmode .mac
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 26, 2026 (20)';
+var KEY='workday.v1',APPVER='Oct 26, 2026 (21)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -670,7 +670,7 @@ function cardHtml(c,mode){
   if(mats.length)h+='<div class="mt"><b>Materials:</b> '+esc(mats.join(', '))+'</div>';
   if(tls.length)h+='<div class="mt"><b>Tools:</b> '+esc(tls.join(', '))+'</div>';
   var tg='';if(c.crew)tg+='<span class="tag crew">'+esc(c.crew)+'</span>';if(c.vehicle)tg+='<span class="tag">'+esc(c.vehicle)+'</span>';
-  tg+='<span class="tag">'+(c.source==='whatsapp'?'From WhatsApp':c.source==='calendar'?'Google Calendar':'Added by you')+'</span>';
+  tg+='<span class="tag">'+(c.source==='whatsapp'?'From WhatsApp':c.source==='calendar'?'Google Calendar':c.source==='claude'?'Added by Claude':'Added by you')+'</span>';
   if(c.sample)tg+='<span class="tag ex">Example</span>';
   h+='<div class="tags">'+tg+'</div></div>';
   h+='<button class="more" data-more="'+c.id+'" aria-label="Options">'+IC.more+'</button>';
@@ -2238,9 +2238,28 @@ function msgRead(chat){
   MSG.chats.forEach(function(c){if(c.chat===chat)c.unread=0});msgBadge();msgSave();
   msgApi('/read',{chat:chat}).catch(function(){});
 }
+var inboxAt=0;
+function msgInbox(){
+  if(!msgOK()||Date.now()-inboxAt<20000)return;inboxAt=Date.now();
+  msgApi('/inbox').then(function(j){
+    var ids=[],added=[];
+    (j.items||[]).forEach(function(it){
+      ids.push(it._inbox);
+      if(it.type==='card'){
+        var id=it.id||nid();if(find(id))return;
+        var c={id:id,date:it.date||todayStr(),time:it.time||'',title:it.title||'',type:it.tags||'',address:it.address||'',contractor:it.contractor||'',foreman:it.foreman||'',phone:it.phone||'',crew:it.crew||'',crewSize:'',vehicle:it.vehicle||'',notes:it.notes||'',materials:it.materials||[],tools:it.tools||[],status:'todo',source:'claude',sample:false,comments:[]};
+        if(it.note)c.comments.push({t:Date.now(),text:it.note});
+        S.cards.push(c);added.push(jobTitle(c));
+      }
+    });
+    if(added.length){save();render();toast('Added by Claude: '+added.join(', '))}
+    if(ids.length)msgApi('/inbox/ack',{ids:ids}).catch(function(){});
+  },function(){});
+}
 var msgTimer=null;
 function msgTick(){
   clearTimeout(msgTimer);if(!msgOK())return;
+  msgInbox();
   var fast=S.view==='msg'&&!document.hidden;
   (MSG.cur&&S.view==='msg'?msgPollThread():msgPollChats()).then(function(){msgTimer=setTimeout(msgTick,fast?4000:60000)},function(){msgTimer=setTimeout(msgTick,fast?8000:60000)});
 }

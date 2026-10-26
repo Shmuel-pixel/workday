@@ -1,0 +1,24 @@
+name: Workday inbox
+# Claude uses this to drop sealed, signed items into the Workday app.
+# The drop is encrypted for the messages service; only the service can open it.
+on:
+  workflow_dispatch:
+    inputs:
+      drop:
+        description: Sealed drop (leave empty to just print the inbox key)
+        required: false
+        default: ''
+jobs:
+  drop:
+    runs-on: ubuntu-latest
+    env:
+      URL: https://workday-messages.shmuel-4f0.workers.dev
+      DROP: ${{ inputs.drop }}
+    steps:
+      - name: Inbox key
+        run: curl -sS "$URL/inbox-key"; echo
+      - name: Deliver
+        if: inputs.drop != ''
+        run: |
+          printf '%s' "$DROP" > drop.json
+          curl -sS -X POST -H 'Content-Type: application/json' --data-binary @drop.json "$URL/drop"; echo

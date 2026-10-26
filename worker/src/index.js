@@ -10,6 +10,8 @@ import { DurableObject } from 'cloudflare:workers';
 
 var GRAPH_DEFAULT = 'v23.0';
 var PUSH_SUB = 'https://shmuel-pixel.github.io/workday/';
+/* Public keys allowed to drop items into the Workday inbox (Claude, from the build chat). Public, not secret. */
+var AUTHOR_KEYS = ['MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE9ttkUVPeky+c+4pb5BCCsvRNrpMW13mVBfVXSXzIS5R/srHUEuyDXojNT6veALdfAWoyDL+JpwpGwrJWKlKkLw=='];
 
 export default {
   async fetch(req, env) {
@@ -99,6 +101,8 @@ export class Box extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS media (id TEXT PRIMARY KEY, mime TEXT, data BLOB, ts INTEGER)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS subs (endpoint TEXT PRIMARY KEY, sub TEXT, ts INTEGER)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS rems (key TEXT PRIMARY KEY, t INTEGER, title TEXT)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS inbox (id TEXT PRIMARY KEY, item TEXT, ts INTEGER, done INTEGER DEFAULT 0)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS drops (id TEXT PRIMARY KEY, ts INTEGER)');
   }
 
   get(k) { var r = this.sql.exec('SELECT v FROM kv WHERE k=?', k).toArray(); return r.length ? r[0].v : null; }
@@ -116,6 +120,8 @@ export class Box extends DurableObject {
       if (p === '/webhook' && req.method === 'GET') return this.verify(url);
       if (p === '/webhook' && req.method === 'POST') return await this.webhook(req);
       if (p === '/pair' && req.method === 'POST') return this.pair();
+      if (p === '/inbox-key') return json({ key: await this.inboxPublic() });
+      if (p === '/drop' && req.method === 'POST') return json(await this.drop(await req.json()));
 
       var key = req.headers.get('X-Key') || (p.indexOf('/media/') === 0 ? url.searchParams.get('k') : '');
       if (!this.get('app_key') || key !== this.get('app_key')) return err('Wrong or missing app key', 401);
@@ -131,6 +137,8 @@ export class Box extends DurableObject {
       if (p === '/vapid') return json({ key: await this.vapidPublic() });
       if (p === '/subscribe' && req.method === 'POST') return json(this.subscribe(await req.json()));
       if (p === '/push-test' && req.method === 'POST') return json(await this.pushAll());
+      if (p === '/inbox') return json({ items: this.sql.exec('SELECT id,item,ts FROM inbox WHERE done=0 ORDER BY ts').toArray().map(function (r) { var o = JSON.parse(r.item); o._inbox = r.id; return o; }) });
+      if (p === '/inbox/ack' && req.method === 'POST') { var ab = await req.json(), self2 = this; (ab.ids || []).forEach(function (i) { self2.sql.exec('UPDATE inbox SET done=1 WHERE id=?', String(i)); }); return json({ ok: true }); }
       if (p === '/reminders' && req.method === 'POST') return json(await this.setReminders(await req.json()));
       if (p === '/test/incoming' && req.method === 'POST') return json(await this.testIncoming(await req.json()));
       if (p.indexOf('/media/') === 0) return await this.media(decodeURIComponent(p.slice(7)));
@@ -384,7 +392,7 @@ export class Box extends DurableObject {
   /* ---------- reminders (mincha, summaries, Trello...) ---------- */
   async setReminders(b) {
     var items = (b && b.items) || [], now = Date.now();
-    this.sql.exec('DELETE FROM rems');
+    this.sql.exec('DELETE FROM rems WHERE key NOT LIKE \'x-%\'');
     var self = this;
     items.forEach(function (it) { if (it && it.key && +it.t > now) self.sql.exec('INSERT OR REPLACE INTO rems (key,t,title) VALUES (?,?,?)', String(it.key), Math.round(+it.t), String(it.title || 'Reminder')); });
     await this.nextAlarm();
@@ -405,6 +413,49 @@ export class Box extends DurableObject {
       await this.pushAll();
     }
     await this.nextAlarm();
+  }
+
+  /* ---------- inbox: sealed, signed items from Claude ---------- */
+  async inboxKeys() {
+    var pub = this.get('inbox_pub'), priv = this.get('inbox_priv');
+    if (!pub || !priv) {
+      var kp = await crypto.subtle.generateKey({ name: 'RSA-OAEP', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' }, true, ['encrypt', 'decrypt']);
+      pub = b64u(await crypto.subtle.exportKey('spki', kp.publicKey));
+      priv = JSON.stringify(await crypto.subtle.exportKey('jwk', kp.privateKey));
+      this.put('inbox_pub', pub); this.put('inbox_priv', priv);
+    }
+    return { pub: pub, priv: JSON.parse(priv) };
+  }
+  async inboxPublic() { return (await this.inboxKeys()).pub; }
+  async drop(b) {
+    /* b = {k: RSA-sealed AES key, iv, ct, sig}; sig = ECDSA over k.iv.ct by an author key */
+    if (!b || !b.k || !b.iv || !b.ct || !b.sig) return { ok: false, error: 'bad drop' };
+    var data = new TextEncoder().encode(b.k + '.' + b.iv + '.' + b.ct), good = false;
+    for (var i = 0; i < AUTHOR_KEYS.length && !good; i++) {
+      var ak = await crypto.subtle.importKey('spki', fromB64(AUTHOR_KEYS[i]), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+      good = await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, ak, fromB64(b.sig), data);
+    }
+    if (!good) return { ok: false, error: 'not signed' };
+    var keys = await this.inboxKeys();
+    var rk = await crypto.subtle.importKey('jwk', keys.priv, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['decrypt']);
+    var raw = await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, rk, fromB64(b.k));
+    var aes = await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['decrypt']);
+    var plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(b.iv) }, aes, fromB64(b.ct));
+    var msg = JSON.parse(new TextDecoder().decode(plain));
+    var now = Date.now();
+    if (!msg.id || Math.abs(now - (+msg.ts || 0)) > 2 * 86400000) return { ok: false, error: 'old drop' };
+    if (this.sql.exec('SELECT id FROM drops WHERE id=?', msg.id).toArray().length) return { ok: true, dup: true };
+    this.sql.exec('INSERT INTO drops (id,ts) VALUES (?,?)', msg.id, now);
+    var self = this, titles = [];
+    (msg.items || []).forEach(function (it, n) {
+      var iid = msg.id + '-' + n;
+      self.sql.exec('INSERT OR REPLACE INTO inbox (id,item,ts,done) VALUES (?,?,?,0)', iid, JSON.stringify(it), now);
+      if (it.remindAt && +it.remindAt > now) self.sql.exec('INSERT OR REPLACE INTO rems (key,t,title) VALUES (?,?,?)', 'x-' + iid, Math.round(+it.remindAt), String(it.remindText || it.title || 'Reminder'));
+      titles.push(it.title || 'item');
+    });
+    await this.nextAlarm();
+    if (titles.length) { this.put('notice', JSON.stringify({ title: 'Added to Workday: ' + titles.join(', '), ts: now })); await this.pushAll(); }
+    return { ok: true, added: titles.length };
   }
 
   /* ---------- test mode ---------- */
