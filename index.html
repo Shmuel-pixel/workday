@@ -301,7 +301,7 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 25, 2026 (14)';
+var KEY='workday.v1',APPVER='Oct 26, 2026 (15)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Angio','Charlie','Adon'],vehicles:['2019 Ford Box Truck','2013 Silverado','2016 F450 Utility Truck','Geronimo 2016 F550'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -630,7 +630,7 @@ function cardHtml(c,mode){
   h+='<button class="more" data-more="'+c.id+'" aria-label="Options">'+IC.more+'</button>';
   var cm=c.comments||[];
   if(cm.length){var lc=cm[cm.length-1];h+='<div class="last">'+(lc.img?'[Photo] ':'')+esc(lc.text||'')+'</div>'}
-  h+='<div class="cfoot"><button class="fbtn" data-notes="'+c.id+'">'+IC.note+'Notes'+(cm.length?' ('+cm.length+')':'')+'</button><button class="fbtn go" data-send="'+c.id+'">Send to crew</button>';
+  h+='<div class="cfoot"><button class="fbtn" data-notes="'+c.id+'">'+IC.note+'Notes'+(cm.length?' ('+cm.length+')':'')+'</button><button class="fbtn go" data-send="'+c.id+'">Send to crew</button><button class="fbtn go" data-fivestar="'+c.id+'">Five Star card</button>';
   if(mode==='missed')h+='<button class="fbtn ok" data-markdone="'+c.id+'">'+IC.check+'Mark done</button><button class="fbtn go" data-movetoday="'+c.id+'">Move to today &rarr;</button>';
   h+='</div>';
   return h+'</div>';
@@ -813,6 +813,26 @@ function openSheetView(id,tab){
       var d=new Date();info.textContent=(v.length-1)+' rows '+MID+' read from Google at '+fmtTime(pad(d.getHours())+':'+pad(d.getMinutes()))+(prev?(changed?' '+MID+' '+changed+' row'+(changed>1?'s':'')+' changed since you last looked (green)':' '+MID+' no changes since you last looked'):'');
     },function(e){info.textContent=e&&DENY[e.code]?eqErrText(e):'Could not read the sheet. Tap Refresh to try again.'});
   });
+}
+
+/* ---------- Five Star card maker (squagle) fill-in ---------- */
+var FIVESTAR_URL='https://telematics.squagle.com/five-star/';
+function fiveStarData(c){
+  return {date:c.date,site:(c.address||'').split(',')[0].trim(),crew:c.crew&&c.crew!=='Me'?c.crew:'',size:c.crewSize||'',vehicles:c.vehicle?[c.vehicle]:[],contractor:c.contractor||'',desc:c.type+(c.notes?': '+c.notes:''),materials:c.materials||[]};
+}
+function openFiveStar(id){
+  var c=find(id);if(!c)return;
+  var t='WDFILL:'+JSON.stringify(fiveStarData(c));
+  function sheet(copied){
+    var h='<h3>Five Star card</h3>';
+    h+=copied?'<div class="mt"><b>Copied.</b> Now:</div>':'<div class="warn">Copying did not work here. Press and hold the text below, Select All, Copy.</div><textarea id="fsT" rows="4" style="width:100%;box-sizing:border-box;font:12px monospace">'+esc(t)+'</textarea>';
+    h+='<ol style="margin:4px 0 0;padding-left:20px;font-size:15px;display:grid;gap:6px"><li>Open the card maker in Safari: <b>Create Daily Job Card</b>.</li><li>Tap the address bar, type <b>Fill</b>, and tap the <b>Fill from Workday</b> bookmark.</li><li>Tap <b>Paste</b> if Safari asks.</li><li>Pick the job site and contractor from the lists, check everything, then tap <b>Create Job Card</b>.</li></ol>';
+    h+='<div class="rem"><div><span>Job site</span><b>'+esc(fiveStarData(c).site||'-')+'</b></div><div><span>Crew leader</span><b>'+esc(c.crew||'-')+'</b></div><div><span>Vehicle</span><b>'+esc(c.vehicle||'-')+'</b></div><div><span>Contractor</span><b>'+esc(c.contractor||'-')+'</b></div></div>';
+    h+='<div class="row"><a class="btn primary" style="text-decoration:none" href="'+FIVESTAR_URL+'" target="_blank" rel="noopener">Open card maker</a><button class="btn" id="fsX">Close</button></div>';
+    openSheet(h);bind('fsX',closeSheet);
+    var ta=document.getElementById('fsT');if(ta){ta.focus();ta.select()}
+  }
+  try{navigator.clipboard.writeText(t).then(function(){sheet(true)},function(){sheet(false)})}catch(e){sheet(false)}
 }
 
 /* ---------- log ---------- */
@@ -1349,11 +1369,11 @@ var SHIM=(function(){
 
 /* ---------- card <-> sheet row ---------- */
 function cardRow(c,deleted){
-  return {'ID':c.id,'Date':c.date||'','Time':c.time||'','Status':c.status||'todo','Work Type':c.type||'','Address':c.address||'','Contractor':c.contractor||'','Foreman':c.foreman||'','Phone':c.phone||'','Crew':c.crew||'','Vehicle':c.vehicle||'','Materials':(c.materials||[]).join('; '),'Tools':(c.tools||[]).join('; '),'Notes':c.notes||'','Source':c.source||'manual','Order':c.o==null?'':String(c.o),'Created':c.created||'','Updated':c.updated||stampNow(),'Deleted':deleted||''};
+  return {'ID':c.id,'Date':c.date||'','Time':c.time||'','Status':c.status||'todo','Work Type':c.type||'','Address':c.address||'','Contractor':c.contractor||'','Foreman':c.foreman||'','Phone':c.phone||'','Crew':c.crew||'','Crew Size':c.crewSize||'','Vehicle':c.vehicle||'','Materials':(c.materials||[]).join('; '),'Tools':(c.tools||[]).join('; '),'Notes':c.notes||'','Source':c.source||'manual','Order':c.o==null?'':String(c.o),'Created':c.created||'','Updated':c.updated||stampNow(),'Deleted':deleted||''};
 }
 function rowCard(r,old){
   var c=old||{comments:[]};
-  c.id=r['ID'];c.date=r['Date'];c.time=r['Time'];c.status=r['Status']==='done'?'done':'todo';c.type=r['Work Type'];c.address=r['Address'];c.contractor=r['Contractor'];c.foreman=r['Foreman'];c.phone=r['Phone'];c.crew=r['Crew'];c.vehicle=r['Vehicle'];
+  c.id=r['ID'];c.date=r['Date'];c.time=r['Time'];c.status=r['Status']==='done'?'done':'todo';c.type=r['Work Type'];c.address=r['Address'];c.contractor=r['Contractor'];c.foreman=r['Foreman'];c.phone=r['Phone'];c.crew=r['Crew'];c.crewSize=r['Crew Size']||'';c.vehicle=r['Vehicle'];
   c.materials=r['Materials']?r['Materials'].split(/;\s*/).filter(function(x){return x}):[];c.tools=r['Tools']?r['Tools'].split(/;\s*/).filter(function(x){return x}):[];
   c.notes=r['Notes'];c.source=r['Source']||'manual';if(r['Order']!==''&&r['Order']!=null)c.o=+r['Order'];else delete c.o;c.created=r['Created'];c.updated=r['Updated'];c.sample=false;c.comments=c.comments||[];
   return c;
@@ -1817,6 +1837,7 @@ function openMenu(id){
   h+='<button class="menuitem" id="mTom">Move to next work day</button>';
   h+='<div class="two"><button class="menuitem" id="mUp">Move up</button><button class="menuitem" id="mDown">Move down</button></div>';
   h+='<button class="menuitem" id="mSend">Send to crew</button>';
+  h+='<button class="menuitem" id="mFive">Five Star card (fill the card maker)</button>';
   h+='<button class="menuitem" id="mNotes">Notes and photos</button>';
   h+='<button class="menuitem" id="mEdit">Edit details</button>';
   h+='<button class="menuitem red" id="mDel">Delete card</button>';
@@ -1830,6 +1851,7 @@ function openMenu(id){
   bind('mEdit',function(){openEdit(id)});
   bind('mNotes',function(){openNotes(id)});
   bind('mSend',function(){openSend(id)});
+  bind('mFive',function(){openFiveStar(id)});
   bind('mUp',function(){if(moveBy(id,-1)){save();closeSheet();render()}else toast('Already at the top')});
   bind('mDown',function(){if(moveBy(id,1)){save();closeSheet();render()}else toast('Already at the bottom')});
   bind('mDel',function(){confirmSheet('Delete this card?',c.type+' at '+c.address,'Delete',function(){S.cards=S.cards.filter(function(x){return x.id!==id});save();closeSheet();render();toast('Card deleted')})});
@@ -1845,7 +1867,7 @@ function openEdit(id){
   h+='<div class="field"><label for="fCon">Contractor</label><input id="fCon" autocomplete="off" value="'+esc(c.contractor)+'" placeholder="Search or type a new contractor"><div class="sugs" id="fConS"></div></div>';
   h+='<div class="two"><div class="field"><label for="fFor">Foreman</label><input id="fFor" autocomplete="off" value="'+esc(c.foreman||'')+'" placeholder="Who you are talking to"><div class="sugs" id="fForS"></div></div><div class="field"><label for="fPh">Foreman phone</label><input id="fPh" type="tel" value="'+esc(c.phone)+'"></div></div>';
   h+='<button type="button" class="minilink" id="fForL">Find foreman in Google Contacts</button><div id="fForOut"></div>';
-  h+='<div class="two"><div class="field"><label for="fCrew">Crew</label><select id="fCrew">'+opts(S.crew.concat(['Me']),c.crew,'Choose crew')+'</select></div><div class="field"><label for="fVeh">Vehicle</label><select id="fVeh">'+opts(S.vehicles,c.vehicle,'No vehicle')+'</select></div></div>';
+  h+='<div class="two"><div class="field"><label for="fCrew">Crew</label><select id="fCrew">'+opts(S.crew.concat(['Me']),c.crew,'Choose crew')+'</select></div><div class="field"><label for="fSize">Crew size</label><input id="fSize" type="number" inputmode="numeric" min="1" value="'+esc(c.crewSize||'')+'"></div><div class="field"><label for="fVeh">Vehicle</label><select id="fVeh">'+opts(S.vehicles,c.vehicle,'No vehicle')+'</select></div></div>';
   h+='<div class="field"><label for="fMat">Materials (one per line, with amount)</label><textarea id="fMat" rows="3" placeholder="Contractor bags, 2 boxes">'+esc((c.materials||[]).join('\n'))+'</textarea></div>';
   var tsel=c.tools||[],th='';S.tools.concat(tsel.filter(function(x){return S.tools.indexOf(x)<0})).forEach(function(tn,i){th+='<label class="tchk"><input type="checkbox" name="fTool" id="fTool'+i+'" value="'+esc(tn)+'"'+(tsel.indexOf(tn)>=0?' checked':'')+'>'+esc(tn)+'</label>'});
   var eqo='';if(EQ.rows.length){eqo='<select id="fEqAdd" style="margin-top:6px"><option value="">Add from equipment sheet...</option>';groups().forEach(function(g){eqo+='<optgroup label="'+esc(g)+'">';EQ.rows.filter(function(r){return r.group===g}).forEach(function(r){var nm=r.item+(r.brand&&r.brand!=='Not specified'?' ('+r.brand+(r.model&&r.model!=='Not specified'?' '+r.model:'')+')':'')+' - '+g;eqo+='<option value="'+esc(nm)+'">'+esc(r.item+(r.brand?' '+r.brand:'')+(r.model?' '+r.model:''))+'</option>'});eqo+='</optgroup>'});eqo+='</select>'}
@@ -1864,7 +1886,7 @@ function openEdit(id){
   var forced=false;
   bind('fCancel',closeSheet);
   bind('fSave',function(){
-    var v={date:val('fDate'),time:val('fTime'),type:val('fType'),address:val('fAddr').trim(),contractor:val('fCon').trim(),foreman:val('fFor').trim(),phone:val('fPh').trim(),crew:val('fCrew'),vehicle:val('fVeh'),notes:val('fNotes'),materials:val('fMat').split('\n').map(function(x){return x.trim()}).filter(function(x){return x}),tools:[].slice.call(document.querySelectorAll('input[name=fTool]:checked')).map(function(x){return x.value})};
+    var v={date:val('fDate'),time:val('fTime'),type:val('fType'),address:val('fAddr').trim(),contractor:val('fCon').trim(),foreman:val('fFor').trim(),phone:val('fPh').trim(),crew:val('fCrew'),crewSize:val('fSize'),vehicle:val('fVeh'),notes:val('fNotes'),materials:val('fMat').split('\n').map(function(x){return x.trim()}).filter(function(x){return x}),tools:[].slice.call(document.querySelectorAll('input[name=fTool]:checked')).map(function(x){return x.value})};
     if(!v.date){document.getElementById('fWarn').innerHTML='<div class="warn">Pick a date for this job.</div>';return}
     var miss=[];if(!v.address)miss.push('address');if(!v.time)miss.push('time');if(!v.crew)miss.push('crew');
     if(miss.length&&!forced){forced=true;document.getElementById('fWarn').innerHTML='<div class="warn">No '+miss.join(', ')+' yet. Are you sure? Tap Save again to keep it this way.</div>';return}
@@ -1972,8 +1994,9 @@ function openSettings(){
 
 /* ---------- events ---------- */
 document.addEventListener('click',function(e){
-  var t=e.target.closest('[data-sheetview],[data-zmanim],[data-send],[data-crewedit],[data-printsheet],[data-printday],[data-aiundo],[data-dm],[data-dmf],[data-eq],[data-eqloc],[data-copysum],[data-notes],[data-markdone],[data-more],[data-movetoday],[data-tab],[data-open],[data-rm],[data-addto]');if(!t)return;
-  if(t.dataset.sheetview)openSheetView(t.dataset.sheetview);
+  var t=e.target.closest('[data-fivestar],[data-sheetview],[data-zmanim],[data-send],[data-crewedit],[data-printsheet],[data-printday],[data-aiundo],[data-dm],[data-dmf],[data-eq],[data-eqloc],[data-copysum],[data-notes],[data-markdone],[data-more],[data-movetoday],[data-tab],[data-open],[data-rm],[data-addto]');if(!t)return;
+  if(t.dataset.fivestar)openFiveStar(t.dataset.fivestar);
+  else if(t.dataset.sheetview)openSheetView(t.dataset.sheetview);
   else if(t.dataset.zmanim)openZmanim(t.dataset.zmanim);
   else if(t.dataset.send)openSend(t.dataset.send);
   else if(t.dataset.crewedit)openCrewEdit(t.dataset.crewedit,openSettings);
