@@ -1,0 +1,25 @@
+name: Deploy messages service
+on:
+  push:
+    branches: [main]
+    paths: ['worker/**', '.github/workflows/deploy-messages.yml']
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for the Cloudflare keys
+        id: chk
+        env:
+          T: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          A: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$T" ] && [ -n "$A" ]; then echo "ok=1" >> "$GITHUB_OUTPUT"; else echo "::warning::Add the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID secrets, then run this again."; fi
+      - name: Deploy to Cloudflare
+        if: steps.chk.outputs.ok == '1'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
