@@ -234,8 +234,18 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 .cside{display:grid;justify-items:end;gap:4px}.cside small{color:var(--muted);font-size:12px}
 .cun{min-width:20px;height:20px;border-radius:10px;background:var(--done);color:#fff;font-size:12px;font-weight:700;line-height:20px;text-align:center;padding:0 5px}
 .mthead{display:grid;margin-bottom:8px}.mthead small{color:var(--muted)}
-.mthread{max-height:none;height:calc(100dvh - 520px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));min-height:170px;margin-bottom:8px}
-body.inchat #fab{display:none}
+.mthread{max-height:none;flex:1;min-height:0;height:auto}
+body.msgmode #fab{display:none}
+body.msgmode main{padding-bottom:0}
+body.msgmode #mainIn{display:flex;flex-direction:column;gap:8px;height:var(--msgH,70vh);overflow:hidden;padding-block:8px;box-sizing:border-box}
+body.msgmode .chatlist{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;align-content:start}
+body.msgmode .msgq,body.msgmode .msgtest,body.msgmode .compose,body.msgmode .mactions,body.msgmode #mPend,body.msgmode #mErr,body.msgmode #mTrOut,body.msgmode .warn{flex:none;margin:0}
+.msgtop{align-items:center}
+.mtitle{display:grid;flex:1;min-width:0}.mtitle b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:17px}.mtitle small{color:var(--muted)}
+.mtitle .mbig{font-size:24px}
+.mback{font-size:34px;line-height:1;padding:0 8px 4px 0;color:var(--todo)}
+.mactions{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.mtestpill{margin-left:auto;font-size:12px;font-weight:700;color:var(--muted);background:var(--sunk);border-radius:10px;padding:2px 8px}
 .bub audio,.bub video{max-width:100%}
 .tab.on{color:var(--todo)}
 /* calendar */
@@ -318,7 +328,7 @@ body.inchat #fab{display:none}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 26, 2026 (18)';
+var KEY='workday.v1',APPVER='Oct 26, 2026 (19)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -609,6 +619,17 @@ function renderHeader(){
   var s=S.view==='day'?S.cur:T;
   var tb='';TABS.forEach(function(t){tb+='<button class="tab'+(S.view===t[0]?' on':'')+'" data-tab="'+t[0]+'" aria-current="'+(S.view===t[0]?'page':'false')+'">'+t[2]+'<span>'+t[1]+'</span>'+(t[0]==='msg'?'<b class="tbadge"'+(msgUnread()?'':' hidden')+'>'+msgUnread()+'</b>':'')+'</button>'});
   document.getElementById('tabs').innerHTML=tb;
+  if(S.view==='msg'){
+    var mh='<div class="toprow msgtop">';
+    if(msgOK()&&MSG.cur)mh+='<button class="mback" id="mBack" aria-label="Back to chats">&lsaquo;</button><div class="mtitle"><b>'+esc(msgCurName())+'</b><small>'+esc(msgPhone(MSG.cur))+'</small></div>';
+    else mh+='<div class="mtitle"><b class="mbig">Messages</b></div>'+(msgOK()?'<button class="btn" id="mNew">New message</button>':'');
+    mh+='<button class="iconbtn" id="gear" aria-label="Settings">'+IC.gear+'</button></div>';
+    el.innerHTML=mh;
+    document.getElementById('gear').onclick=openSettings;
+    bind('mBack',function(){MSG.cur=null;render();msgPollChats()});
+    bind('mNew',openMsgNew);
+    return;
+  }
   var h='<div class="toprow"><div class="dates" id="openCal" role="button" tabindex="0" aria-label="Open the calendar"><div class="heb" lang="he">'+hebHe(s,true)+'</div><div class="eng">'+esc(engLong(s))+'</div><div class="hebeng">'+esc(hebEn(s))+' <span class="calhint">'+IC.cal+(S.view==='cal'?'Close calendar':'Calendar')+'</span></div></div><button class="iconbtn" id="gear" aria-label="Settings">'+IC.gear+'</button></div>';
   h+=chipsFor(s);
   if(S.view==='day'){
@@ -1839,12 +1860,13 @@ function printSupply(){
 var TABS=[['day','Today',IC.day],['msg','Messages',IC.msg],['tr','Translate',IC.tr],['log','Log',IC.log],['ord','Orders',IC.ord],['dump','Dumpsters',IC.dump],['tool','Tools',IC.tool]];
 function render(){
   document.body.classList.toggle('inchat',S.view==='msg'&&!!MSG.cur);
+  document.body.classList.toggle('msgmode',S.view==='msg'&&msgOK());
   renderHeader();
   if(S.view==='tr')renderTr();
   else if(S.view==='day')renderDay();else if(S.view==='cal')renderCal();else if(S.view==='log')renderLog();
   else if(S.view==='ord'){renderPh('Orders','This page will run off your Supply Tracker orders. Tell me what one order line needs (item, quantity, job, supplier, date needed) and I will build it.');document.getElementById('mainIn').insertAdjacentHTML('beforeend','<div class="row" style="justify-content:center"><button class="btn" data-sheetview="1X-1lPEIHSr5uEjTAq7UA4MfzE1LwC_Z4erVa3dELcuo">View Supply Tracker sheet</button></div>')}
   else if(S.view==='dump')renderDump();
-  else if(S.view==='msg')renderMsg();
+  else if(S.view==='msg'){renderMsg();msgFit()}
   else renderTools();
 }
 
@@ -2141,6 +2163,7 @@ function msgName(chat,fallback){
   for(i=0;i<MASTER.foremen.length;i++)if(MASTER.foremen[i].phone&&digits(MASTER.foremen[i].phone)===d)return MASTER.foremen[i].name+(MASTER.foremen[i].contractor?' ('+MASTER.foremen[i].contractor+')':'');
   return fallback||msgPhone(chat);
 }
+function msgCurName(){var c=null;MSG.chats.forEach(function(x){if(x.chat===MSG.cur)c=x});return msgName(MSG.cur,(c&&c.name)||MSG.newName)}
 function msgPhone(chat){var d=digits(chat);if(d.length===11&&d[0]==='1')return '('+d.slice(1,4)+') '+d.slice(4,7)+'-'+d.slice(7);return '+'+d}
 function msgClock(ts){var d=new Date(ts);return fmtTime(pad(d.getHours())+':'+pad(d.getMinutes()))}
 function msgWhen(ts){var d=new Date(ts),t=ymd(d);if(t===todayStr())return msgClock(ts);if(diff(t,todayStr())===-1)return 'Yesterday';return engShort(t)}
@@ -2191,7 +2214,7 @@ function renderMsg(){
   }
   if(MSG.cur){msgThreadView();return}
   var q=MSG.q.toLowerCase();
-  var h='<div class="msghead"><h2>Messages</h2><button class="btn" id="mNew">New message</button></div>';
+  var h='';
   if(!MSG.wa)h+='<div class="mt msgtest">Test mode: WhatsApp is not connected yet. Messages are saved but nobody gets them. <button class="minilink" id="mTestIn">Send me a test message</button></div>';
   if(MSG.err)h+='<div class="warn">Could not reach the messages service: '+esc(MSG.err)+'</div>';
   h+='<input id="mQ" class="msgq" type="search" placeholder="Search chats" value="'+esc(MSG.q)+'">';
@@ -2204,7 +2227,6 @@ function renderMsg(){
   h+='</div>';
   m.innerHTML=h;
   var qi=document.getElementById('mQ');qi.oninput=function(){MSG.q=qi.value;var p=qi.selectionStart;renderMsg();var n=document.getElementById('mQ');n.focus();try{n.setSelectionRange(p,p)}catch(e){}};
-  bind('mNew',openMsgNew);
   bind('mTestIn',function(){msgApi('/test/incoming',{from:'17325550100',name:'Test',text:'This is a test message. Tap to open it, then answer it.'}).then(function(){toast('Test message sent');msgPollChats()},function(e){toast(e.message)})});
 }
 function msgOpen(chat,name){
@@ -2212,18 +2234,14 @@ function msgOpen(chat,name){
   S.view='msg';render();window.scrollTo(0,0);msgPollThread().then(function(){msgRead(MSG.cur)});clearTimeout(msgTimer);msgTimer=setTimeout(msgTick,4000);
 }
 function msgThreadView(){
-  var c=null;MSG.chats.forEach(function(x){if(x.chat===MSG.cur)c=x});
-  var name=msgName(MSG.cur,(c&&c.name)||MSG.newName);
-  var h='<div class="msghead"><button class="minilink" id="mBack">&lsaquo; Chats</button><span class="row" style="gap:14px"><a class="minilink" href="tel:+'+esc(MSG.cur)+'">Call</a><button class="minilink" id="mTr">Translate</button><button class="minilink" id="mJob">Make a job</button></span></div>';
-  h+='<div class="mthead"><b>'+esc(name)+'</b><small>'+esc(msgPhone(MSG.cur))+'</small></div>';
-  if(!MSG.wa)h+='<div class="mt msgtest">Test mode: messages are saved here but not sent.</div>';
+  var name=msgCurName();
+  var h='<div class="mactions"><a class="minilink" href="tel:+'+esc(MSG.cur)+'">Call</a><button class="minilink" id="mTr">Translate</button><button class="minilink" id="mJob">Make a job</button>'+(MSG.wa?'':'<span class="mtestpill">Test mode</span>')+'</div>';
   h+='<div class="thread mthread" id="mThr"></div><div id="mPend"></div><div id="mErr"></div><div id="mTrOut"></div>';
   h+='<div class="compose"><label class="photo" for="mImg" aria-label="Add photo">'+IC.cam+'</label><input id="mImg" type="file" accept="image/*" hidden><textarea id="mTxt" rows="1" placeholder="Message"></textarea><button class="send" id="mSend">Send</button></div>';
   document.getElementById('mainIn').innerHTML=h;
   msgDrawThread(true);
   var ta=document.getElementById('mTxt');
   ta.oninput=function(){ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,120)+'px'};
-  bind('mBack',function(){MSG.cur=null;render();msgPollChats()});
   bind('mJob',function(){var last='';MSG.thread.forEach(function(x){if(x.dir==='in'&&x.text)last=x.text});openEdit(null,{notes:(last?name+': '+last:'From '+name),phone:msgPhone(MSG.cur)})});
   document.getElementById('mImg').onchange=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;shrink(f,function(url){MSG.pend=url;msgShowPend()})};
   bind('mSend',function(){
@@ -2244,6 +2262,16 @@ function msgThreadView(){
     },function(e){out.innerHTML='<div class="warn">'+esc(e.message||String(e))+'</div>'});
   });
 }
+function msgFit(){
+  if(!document.body.classList.contains('msgmode'))return;
+  var vv=window.visualViewport,vh=vv?vv.height:window.innerHeight;
+  var kb=window.innerHeight-vh>120;
+  var hh=document.getElementById('hdr').offsetHeight,th=kb?0:document.getElementById('tabs').offsetHeight;
+  document.documentElement.style.setProperty('--msgH',Math.max(200,vh-hh-th)+'px');
+  if(window.scrollY)window.scrollTo(0,0);
+  var t=document.getElementById('mThr');if(t&&kb)t.scrollTop=t.scrollHeight;
+}
+try{(window.visualViewport||window).addEventListener('resize',msgFit);window.addEventListener('orientationchange',function(){setTimeout(msgFit,300)})}catch(e){}
 function msgShowPend(){var p=document.getElementById('mPend');if(!p)return;
   if(!MSG.pend){p.innerHTML='';return}
   p.innerHTML='<div class="pend"><img src="'+MSG.pend+'" alt="Photo to send"><span>Photo ready to send</span><button id="mPX">Remove</button></div>';
