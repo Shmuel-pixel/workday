@@ -121,6 +121,7 @@ export class Box extends DurableObject {
       if (p === '/webhook' && req.method === 'POST') return await this.webhook(req);
       if (p === '/pair' && req.method === 'POST') return this.pair();
       if (p === '/inbox-key') return json({ key: await this.inboxPublic() });
+      if (p === '/handoff' && req.method === 'GET') return json(this.handoffTake(url.searchParams.get('c')));
       if (p === '/widget' && req.method === 'GET') { var wk = this.get('widget_key'); if (!wk || url.searchParams.get('w') !== wk) return err('Wrong widget key', 401); return json(JSON.parse(this.get('widget') || '{"items":[]}')); }
       if (p === '/drop' && req.method === 'POST') return json(await this.drop(await req.json()));
 
@@ -140,6 +141,7 @@ export class Box extends DurableObject {
       if (p === '/push-test' && req.method === 'POST') return json(await this.pushAll());
       if (p === '/inbox') return json({ items: this.sql.exec('SELECT id,item,ts FROM inbox WHERE done=0 ORDER BY ts').toArray().map(function (r) { var o = JSON.parse(r.item); o._inbox = r.id; return o; }) });
       if (p === '/inbox/ack' && req.method === 'POST') { var ab = await req.json(), self2 = this; (ab.ids || []).forEach(function (i) { self2.sql.exec('UPDATE inbox SET done=1 WHERE id=?', String(i)); }); return json({ ok: true }); }
+      if (p === '/handoff' && req.method === 'POST') return json(this.handoffMake(await req.json()));
       if (p === '/widget' && req.method === 'POST') { this.put('widget', JSON.stringify(await req.json())); return json({ ok: true }); }
       if (p === '/widget-key') { if (!this.get('widget_key')) this.put('widget_key', rand(24)); return json({ key: this.get('widget_key') }); }
       if (p === '/transcribe' && req.method === 'POST') return json(await this.transcribe(await req.json()));
@@ -404,6 +406,24 @@ export class Box extends DurableObject {
     if (!audio) return { error: 'No audio came through.' };
     var r = await this.env.AI.run('@cf/openai/whisper-large-v3-turbo', { audio: audio, language: 'en', vad_filter: true });
     return { text: ((r && r.text) || '').trim() };
+  }
+
+  /* ---------- set up another device with a 6-digit code (single use, 15 minutes) ---------- */
+  handoffMake(b) {
+    var a = new Uint32Array(1); crypto.getRandomValues(a);
+    var code = String(100000 + (a[0] % 900000));
+    this.put('handoff', JSON.stringify({ code: code, blob: b && b.blob, exp: Date.now() + 15 * 60000, tries: 0 }));
+    return { code: code, minutes: 15 };
+  }
+  handoffTake(c) {
+    var h = this.get('handoff') ? JSON.parse(this.get('handoff')) : null;
+    if (!h || Date.now() > h.exp) { this.put('handoff', ''); return { error: 'That code has expired. Make a new one on your other device.' }; }
+    if (String(c || '').trim() !== h.code) {
+      h.tries++; if (h.tries >= 10) { this.put('handoff', ''); return { error: 'Too many wrong tries. Make a new code on your other device.' }; }
+      this.put('handoff', JSON.stringify(h)); return { error: 'That code is not right. Check the number on your other device.' };
+    }
+    this.put('handoff', '');
+    return { blob: h.blob };
   }
 
   /* ---------- reminders (mincha, summaries, Trello...) ---------- */

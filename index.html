@@ -215,6 +215,9 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 .keybig .knum{font-size:40px}.keybig b{font-size:18px}.keybig a{color:var(--todo)}
 .keybig.ret{border-color:var(--missed)}.keybig.ret .knum{color:var(--missed);text-decoration:line-through}
 .kretire{color:var(--missed);font-weight:800;letter-spacing:.04em}
+.hocode{font-family:var(--display);font-size:52px;font-weight:800;text-align:center;letter-spacing:.06em;color:var(--todo);font-variant-numeric:tabular-nums}
+.hoin{width:100%;box-sizing:border-box;text-align:center;font-size:34px!important;font-weight:800;letter-spacing:.12em;padding:12px;border-radius:14px;border:2px solid var(--todo);background:var(--surface);color:var(--fg)}
+.newdev{display:grid;gap:6px;background:var(--todo-soft);border-radius:14px;padding:14px}.newdev span{color:var(--muted);font-size:14px}
 .setgrp{display:grid;gap:6px}
 .setlab{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding-left:4px}
 .setbox{background:var(--bg);border-radius:12px;overflow:hidden}
@@ -500,7 +503,7 @@ nav.tabs{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20p
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 27, 2026 (31)';
+var KEY='workday.v1',APPVER='Oct 27, 2026 (32)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -2270,6 +2273,7 @@ function render(){
   else if(S.view==='dump')renderDump();
   else if(S.view==='msg'){renderMsg();msgFit()}
   else renderTools();
+  if(S.view==='day'&&!connOK()&&!msgOK()){var mi=document.getElementById('mainIn');if(mi)mi.insertAdjacentHTML('afterbegin','<div class="newdev"><b>New device?</b><span>Copy your jobs, connections and settings from your iPhone.</span><button class="btn primary" data-handoff="1">Set up from my iPhone</button></div>')}
 }
 
 /* ---------- sheets ---------- */
@@ -2471,6 +2475,7 @@ function openSettings(page){
       setRow('sTypes','Work types (tags)','',String(S.types.length)));
     h+=setGroup('Assistant',setRow('sAI','Assistant and voice',getKey()?'Key saved on this phone':'No key yet',''));
     h+=setGroup('Sheets',setRow('sSheets','View, print or open your sheets',SHEETS.length+' sheets',''));
+    h+=setGroup('Devices',setRow('sHoMake','Set up another device','Copy everything to your iPad with a code','')+setRow('sHoTake','Set up from my iPhone','Type the code from your other device',''));
     h+=setGroup('Home Screen',setRow('sWidget','Widget','Today\'s jobs on your Home Screen',''));
     h+=setGroup('App','<div class="setrow static"><span><b>Version</b></span><span class="setr">'+APPVER+'</span></div><button class="setrow" id="appUpd"><span><b style="color:var(--todo)">Update app now</b></span><span></span></button>');
     h+='<button class="btn primary" id="sClose">Done</button>';
@@ -2481,7 +2486,7 @@ function openSettings(page){
     bind('sLoc',function(){openLocation(openSettings)});
     bind('sRem',function(){openSettings('rem')});bind('sCrew',function(){openSettings('crew')});
     bind('sVeh',function(){openSettings('vehicles')});bind('sTools',function(){openSettings('tools')});bind('sTypes',function(){openSettings('types')});
-    bind('sAI',function(){openSettings('ai')});bind('sWidget',openWidget);bind('sSheets',function(){openSettings('sheets')});
+    bind('sAI',function(){openSettings('ai')});bind('sWidget',openWidget);bind('sHoMake',openHandoffMake);bind('sHoTake',openHandoffTake);bind('sSheets',function(){openSettings('sheets')});
     return;
   }
   if(P==='rem'){h+=head('Reminders')+remEditor().replace('<label>Reminders</label>','')}
@@ -2511,6 +2516,7 @@ function openSettings(page){
 
 /* ---------- events ---------- */
 document.addEventListener('click',function(e){
+  if(e.target.closest('[data-handoff]')){openHandoffTake();return}
   var lg=e.target.closest('[data-lgo],[data-lcopy]');if(lg){e.preventDefault();if(lg.dataset.lgo)window.location.href=lg.dataset.lgo;else copyText(decodeURIComponent(lg.dataset.lcopy));return}
   var ks=e.target.closest('[data-toolseg],[data-key]');if(ks){if(ks.dataset.toolseg){TOOLSEG=ks.dataset.toolseg;try{localStorage.setItem('workday.toolseg',TOOLSEG)}catch(x){}render();mainTop();if(TOOLSEG==='keys')keysLoad()}else openKey(ks.dataset.key);return}
   var cdx=e.target.closest('.card');if(cdx&&cdx.dataset.id&&!e.target.closest('button,a,input,label,[data-grip]')){openEdit(cdx.dataset.id);return}
@@ -3028,6 +3034,52 @@ function keyUpdate(serial,ch){
     return bridge('updateValues',{book:'workday',range:'Keys!B'+(i+1)+':J'+(i+1),values:[row]}).then(function(){
       var mine=keyFind(serial);if(mine)for(var kk in cur)mine[kk]=cur[kk];keysSave();return serial;
     });
+  });
+}
+
+/* ---------- set up another device (iPad) with a 6-digit code ---------- */
+var MSG_DEFAULT='https://workday-messages.shmuel-4f0.workers.dev',APP_URL='https://shmuel-pixel.github.io/workday/';
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function openHandoffMake(){
+  var h='<div class="sethead"><button class="minilink" id="hoBack">&lsaquo; Settings</button></div><h3>Set up another device</h3>';
+  if(!msgOK()){h+='<div class="warn">Set up Messages and notifications on this device first. The code is sent through it.</div><button class="btn" id="hoDone">Done</button>';openSheet(h);bind('hoBack',function(){openSettings('main')});bind('hoDone',closeSheet);return}
+  h+='<ol class="steps"><li>On the iPad, open Safari, go to <b>shmuel-pixel.github.io/workday</b>, tap Share, then <b>Add to Home Screen</b>. <button class="minilink" id="hoShare">Send the link (AirDrop)</button></li><li>Open Workday on the iPad from its new icon and tap <b>Set up from my iPhone</b>.</li><li>Tap <b>Make code</b> here and type the code on the iPad.</li></ol>';
+  h+='<label class="tchk"><input type="checkbox" id="hoKey"'+(getKey()?' checked':' disabled')+'>Copy the Assistant key too</label>';
+  h+='<div class="row"><button class="btn primary" id="hoMake">Make code</button></div><div id="hoOut"></div>';
+  h+='<div class="mt">Copies the Google connection, Messages, the Assistant key and your settings. The code works once and only for 15 minutes.</div><button class="btn" id="hoDone">Done</button>';
+  openSheet(h);
+  bind('hoBack',function(){openSettings('main')});bind('hoDone',function(){closeSheet();render()});
+  bind('hoShare',function(){if(navigator.share)navigator.share({title:'Workday',url:APP_URL}).catch(function(){});else copyText(APP_URL)});
+  bind('hoMake',function(){
+    var out=document.getElementById('hoOut');out.innerHTML='<div class="mt">Making a code...</div>';
+    var blob={conn:CONN||null,msg:{url:MSG.url,key:MSG.key},api:document.getElementById('hoKey').checked?getKey():'',proj:projLink(),
+      prefs:{'workday.speak':lsGet('workday.speak'),'workday.autotalk':lsGet('workday.autotalk'),'workday.translit':lsGet('workday.translit'),'workday.loc':lsGet('workday.loc'),'workday.rem':lsGet('workday.rem'),'workday.toolseg':lsGet('workday.toolseg')}};
+    msgApi('/handoff',{blob:blob}).then(function(j){
+      out.innerHTML='<div class="hocode">'+esc(j.code.slice(0,3)+' '+j.code.slice(3))+'</div><div class="mt" style="text-align:center">Type this on the iPad. Good for 15 minutes, one time.</div>';
+    },function(e){out.innerHTML='<div class="warn">'+esc(e.message)+'</div>'});
+  });
+}
+function openHandoffTake(){
+  var h='<h3>Set up from my iPhone</h3><div class="mt">On your iPhone, open Workday, tap the gear, then <b>Set up another device</b>, and tap <b>Make code</b>. Type that code here.</div>';
+  h+='<input id="hoIn" class="hoin" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="000 000">';
+  h+='<div id="hoOut"></div><div class="row"><button class="btn primary" id="hoGo">Set up</button><button class="btn" id="hoX">Cancel</button></div>';
+  openSheet(h);bind('hoX',closeSheet);
+  bind('hoGo',function(){
+    var c=val('hoIn').replace(/\D/g,''),out=document.getElementById('hoOut');if(c.length!==6){out.innerHTML='<div class="warn">The code has 6 numbers.</div>';return}
+    out.innerHTML='<div class="mt">Setting up...</div>';
+    fetch(MSG_DEFAULT+'/handoff?c='+c).then(function(r){return r.json()}).then(function(j){
+      if(j.error||!j.blob){out.innerHTML='<div class="warn">'+esc(j.error||'Something went wrong. Make a new code.')+'</div>';return}
+      var b=j.blob;
+      try{
+        if(b.conn&&b.conn.url)localStorage.setItem(CKEY,JSON.stringify(b.conn));
+        if(b.msg&&b.msg.url&&b.msg.key)localStorage.setItem('workday.msg',JSON.stringify({url:b.msg.url,key:b.msg.key,chats:[]}));
+        if(b.api)setKey(b.api);
+        if(b.proj)localStorage.setItem('workday.proj',b.proj);
+        var pr=b.prefs||{};for(var k in pr)if(pr[k]!==null&&pr[k]!==undefined)localStorage.setItem(k,pr[k]);
+      }catch(e){out.innerHTML='<div class="warn">This iPad would not save the settings. Check that private browsing is off.</div>';return}
+      out.innerHTML='<div class="mt"><b>All set.</b> Loading your jobs...</div>';
+      setTimeout(function(){location.replace(location.pathname+'?setup='+Date.now())},900);
+    },function(){out.innerHTML='<div class="warn">No connection. Check the internet and try again.</div>'});
   });
 }
 
