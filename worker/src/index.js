@@ -139,6 +139,7 @@ export class Box extends DurableObject {
       if (p === '/push-test' && req.method === 'POST') return json(await this.pushAll());
       if (p === '/inbox') return json({ items: this.sql.exec('SELECT id,item,ts FROM inbox WHERE done=0 ORDER BY ts').toArray().map(function (r) { var o = JSON.parse(r.item); o._inbox = r.id; return o; }) });
       if (p === '/inbox/ack' && req.method === 'POST') { var ab = await req.json(), self2 = this; (ab.ids || []).forEach(function (i) { self2.sql.exec('UPDATE inbox SET done=1 WHERE id=?', String(i)); }); return json({ ok: true }); }
+      if (p === '/transcribe' && req.method === 'POST') return json(await this.transcribe(await req.json()));
       if (p === '/reminders' && req.method === 'POST') return json(await this.setReminders(await req.json()));
       if (p === '/test/incoming' && req.method === 'POST') return json(await this.testIncoming(await req.json()));
       if (p.indexOf('/media/') === 0) return await this.media(decodeURIComponent(p.slice(7)));
@@ -387,6 +388,15 @@ export class Box extends DurableObject {
       } catch (e) { errors.push(String(e)); }
     }));
     return { sent: sent, subs: subs.length, errors: errors };
+  }
+
+  /* ---------- voice: speech to text (Cloudflare Workers AI, Whisper) ---------- */
+  async transcribe(b) {
+    if (!this.env.AI) return { error: 'Voice is not turned on in the service yet.' };
+    var audio = String((b && b.audio) || '');
+    if (!audio) return { error: 'No audio came through.' };
+    var r = await this.env.AI.run('@cf/openai/whisper-large-v3-turbo', { audio: audio, language: 'en', vad_filter: true });
+    return { text: ((r && r.text) || '').trim() };
   }
 
   /* ---------- reminders (mincha, summaries, Trello...) ---------- */

@@ -169,6 +169,13 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 .qty{font-family:var(--display);font-weight:700;font-variant-numeric:tabular-nums}
 .pill{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap}
 .pill.good{background:var(--done-soft);color:var(--done)}.pill.bad{background:var(--missed-soft);color:var(--missed)}.pill.warn{background:var(--erev-soft);color:var(--erev)}.pill.blue{background:var(--todo-soft);color:var(--todo)}.pill.unk{background:var(--sunk);color:var(--muted)}
+.talk{display:grid;justify-items:center;gap:6px;padding:6px 0}
+.mic{width:76px;height:76px;border-radius:50%;background:var(--todo);color:#fff;display:grid;place-items:center;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.mic svg{width:34px;height:34px}
+.mic.on{background:var(--missed);animation:micp 1.2s ease-in-out infinite}
+.mic.work{background:var(--muted)}
+@keyframes micp{0%,100%{box-shadow:0 0 0 0 rgba(196,43,28,.45)}50%{box-shadow:0 0 0 14px rgba(196,43,28,0)}}
+.hear{font-size:14px;color:var(--muted);text-align:center;min-height:20px;max-width:100%}
 .bub.ai{justify-self:start;background:var(--sunk);color:var(--fg);border-radius:16px 16px 16px 4px}
 .aidone{margin:2px 0 0;padding-left:18px;font-size:14px;display:grid;gap:2px}
 .aidone.warnl{color:var(--erev)}
@@ -335,7 +342,7 @@ body.msgmode .msgq,body.msgmode .msgtest,body.msgmode .compose,body.msgmode .mac
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 26, 2026 (23)';
+var KEY='workday.v1',APPVER='Oct 26, 2026 (24)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -1315,7 +1322,7 @@ function aiBubbles(){
   if(AIBUSY)h+='<div class="bub ai"><span>Working on it...</span></div>';
   return h;
 }
-function openAI(){
+function openAI(talk){
   if(!getKey()&&projLink()){window.location.href=projLink();return}
   var key=getKey(),h='<h3>Assistant</h3>';
   if(!key){
@@ -1328,14 +1335,18 @@ function openAI(){
     return;
   }
   h+='<div class="thread" id="aiThr">'+aiBubbles()+'</div>';
-  h+='<div class="compose" style="grid-template-columns:1fr auto"><textarea id="aiTxt" rows="2" placeholder="Tell the assistant what to do"></textarea><button class="send" id="aiSend">Send</button></div>';
-  h+='<div class="row" style="justify-content:space-between"><button class="btn" id="aiClose">Close</button><button class="btn" id="aiClear">Start over</button></div>';
+  h+='<div class="talk"><button class="mic" id="aiMic" aria-label="Talk to the assistant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><div class="hear" id="aiHear">Tap to talk</div></div>';
+  h+='<div class="compose" style="grid-template-columns:1fr auto"><textarea id="aiTxt" rows="1" placeholder="Or type here"></textarea><button class="send" id="aiSend">Send</button></div>';
+  h+='<div class="row" style="justify-content:space-between;align-items:center"><button class="btn" id="aiClose">Close</button><label class="tchk"><input type="checkbox" id="aiSpk"'+(speakOn()?' checked':'')+'>Speak answers</label><button class="btn" id="aiClear">Start over</button></div>';
   openSheet(h);
   var thr=document.getElementById('aiThr');thr.scrollTop=thr.scrollHeight;
   var ta=document.getElementById('aiTxt');
-  bind('aiClose',function(){closeSheet();render()});
+  bind('aiClose',function(){if(VOICE.busy){if(VOICE.mode==='rec')recStop(false);else try{VOICE.rec.stop()}catch(e){}}try{speechSynthesis.cancel()}catch(e){}closeSheet();render()});
   bind('aiClear',function(){AIH=[];openAI()});
-  bind('aiSend',function(){var t=ta.value.trim();if(!t||AIBUSY)return;aiSend(t)});
+  bind('aiSend',function(){var t=ta.value.trim();if(!t||AIBUSY)return;VOICE.last=false;aiSend(t)});
+  bind('aiMic',voiceToggle);
+  document.getElementById('aiSpk').onchange=function(e){try{localStorage.setItem('workday.speak',e.target.checked?'1':'0')}catch(x){}if(!e.target.checked)try{speechSynthesis.cancel()}catch(x){}};
+  if(talk)voiceStart();
 }
 function aiRedraw(){var thr=document.getElementById('aiThr');if(!thr)return;thr.innerHTML=aiBubbles();thr.scrollTop=thr.scrollHeight}
 function aiSend(text){
@@ -1361,12 +1372,98 @@ function aiSend(text){
     if(changed){save();render()}
     AIH.push({role:'assistant',reply:o.reply||'',raw:txt,done:out.done,skipped:out.skipped,undo:changed?before:null});
     aiRedraw();
+    if(VOICE.last)aiSpeak(o.reply||(out.done.length?out.done.join('. '):''));voiceUI('');
   })
   .catch(function(){
     AIBUSY=false;AIH.pop();
     AIH.push({role:'assistant',reply:'No connection right now, so nothing was sent. Your message is back in the box. Send it again when you have signal.',raw:'',fail:true});
     var t2=document.getElementById('aiTxt');if(t2)t2.value=text;aiRedraw();
   });
+}
+/* ---------- voice: talk to the assistant, hear the answer ---------- */
+var VOICE={busy:false,mode:'',ctx:null,stream:null,proc:null,chunks:[],rate:48000,heard:false,quiet:0,start:0,floor:0,rec:null,last:false};
+function speakOn(){try{return localStorage.getItem('workday.speak')!=='0'}catch(e){return true}}
+function autoTalk(){try{return localStorage.getItem('workday.autotalk')!=='0'}catch(e){return true}}
+function voiceUI(state,text){
+  var b=document.getElementById('aiMic'),t=document.getElementById('aiHear');if(!b||!t)return;
+  b.className='mic'+(state==='listen'?' on':state==='work'?' work':'');
+  t.textContent=text||(state==='listen'?'Listening... tap when you are done':state==='work'?'Got it...':'Tap to talk');
+}
+function voiceToggle(){if(VOICE.busy){if(VOICE.mode==='rec')recStop(true);else if(VOICE.rec)try{VOICE.rec.stop()}catch(e){}return}voiceStart()}
+function voiceStart(){
+  if(AIBUSY)return;
+  try{window.speechSynthesis&&speechSynthesis.cancel();if(window.speechSynthesis){var u=new SpeechSynthesisUtterance('');speechSynthesis.speak(u)}}catch(e){}
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(msgOK()&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)return recStart();
+  if(SR)return nativeStart(SR);
+  voiceUI('','Voice needs the Messages connection (gear, Messages). You can type below for now.');
+}
+function recStart(){
+  var AC=window.AudioContext||window.webkitAudioContext;
+  try{VOICE.ctx=new AC()}catch(e){voiceUI('','This phone would not start the microphone.');return}
+  VOICE.busy=true;VOICE.mode='rec';VOICE.chunks=[];VOICE.heard=false;VOICE.floor=0;VOICE.start=Date.now();VOICE.quiet=Date.now();
+  voiceUI('listen');
+  navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}}).then(function(stream){
+    if(!VOICE.busy){stream.getTracks().forEach(function(t){t.stop()});return}
+    VOICE.stream=stream;var ctx=VOICE.ctx;if(ctx.state==='suspended')ctx.resume();
+    VOICE.rate=ctx.sampleRate;
+    var src=ctx.createMediaStreamSource(stream),proc=ctx.createScriptProcessor(4096,1,1);VOICE.proc=proc;
+    proc.onaudioprocess=function(e){
+      if(!VOICE.busy)return;
+      var d=e.inputBuffer.getChannelData(0),sum=0;for(var i=0;i<d.length;i++)sum+=d[i]*d[i];
+      var rms=Math.sqrt(sum/d.length),now=Date.now();VOICE.chunks.push(new Float32Array(d));
+      if(now-VOICE.start<350){VOICE.floor=Math.max(VOICE.floor,rms);return}
+      var loud=rms>Math.max(0.012,VOICE.floor*2.5);
+      if(loud){VOICE.heard=true;VOICE.quiet=now}
+      else if(VOICE.heard&&now-VOICE.quiet>1600){recStop(true);return}
+      if(!VOICE.heard&&now-VOICE.start>9000){recStop(false);voiceUI('','I did not hear anything. Tap to talk.');return}
+      if(now-VOICE.start>60000)recStop(true);
+    };
+    src.connect(proc);proc.connect(ctx.destination);
+  },function(){VOICE.busy=false;try{VOICE.ctx.close()}catch(e){}voiceUI('','Microphone is blocked. Turn it on in iPhone Settings for Workday (or Safari), then try again.')});
+}
+function recStop(send){
+  if(VOICE.mode!=='rec'||!VOICE.busy)return;VOICE.busy=false;
+  try{VOICE.proc&&VOICE.proc.disconnect()}catch(e){}
+  try{VOICE.stream&&VOICE.stream.getTracks().forEach(function(t){t.stop()})}catch(e){}
+  try{VOICE.ctx&&VOICE.ctx.close()}catch(e){}
+  if(!send){voiceUI('');return}
+  if(!VOICE.heard){voiceUI('','I did not hear anything. Tap to talk.');return}
+  voiceUI('work','Writing it down...');
+  var b64=wavB64(VOICE.chunks,VOICE.rate);VOICE.chunks=[];
+  msgApi('/transcribe',{audio:b64}).then(function(j){
+    if(j.error){voiceUI('',j.error);return}
+    var t=(j.text||'').trim();if(!t){voiceUI('','I did not catch that. Tap to try again.');return}
+    voiceUI('',t);VOICE.last=true;aiSend(t);
+  },function(e){voiceUI('','Could not write it down: '+(e.message||e)+'. Type it below instead.')});
+}
+function wavB64(chunks,rate){
+  var n=0;chunks.forEach(function(c){n+=c.length});
+  var ratio=rate/16000,outLen=Math.floor(n/ratio),pcm=new Int16Array(outLen),all=new Float32Array(n),o=0;
+  chunks.forEach(function(c){all.set(c,o);o+=c.length});
+  for(var i=0;i<outLen;i++){var s0=Math.floor(i*ratio),s1=Math.min(n,Math.floor((i+1)*ratio)),acc=0,k;for(k=s0;k<s1;k++)acc+=all[k];var v=s1>s0?acc/(s1-s0):0;v=Math.max(-1,Math.min(1,v));pcm[i]=v<0?v*0x8000:v*0x7FFF}
+  var buf=new ArrayBuffer(44+pcm.length*2),dv=new DataView(buf);
+  function ws(p,str){for(var j=0;j<str.length;j++)dv.setUint8(p+j,str.charCodeAt(j))}
+  ws(0,'RIFF');dv.setUint32(4,36+pcm.length*2,true);ws(8,'WAVE');ws(12,'fmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);
+  dv.setUint32(24,16000,true);dv.setUint32(28,32000,true);dv.setUint16(32,2,true);dv.setUint16(34,16,true);ws(36,'data');dv.setUint32(40,pcm.length*2,true);
+  new Int16Array(buf,44).set(pcm);
+  var bytes=new Uint8Array(buf),bin='';for(var q=0;q<bytes.length;q+=32768)bin+=String.fromCharCode.apply(null,bytes.subarray(q,q+32768));
+  return btoa(bin);
+}
+function nativeStart(SR){
+  var r;try{r=new SR()}catch(e){voiceUI('','Voice is not available here. Type below.');return}
+  VOICE.rec=r;VOICE.busy=true;VOICE.mode='native';var fin='';
+  r.lang='en-US';r.interimResults=true;r.continuous=false;
+  r.onresult=function(e){var t='';for(var i=0;i<e.results.length;i++){t+=e.results[i][0].transcript;if(e.results[i].isFinal)fin=t}voiceUI('listen',t)};
+  r.onerror=function(e){VOICE.busy=false;voiceUI('',e.error==='not-allowed'||e.error==='service-not-allowed'?'Voice is blocked here. Connect Messages (gear) for voice, or type below.':'I did not catch that. Tap to try again.')};
+  r.onend=function(){VOICE.busy=false;var t=(fin||'').trim();if(t){voiceUI('',t);VOICE.last=true;aiSend(t)}else voiceUI('')};
+  voiceUI('listen');try{r.start()}catch(e){VOICE.busy=false;voiceUI('','Voice could not start. Type below.')}
+}
+function aiSpeak(text){
+  if(!speakOn()||!window.speechSynthesis||!text)return;
+  try{speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(String(text).replace(/[*_#`]/g,''));u.lang='en-US';u.rate=1.05;
+    var vs=speechSynthesis.getVoices().filter(function(v){return /^en-US/.test(v.lang)});var pref=vs.filter(function(v){return /Samantha|Ava|Allison|Google US/i.test(v.name)})[0]||vs[0];if(pref)u.voice=pref;
+    speechSynthesis.speak(u)}catch(e){}
 }
 function aiUndo(i){var m=AIH[i];if(!m||!m.undo||m.undone)return;try{S.cards=JSON.parse(m.undo)}catch(e){return}m.undone=true;save();render();aiRedraw();toast('Changes undone')}
 
@@ -2136,7 +2233,7 @@ document.addEventListener('click',function(e){
   else if(t.dataset.rm){var p=t.dataset.rm.split(':');S[p[0]].splice(+p[1],1);save();pushLists(p[0]);openSettings()}
   else if(t.dataset.addto){var k=t.dataset.addto,inp=document.getElementById('add-'+k),v=inp.value.trim();if(v&&S[k].indexOf(v)<0){S[k].push(v);save();pushLists(k)}openSettings()}
 });
-document.getElementById('fab').onclick=openAI;
+document.getElementById('fab').onclick=function(){openAI(autoTalk())};
 document.getElementById('scrim').addEventListener('click',function(e){if(e.target.id==='scrim')closeSheet()});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeSheet()});
 

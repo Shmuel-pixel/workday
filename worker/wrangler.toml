@@ -11,3 +11,6 @@ class_name = "Box"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Box"]
+
+[ai]
+binding = "AI"
