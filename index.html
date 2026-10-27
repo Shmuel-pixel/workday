@@ -7,7 +7,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Workday">
-<meta name="theme-color" content="#FFFFFF">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
@@ -331,6 +332,126 @@ body.msgmode .msgq,body.msgmode .msgtest,body.msgmode .compose,body.msgmode .mac
 .rem b{font-variant-numeric:tabular-nums}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(136px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;font-size:14px;max-width:calc(100% - 40px)}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+/* ===== iOS look (visual only) ===== */
+:root{
+  --bg:#F2F2F7; --surface:#FFFFFF; --sunk:#E9E9EE; --fg:#000000; --muted:#8A8A8E; --line:rgba(60,60,67,.14);
+  --todo:#007AFF; --todo-soft:#E5F0FF; --done:#34C759; --done-soft:#E6F8EA;
+  --missed:#FF3B30; --missed-soft:#FFE9E7; --erev:#FF9500; --erev-soft:#FFF3E0;
+  --fast:#AF52DE; --fast-soft:#F5EBFB; --chm:#30B0C7; --chm-soft:#E4F6F9; --off:#3A3A3C; --off-soft:#E5E5EA;
+  --past-tint:#F2F2F7; --future-tint:#F2F2F7;
+  --glass:rgba(249,249,251,.82); --shadow:0 1px 2px rgba(0,0,0,.04),0 4px 14px rgba(0,0,0,.06);
+  --display:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif;
+  --body:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#000000; --surface:#1C1C1E; --sunk:#2C2C2E; --fg:#FFFFFF; --muted:#98989F; --line:rgba(84,84,88,.55);
+  --todo:#0A84FF; --todo-soft:#0B2442; --done:#30D158; --done-soft:#0E2E18;
+  --missed:#FF453A; --missed-soft:#3A1412; --erev:#FF9F0A; --erev-soft:#38260A;
+  --fast:#BF5AF2; --fast-soft:#2E1838; --chm:#40C8E0; --chm-soft:#0D2E34; --off:#E5E5EA; --off-soft:#3A3A3C;
+  --past-tint:#000000; --future-tint:#000000; --glass:rgba(22,22,24,.82); --shadow:none}}
+:root[data-theme="dark"]{
+  --bg:#000000; --surface:#1C1C1E; --sunk:#2C2C2E; --fg:#FFFFFF; --muted:#98989F; --line:rgba(84,84,88,.55);
+  --todo:#0A84FF; --todo-soft:#0B2442; --done:#30D158; --done-soft:#0E2E18;
+  --missed:#FF453A; --missed-soft:#3A1412; --erev:#FF9F0A; --erev-soft:#38260A;
+  --fast:#BF5AF2; --fast-soft:#2E1838; --chm:#40C8E0; --chm-soft:#0D2E34; --off:#E5E5EA; --off-soft:#3A3A3C;
+  --past-tint:#000000; --future-tint:#000000; --glass:rgba(22,22,24,.82); --shadow:none}
+body{font-size:16px;letter-spacing:-.01em;-webkit-font-smoothing:antialiased}
+body::before{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px)}
+/* header: frosted, hairline */
+header{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom:.5px solid var(--line)}
+header .wrap{padding-block:8px 12px;gap:10px}
+.eng{font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.heb{font-size:20px;font-weight:700;color:var(--fg);opacity:.85}
+.hebeng{font-size:14px}
+.iconbtn{border:0;border-radius:50%;width:36px;height:36px;background:var(--sunk);color:var(--todo)}
+.iconbtn svg{width:19px;height:19px}
+.chip{font-size:12.5px;padding:4px 10px;font-weight:600}
+.navbtn{border:0;border-radius:50%;width:36px;height:36px;justify-self:center;background:var(--sunk);color:var(--todo);font-size:22px;font-weight:600}
+.status{font-family:var(--body);text-transform:none;letter-spacing:-.01em;font-size:15px;font-weight:600;border-radius:999px;padding:7px}
+.st-today{background:var(--todo)}
+.st-past{background:var(--sunk);border:0;color:var(--muted)}
+.st-future{background:var(--todo-soft);border:0;color:var(--todo)}
+/* board */
+main .wrap{padding-block:16px;gap:18px}
+.zone{background:transparent!important;padding:0;border-width:0;gap:8px}
+.zone.hot{background:var(--todo-soft)!important;border-radius:16px;box-shadow:0 0 0 2px var(--todo)}
+.zhead{padding:0 4px}
+.zhead h2{font-family:var(--display);text-transform:none;letter-spacing:-.02em;font-size:22px;display:flex;align-items:center;gap:8px}
+.zhead h2::before{content:"";width:10px;height:10px;border-radius:50%;background:currentColor}
+.count{font-size:15px;font-weight:600}
+.add{width:30px;height:30px;border-radius:50%;font-size:22px;font-weight:500}
+.empty{background:var(--surface);border-radius:14px;padding:14px 16px;font-size:15px;color:var(--muted)}
+.card{border-radius:16px;padding:12px 10px 12px 4px;box-shadow:var(--shadow)}
+.card.sw-done{box-shadow:inset 5px 0 0 var(--done)}
+.time{font-family:var(--body);font-size:15px;font-weight:600;color:var(--todo)}
+.ttl{font-size:17px;font-weight:600;letter-spacing:-.02em}
+.addr{font-size:15px}
+.meta{font-size:14px}
+.tag{border-radius:999px;padding:3px 9px;font-size:12px}
+.more{border-radius:50%;width:32px;height:32px}
+.fbtn{border:0;border-radius:999px;background:var(--sunk);padding:6px 12px;font-size:13px}
+.swhint{font-size:13px}
+.sum{border:0;border-radius:16px;box-shadow:var(--shadow);padding:12px 16px}
+.sum summary span,.sumtop span{text-transform:none;letter-spacing:0;font-size:15px;color:var(--fg);font-weight:600}
+.sumhead{font-family:var(--display);font-size:20px;letter-spacing:-.02em}
+.ask{border:0;border-left:0;border-radius:16px;box-shadow:var(--shadow),inset 4px 0 0 var(--missed)}
+.ask .who{text-transform:none;letter-spacing:0;font-size:13px}
+.calm,.ph,.logday,.speclist,.eqgrp,.eqbar,.eqstats>*{border-radius:16px;box-shadow:var(--shadow)}
+.calm b,.ph h2,.loghead b,.eqgh b,.calhead h2{font-family:var(--display);letter-spacing:-.02em}
+.ph h2{font-size:28px}
+/* buttons: iOS filled and gray */
+.btn{border:0;border-radius:12px;padding:11px 16px;background:var(--sunk);color:var(--todo);font-weight:600}
+.btn.primary{background:var(--todo);color:#fff}
+.btn.good{background:var(--done);color:#fff}
+.btn.danger{background:var(--missed);color:#fff}
+.btn:active,.fbtn:active,.menuitem:active,.chatrow:active,.card:active{opacity:.7}
+.sheetlink{border:0;border-radius:12px;background:var(--sunk)}
+.send{border-radius:999px;font-weight:600}
+.photo{border:0;background:var(--sunk)}
+.ttab{border:0;background:var(--sunk);color:var(--fg);font-weight:600}
+.ttab.on{background:var(--todo);color:#fff}
+.seg{border-radius:10px;padding:2px;background:var(--sunk)}
+.seg button{border-radius:8px;padding:7px;font-weight:600;color:var(--fg)}
+.seg button.on{color:var(--fg);box-shadow:0 3px 8px rgba(0,0,0,.12),0 0 0 .5px rgba(0,0,0,.04)}
+.tchk{border:0;background:var(--sunk)}
+.tchk:has(input:checked){background:var(--todo);color:#fff}
+/* inputs: iOS gray fields */
+.field label{text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;padding-left:4px}
+.field input,.field select,.field textarea,.addrow input,.search,.msgq,.compose textarea,.three select{border:0;border-radius:12px;background:var(--sunk);padding:12px 14px}
+.compose textarea{border-radius:20px;padding:10px 14px}
+.warn{border-radius:12px}
+.menuitem{border-radius:12px;padding:14px 16px;font-weight:500;font-size:17px;background:var(--sunk)}
+.li,.rem div,.sheetrow,.sug{border-radius:12px}
+/* bottom sheet */
+.scrim{background:rgba(0,0,0,.35)}
+.sheet{border-radius:22px 22px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.15)}
+.sheet::before{content:"";display:block;width:38px;height:5px;border-radius:3px;background:var(--line);margin:8px auto 0}
+.sheet h3{font-family:var(--display);font-size:22px;letter-spacing:-.02em}
+/* tab bar: frosted, hairline */
+nav.tabs{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:.5px solid var(--line)}
+.tab{font-size:10px;font-weight:500;color:#999;padding-top:7px}
+.tab svg{width:25px;height:25px}
+.tab.on{color:var(--todo)}
+/* mic button */
+#fab{background:linear-gradient(180deg,#2F95FF,#0062E6);box-shadow:0 6px 18px rgba(0,98,230,.38),0 2px 4px rgba(0,0,0,.12);bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+#fab:active{transform:scale(.94)}
+.mic{background:linear-gradient(180deg,#2F95FF,#0062E6);box-shadow:0 6px 18px rgba(0,98,230,.35)}
+.mic.on{background:linear-gradient(180deg,#FF5A4F,#E0271C)}
+.mic.work{background:var(--muted)}
+/* chats + threads */
+.bub{border-radius:18px 18px 4px 18px;padding:8px 12px;font-size:16px}
+.bub.ai{background:var(--sunk);border-radius:18px 18px 18px 4px}
+.thread{border-radius:16px;background:var(--bg)}
+.chatrow{border-bottom:.5px solid var(--line);padding:11px 4px}
+.cav{background:linear-gradient(180deg,#A1A1A6,#7C7C80);color:#fff}
+/* calendar */
+.cell{border-radius:10px}
+.cell.today{border-color:transparent;box-shadow:inset 0 0 0 2px var(--todo)}
+.cell .g{font-family:var(--body);font-weight:600}
+.trout{border-radius:16px}
+.addr a{text-decoration:none;color:var(--fg)}
+.ask{box-shadow:var(--shadow)}
+.ask .who{color:var(--missed)}
 </style>
 
 <header id="hdr"><div class="wrap" id="hdrIn"></div></header>
@@ -345,7 +466,7 @@ body.msgmode .msgq,body.msgmode .msgtest,body.msgmode .compose,body.msgmode .mac
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 26, 2026 (25)';
+var KEY='workday.v1',APPVER='Oct 26, 2026 (26)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
