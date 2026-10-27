@@ -175,6 +175,8 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 .mic.on{background:var(--missed);animation:micp 1.2s ease-in-out infinite}
 .mic.work{background:var(--muted)}
 @keyframes micp{0%,100%{box-shadow:0 0 0 0 rgba(196,43,28,.45)}50%{box-shadow:0 0 0 14px rgba(196,43,28,0)}}
+.wave{display:none;width:100%;max-width:300px;height:56px}
+.talk.listening .wave{display:block}
 .hear{font-size:14px;color:var(--muted);text-align:center;min-height:20px;max-width:100%}
 .bub.ai{justify-self:start;background:var(--sunk);color:var(--fg);border-radius:16px 16px 16px 4px}
 .aidone{margin:2px 0 0;padding-left:18px;font-size:14px;display:grid;gap:2px}
@@ -182,7 +184,8 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 .aiundo{justify-self:start;font-size:13px;font-weight:700;color:var(--todo);padding:2px 0}
 .bub.ai small{color:var(--muted);font-size:12px}
 .fab{position:fixed;z-index:7;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(74px + env(safe-area-inset-bottom,0px));height:52px;padding:0 18px;border-radius:26px;background:var(--todo);color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
-.fab svg{width:20px;height:20px}
+.fab svg{width:30px;height:30px}
+#fab{width:64px;height:64px;padding:0;border-radius:50%;justify-content:center}
 #printArea{display:none}
 .sheetlink{display:inline-flex;align-items:center;justify-content:center;padding:9px 14px;border-radius:8px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--todo);text-decoration:none}
 .sheetrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--bg);color:var(--fg);text-decoration:none}
@@ -332,7 +335,7 @@ body.msgmode .msgq,body.msgmode .msgtest,body.msgmode .compose,body.msgmode .mac
 
 <header id="hdr"><div class="wrap" id="hdrIn"></div></header>
 <main id="main"><div class="wrap" id="mainIn"></div></main>
-<button class="fab" id="fab" aria-label="Open the assistant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v11H9l-5 4z"/></svg>Assistant</button>
+<button class="fab" id="fab" aria-label="Talk to the assistant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
 <nav class="tabs" id="tabs" aria-label="Pages"></nav>
 <div class="scrim" id="scrim" hidden><div class="sheet" id="sheet"><div class="wrap" id="sheetIn"></div></div></div>
 <div class="toast" id="toast" hidden></div>
@@ -342,7 +345,7 @@ body.msgmode .msgq,body.msgmode .msgtest,body.msgmode .compose,body.msgmode .mac
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 26, 2026 (24)';
+var KEY='workday.v1',APPVER='Oct 26, 2026 (25)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -1335,7 +1338,7 @@ function openAI(talk){
     return;
   }
   h+='<div class="thread" id="aiThr">'+aiBubbles()+'</div>';
-  h+='<div class="talk"><button class="mic" id="aiMic" aria-label="Talk to the assistant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><div class="hear" id="aiHear">Tap to talk</div></div>';
+  h+='<div class="talk"><button class="mic" id="aiMic" aria-label="Talk to the assistant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><canvas class="wave" id="aiWave" aria-hidden="true"></canvas><div class="hear" id="aiHear">Tap to talk</div></div>';
   h+='<div class="compose" style="grid-template-columns:1fr auto"><textarea id="aiTxt" rows="1" placeholder="Or type here"></textarea><button class="send" id="aiSend">Send</button></div>';
   h+='<div class="row" style="justify-content:space-between;align-items:center"><button class="btn" id="aiClose">Close</button><label class="tchk"><input type="checkbox" id="aiSpk"'+(speakOn()?' checked':'')+'>Speak answers</label><button class="btn" id="aiClear">Start over</button></div>';
   openSheet(h);
@@ -1387,7 +1390,35 @@ function autoTalk(){try{return localStorage.getItem('workday.autotalk')!=='0'}ca
 function voiceUI(state,text){
   var b=document.getElementById('aiMic'),t=document.getElementById('aiHear');if(!b||!t)return;
   b.className='mic'+(state==='listen'?' on':state==='work'?' work':'');
+  if(b.parentNode)b.parentNode.classList.toggle('listening',state==='listen');
+  if(state==='listen')waveStart();else waveStop();
   t.textContent=text||(state==='listen'?'Listening... tap when you are done':state==='work'?'Got it...':'Tap to talk');
+}
+/* listening waveform: real mic level when we have it, a gentle idle wave otherwise */
+var WAVE={an:null,buf:null,raf:0,hist:[],t:0};
+function waveStart(){if(WAVE.raf)return;WAVE.hist=[];WAVE.t=0;WAVE.raf=requestAnimationFrame(waveDraw)}
+function waveStop(){if(WAVE.raf)cancelAnimationFrame(WAVE.raf);WAVE.raf=0}
+function waveDraw(){
+  var c=document.getElementById('aiWave');if(!c){WAVE.raf=0;return}
+  WAVE.raf=requestAnimationFrame(waveDraw);
+  var dpr=window.devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;if(!w||!h)return;
+  if(c.width!==Math.round(w*dpr)){c.width=Math.round(w*dpr);c.height=Math.round(h*dpr)}
+  var g=c.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);
+  WAVE.t++;
+  var lvl;
+  if(WAVE.an&&WAVE.buf){WAVE.an.getByteTimeDomainData(WAVE.buf);var sum=0;for(var i=0;i<WAVE.buf.length;i++){var v=(WAVE.buf[i]-128)/128;sum+=v*v}lvl=Math.min(1,Math.sqrt(sum/WAVE.buf.length)*7)}
+  else lvl=0.25+0.2*Math.sin(WAVE.t/6)+0.15*Math.sin(WAVE.t/2.3);
+  var bars=Math.max(12,Math.floor(w/7));
+  if(WAVE.t%2===0){WAVE.hist.push(lvl);while(WAVE.hist.length>bars)WAVE.hist.shift()}
+  var col=getComputedStyle(document.documentElement).getPropertyValue('--missed')||'#C42B1C';
+  g.fillStyle=col.trim()||'#C42B1C';
+  var bw=3,gap=(w-bars*bw)/(bars-1),off=bars-WAVE.hist.length;
+  for(var k=0;k<bars;k++){
+    var a=k<off?0:WAVE.hist[k-off];
+    var bh=Math.max(4,a*(h-4));
+    var x=k*(bw+gap),y=(h-bh)/2;
+    g.beginPath();if(g.roundRect)g.roundRect(x,y,bw,bh,1.5);else g.rect(x,y,bw,bh);g.fill();
+  }
 }
 function voiceToggle(){if(VOICE.busy){if(VOICE.mode==='rec')recStop(true);else if(VOICE.rec)try{VOICE.rec.stop()}catch(e){}return}voiceStart()}
 function voiceStart(){
@@ -1419,6 +1450,7 @@ function recStart(){
       if(!VOICE.heard&&now-VOICE.start>9000){recStop(false);voiceUI('','I did not hear anything. Tap to talk.');return}
       if(now-VOICE.start>60000)recStop(true);
     };
+    try{var an=ctx.createAnalyser();an.fftSize=1024;an.smoothingTimeConstant=0.2;src.connect(an);WAVE.an=an;WAVE.buf=new Uint8Array(an.fftSize)}catch(x){}
     src.connect(proc);proc.connect(ctx.destination);
   },function(){VOICE.busy=false;try{VOICE.ctx.close()}catch(e){}voiceUI('','Microphone is blocked. Turn it on in iPhone Settings for Workday (or Safari), then try again.')});
 }
@@ -1427,6 +1459,7 @@ function recStop(send){
   try{VOICE.proc&&VOICE.proc.disconnect()}catch(e){}
   try{VOICE.stream&&VOICE.stream.getTracks().forEach(function(t){t.stop()})}catch(e){}
   try{VOICE.ctx&&VOICE.ctx.close()}catch(e){}
+  WAVE.an=null;
   if(!send){voiceUI('');return}
   if(!VOICE.heard){voiceUI('','I did not hear anything. Tap to talk.');return}
   voiceUI('work','Writing it down...');
