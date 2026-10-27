@@ -335,7 +335,7 @@ body.msgmode .msgq,body.msgmode .msgtest,body.msgmode .compose,body.msgmode .mac
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 26, 2026 (22)';
+var KEY='workday.v1',APPVER='Oct 26, 2026 (23)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -1549,19 +1549,31 @@ function lookupAddress(q,outId,onPick,quiet){
     [].forEach.call(out.querySelectorAll('.sug'),function(b){b.onclick=function(){var p=ps[+b.getAttribute('data-i')];out.innerHTML='';onPick(p.address)}});
   });
 }
-function lookupContact(q,outId,onPick){
-  var out=document.getElementById(outId);
-  if(!q.trim()){out.innerHTML='<div class="warn">Type the foreman\'s name first.</div>';return}
-  if(!connOK()){out.innerHTML='<div class="warn">Contact search needs the Google connection. Open the gear to connect it.</div>';return}
+var conSeq=0;
+function lookupContact(q,outId,onPick,quiet){
+  var out=document.getElementById(outId);if(!out)return;
+  q=q.trim();
+  if(!q){if(!quiet)out.innerHTML='<div class="warn">Type the foreman\'s name first.</div>';return}
+  if(!connOK()){if(!quiet)out.innerHTML='<div class="warn">Contact search needs the Google connection. Open the gear to connect it.</div>';return}
+  var my=++conSeq;
   out.innerHTML='<div class="mt">Searching your Google contacts...</div>';
   bridge('contacts',{q:q}).then(function(d){
+    if(my!==conSeq)return;
     var ps=d.people||[];
-    if(d.needsSetup){out.innerHTML='<div class="warn">Contact search is not turned on yet. That is one extra step on the iPad later. For now, type the phone number and it will be saved for next time.</div>';return}
-    if(!ps.length){out.innerHTML='<div class="warn">No contact named '+esc(q)+' in your Google contacts. Type the phone number yourself and it will be saved for next time.</div>';return}
-    out.innerHTML='<div class="mt">Is this the right contact?</div>'+ps.map(function(p,i){return '<div class="sug"><b>'+esc(p.name)+'</b><small>'+esc([p.company,p.phones.join(', ')].filter(function(x){return x}).join(' '+MID+' '))+'</small><span class="row" style="margin-top:6px"><button type="button" class="btn good" data-yes="'+i+'">Yes, use this</button></span></div>'}).join('')+'<button type="button" class="btn" id="cNone">None of these</button>';
-    [].forEach.call(out.querySelectorAll('[data-yes]'),function(b){b.onclick=function(){var p=ps[+b.getAttribute('data-yes')];out.innerHTML='';onPick(p)}});
+    if(d.needsSetup){out.innerHTML='<div class="warn">Contact search is not turned on yet. In the Workday Connect script, add People API under Services, then deploy a new version.</div>';return}
+    if(!ps.length){out.innerHTML=quiet?'':'<div class="warn">No contact named '+esc(q)+' in your Google contacts. Type the phone number yourself and it will be saved for next time.</div>';return}
+    var h='<div class="mt">Pick the right contact:</div>';
+    ps.forEach(function(p,i){
+      h+='<div class="sug"><b>'+esc(p.name||'(no name)')+'</b>'+(p.company?'<small>'+esc(p.company)+'</small>':'')+'<span class="row" style="margin-top:6px;gap:8px;flex-wrap:wrap">';
+      if(p.phones.length)p.phones.forEach(function(ph,j){h+='<button type="button" class="btn good" data-yes="'+i+'" data-ph="'+j+'">Use '+esc(ph)+'</button>'});
+      else h+='<button type="button" class="btn good" data-yes="'+i+'" data-ph="-1">Use (no phone)</button>';
+      h+='</span></div>';
+    });
+    h+='<button type="button" class="minilink" id="cNone">None of these</button>';
+    out.innerHTML=h;
+    [].forEach.call(out.querySelectorAll('[data-yes]'),function(b){b.onclick=function(){var p=ps[+b.getAttribute('data-yes')],j=+b.getAttribute('data-ph');out.innerHTML='';onPick({name:p.name,company:p.company,phones:j>=0?[p.phones[j]]:[],emails:p.emails||[]})}});
     bind('cNone',function(){out.innerHTML=''});
-  },function(e){out.innerHTML='<div class="warn">'+esc(bridgeErr(e))+'</div>'});
+  },function(e){if(my===conSeq)out.innerHTML='<div class="warn">'+esc(bridgeErr(e))+'</div>'});
 }
 
 /* ---------- send to crew + translation ---------- */
@@ -1966,6 +1978,7 @@ function openEdit(id,pre){
   suggestBox('fCon','fConS',function(){var l=MASTER.contractors.map(function(x){return {label:x.name,sub:x.phone}});S.cards.forEach(function(k){if(k.contractor&&!l.some(function(y){return norm(y.label)===norm(k.contractor)}))l.push({label:k.contractor})});var q=val('fCon').trim();if(q&&!l.some(function(y){return norm(y.label)===norm(q)}))l.push({label:q,sub:'+ New contractor'});return l},function(){});
   suggestBox('fFor','fForS',function(){var con=val('fCon').trim();var l=MASTER.foremen.filter(function(f){return !con||norm(f.contractor)===norm(con)}).map(function(f){return {label:f.name,sub:[f.contractor,f.phone].filter(function(x){return x}).join(' '+MID+' '),f:f}});var q=val('fFor').trim();if(q&&!l.some(function(y){return norm(y.label)===norm(q)}))l.push({label:q,sub:'+ New foreman'+(con?' for '+con:'')});return l},function(it){if(it.f&&it.f.phone)document.getElementById('fPh').value=it.f.phone});
   bind('fForL',function(){lookupContact(val('fFor'),'fForOut',function(p){document.getElementById('fFor').value=p.name;if(p.phones[0])document.getElementById('fPh').value=p.phones[0]})});
+  var conT=null;document.getElementById('fFor').addEventListener('input',function(){clearTimeout(conT);var v=val('fFor').trim();if(v.length<3)return;conT=setTimeout(function(){var con=val('fCon').trim();if(MASTER.foremen.some(function(f){return norm(f.name)===norm(v)&&(!con||norm(f.contractor)===norm(con))}))return;lookupContact(v,'fForOut',function(p){document.getElementById('fFor').value=p.name;if(p.phones[0])document.getElementById('fPh').value=p.phones[0];var sg=document.getElementById('fForS');if(sg)sg.innerHTML=''},true)},1000)});
   document.getElementById('fCrew').addEventListener('change',function(){var t=crewInfo(val('fCrew')).truck;if(t&&!val('fVeh')){var vs=document.getElementById('fVeh');if(S.vehicles.indexOf(t)>=0)vs.value=t}});
   pendImg=null;wireNotes(c,!!id);
   var forced=false;
