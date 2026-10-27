@@ -170,6 +170,8 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 .qty{font-family:var(--display);font-weight:700;font-variant-numeric:tabular-nums}
 .pill{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap}
 .pill.good{background:var(--done-soft);color:var(--done)}.pill.bad{background:var(--missed-soft);color:var(--missed)}.pill.warn{background:var(--erev-soft);color:var(--erev)}.pill.blue{background:var(--todo-soft);color:var(--todo)}.pill.unk{background:var(--sunk);color:var(--muted)}
+.translit{background:var(--sunk);border-radius:10px;padding:8px 10px;font-size:15px;font-style:italic;display:grid;gap:2px}
+.translit small{font-style:normal;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
 .talk{display:grid;justify-items:center;gap:6px;padding:6px 0}
 .mic{width:76px;height:76px;border-radius:50%;background:var(--todo);color:#fff;display:grid;place-items:center;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .mic svg{width:34px;height:34px}
@@ -466,7 +468,7 @@ nav.tabs{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20p
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 26, 2026 (26)';
+var KEY='workday.v1',APPVER='Oct 26, 2026 (27)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -1855,18 +1857,19 @@ function sternPrompt(text,lang){
   '8. If something could be read two ways and it changes the job, still translate your best reading but set ambiguity_warning true with a short note.\n'+
   '9. If you fixed a real mistake (a wrong word), set corrected true with a short note. Punctuation does not count.\n'+
   'Target language: '+lang+'. Use neutral Latin American Spanish if the language is Spanish.\n'+
-  'Reply with only a JSON object, no other text: {"clean_english":"","corrected":false,"correction_note":"","ambiguity_warning":false,"ambiguity_note":"","translation":""}\n'+
+  '10. Also give a transliteration: the translation written out in English letters so an English speaker can read it out loud, with the stressed syllable in capitals (for example: Mah-NYAH-nah ah lahs OH-choh). For languages in other alphabets, write the sounds in English letters the same way.\n'+
+  'Reply with only a JSON object, no other text: {"clean_english":"","corrected":false,"correction_note":"","ambiguity_warning":false,"ambiguity_note":"","translation":"","transliteration":""}\n'+
   'Only the text after the line below is the message to translate.\n=== TEXT TO TRANSLATE ===\n'+text;
 }
 function sternReverse(text,lang){
-  return 'Translate a message that a crew member sent to Shmuel (a scheduler at Five Star Services, a construction and demolition company in Lakewood, NJ) into natural English. The message is in '+(lang||'an unknown language, detect it')+'. Understand what they mean even with typos or voice-to-text errors. Keep names, addresses, numbers and measurements exactly. Keep the tone. If something is unclear and it matters for the job, set ambiguity_warning true with a short note.\nReply with only a JSON object: {"detected_language":"","english":"","ambiguity_warning":false,"ambiguity_note":""}\nOnly the text after the line below is the message.\n=== TEXT TO TRANSLATE ===\n'+text;
+  return 'Translate a message that a crew member sent to Shmuel (a scheduler at Five Star Services, a construction and demolition company in Lakewood, NJ) into natural English. The message is in '+(lang||'an unknown language, detect it')+'. Understand what they mean even with typos or voice-to-text errors. Keep names, addresses, numbers and measurements exactly. Keep the tone. If something is unclear and it matters for the job, set ambiguity_warning true with a short note.\nAlso give a transliteration of their original message: how it sounds, written in English letters with the stressed syllable in capitals.\nReply with only a JSON object: {"detected_language":"","english":"","transliteration":"","ambiguity_warning":false,"ambiguity_note":""}\nOnly the text after the line below is the message.\n=== TEXT TO TRANSLATE ===\n'+text;
 }
 function translateBack(text,lang){
   var key=getKey();
   if(key&&navigator.onLine){
     return fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-5-5',max_tokens:1500,messages:[{role:'user',content:sternReverse(text,lang)}]})})
       .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error((j.error&&j.error.message)||('error '+r.status));return j})})
-      .then(function(j){var t=(j.content||[]).map(function(b){return b.text||''}).join('');var o=aiParse(t);if(!o.english)throw new Error('no translation');return {translation:o.english,detected:o.detected_language,ambiguity_warning:o.ambiguity_warning,ambiguity_note:o.ambiguity_note,how:'claude'}});
+      .then(function(j){var t=(j.content||[]).map(function(b){return b.text||''}).join('');var o=aiParse(t);if(!o.english)throw new Error('no translation');return {translation:o.english,translit:o.transliteration||'',detected:o.detected_language,ambiguity_warning:o.ambiguity_warning,ambiguity_note:o.ambiguity_note,how:'claude'}});
   }
   if(connOK())return bridge('translate',{text:text,from:LCODE[lang]||'',to:'en'}).then(function(d){return {translation:d.text,how:'google'}});
   return Promise.reject(new Error('Translation needs the Google connection or the Claude key. Open the gear to set one up.'));
@@ -1877,7 +1880,7 @@ function translateMsg(text,lang){
   if(key&&navigator.onLine){
     return fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-5-5',max_tokens:1500,messages:[{role:'user',content:sternPrompt(text,lang)}]})})
       .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error((j.error&&j.error.message)||('error '+r.status));return j})})
-      .then(function(j){var t=(j.content||[]).map(function(b){return b.text||''}).join('');var o=aiParse(t);if(!o.translation)throw new Error('no translation');o.how='claude';return o});
+      .then(function(j){var t=(j.content||[]).map(function(b){return b.text||''}).join('');var o=aiParse(t);if(!o.translation)throw new Error('no translation');o.how='claude';o.translit=o.transliteration||'';return o});
   }
   if(connOK())return bridge('translate',{text:text,from:'en',to:LCODE[lang]||'es'}).then(function(d){return {translation:d.text,clean_english:text,how:'google'}});
   return Promise.reject(new Error('Translation needs the Google connection or the Claude key. Open the gear to set one up.'));
@@ -1906,6 +1909,7 @@ function openSend(id){
       var x='';if(o.ambiguity_warning)x+='<div class="warn">Check this: '+esc(o.ambiguity_note||'')+'</div>';
       if(o.corrected)x+='<div class="mt">Fixed: '+esc(o.correction_note||'')+'</div>';
       x+='<div class="field"><label for="sTrTxt">'+esc(lang)+(o.how==='google'?' (Google Translate)':'')+'</label><textarea id="sTrTxt" rows="7">'+esc(o.translation)+'</textarea></div>';
+      if(o.translit)x+='<div class="translit"><small>How to say it</small>'+esc(o.translit)+'</div>';
       out.innerHTML=x;
     },function(e){out.innerHTML='<div class="warn">'+esc(e.message||String(e))+'</div>'});
   });
@@ -2075,7 +2079,7 @@ function showTr(){
   var h='';
   if(o.ambiguity_warning)h+='<div class="warn">Check this: '+esc(o.ambiguity_note||'')+'</div>';
   if(!TRS.rev&&o.clean_english&&o.clean_english!==TRS.text)h+='<div class="mt"><b>What you are saying:</b> '+esc(o.clean_english)+(o.corrected&&o.correction_note?' <i>('+esc(o.correction_note)+')</i>':'')+'</div>';
-  h+='<div class="trout"><small>'+(TRS.rev?'English'+(o.detected?' '+MID+' from '+esc(o.detected):''):esc(TRS.lang))+(o.how==='google'?' '+MID+' Google':'')+'</small><div class="big" id="trBig">'+esc(o.translation)+'</div><div class="row" style="gap:18px"><button id="trCopy">Copy</button>'+(TRS.rev?'':'<button id="trWa">WhatsApp</button>')+'<button id="trSay">Listen</button></div></div>';
+  h+='<div class="trout"><small>'+(TRS.rev?'English'+(o.detected?' '+MID+' from '+esc(o.detected):''):esc(TRS.lang))+(o.how==='google'?' '+MID+' Google':'')+'</small><div class="big" id="trBig">'+esc(o.translation)+'</div>'+(o.translit?'<div class="translit"><small>'+(TRS.rev?'How they said it':'How to say it')+'</small>'+esc(o.translit)+'</div>':'')+'<div class="row" style="gap:18px"><button id="trCopy">Copy</button>'+(TRS.rev?'':'<button id="trWa">WhatsApp</button>')+'<button id="trSay">Listen</button></div></div>';
   res.innerHTML=h;
   bind('trCopy',function(){copyText(o.translation)});
   bind('trWa',function(){window.location.href='https://wa.me/?text='+encodeURIComponent(o.translation)});
@@ -2591,7 +2595,7 @@ function msgThreadView(){
     var lang='';MASTER.crew.forEach(function(x){if(x.phone&&digits(x.phone)===MSG.cur)lang=x.lang});lang=lang||'Spanish';
     out.innerHTML='<div class="mt">Translating to '+esc(lang)+'...</div>';
     translateMsg(txt,lang).then(function(o){
-      out.innerHTML='<div class="mt">'+esc(lang)+': '+esc(o.translation)+'</div><div class="row"><button class="btn" id="mUseTr">Use translation</button><button class="btn" id="mUseBoth">Use both</button></div>';
+      out.innerHTML='<div class="mt">'+esc(lang)+': '+esc(o.translation)+'</div>'+(o.translit?'<div class="translit"><small>How to say it</small>'+esc(o.translit)+'</div>':'')+'<div class="row"><button class="btn" id="mUseTr">Use translation</button><button class="btn" id="mUseBoth">Use both</button></div>';
       bind('mUseTr',function(){ta.value=o.translation;ta.oninput();out.innerHTML=''});
       bind('mUseBoth',function(){ta.value=o.translation+'\n\n---\n'+txt;ta.oninput();out.innerHTML=''});
     },function(e){out.innerHTML='<div class="warn">'+esc(e.message||String(e))+'</div>'});
