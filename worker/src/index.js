@@ -121,6 +121,7 @@ export class Box extends DurableObject {
       if (p === '/webhook' && req.method === 'POST') return await this.webhook(req);
       if (p === '/pair' && req.method === 'POST') return this.pair();
       if (p === '/inbox-key') return json({ key: await this.inboxPublic() });
+      if (p === '/widget' && req.method === 'GET') { var wk = this.get('widget_key'); if (!wk || url.searchParams.get('w') !== wk) return err('Wrong widget key', 401); return json(JSON.parse(this.get('widget') || '{"items":[]}')); }
       if (p === '/drop' && req.method === 'POST') return json(await this.drop(await req.json()));
 
       var key = req.headers.get('X-Key') || (p.indexOf('/media/') === 0 ? url.searchParams.get('k') : '');
@@ -139,6 +140,8 @@ export class Box extends DurableObject {
       if (p === '/push-test' && req.method === 'POST') return json(await this.pushAll());
       if (p === '/inbox') return json({ items: this.sql.exec('SELECT id,item,ts FROM inbox WHERE done=0 ORDER BY ts').toArray().map(function (r) { var o = JSON.parse(r.item); o._inbox = r.id; return o; }) });
       if (p === '/inbox/ack' && req.method === 'POST') { var ab = await req.json(), self2 = this; (ab.ids || []).forEach(function (i) { self2.sql.exec('UPDATE inbox SET done=1 WHERE id=?', String(i)); }); return json({ ok: true }); }
+      if (p === '/widget' && req.method === 'POST') { this.put('widget', JSON.stringify(await req.json())); return json({ ok: true }); }
+      if (p === '/widget-key') { if (!this.get('widget_key')) this.put('widget_key', rand(24)); return json({ key: this.get('widget_key') }); }
       if (p === '/transcribe' && req.method === 'POST') return json(await this.transcribe(await req.json()));
       if (p === '/reminders' && req.method === 'POST') return json(await this.setReminders(await req.json()));
       if (p === '/test/incoming' && req.method === 'POST') return json(await this.testIncoming(await req.json()));

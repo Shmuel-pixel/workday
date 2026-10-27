@@ -171,6 +171,15 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 .pill{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap}
 .pill.good{background:var(--done-soft);color:var(--done)}.pill.bad{background:var(--missed-soft);color:var(--missed)}.pill.warn{background:var(--erev-soft);color:var(--erev)}.pill.blue{background:var(--todo-soft);color:var(--todo)}.pill.unk{background:var(--sunk);color:var(--muted)}
 .tren{font-size:15px;white-space:pre-wrap;margin-bottom:6px}
+.lrow{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:7px 8px 7px 10px;margin-top:4px;color:var(--fg)}
+.lrow.light{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.35);color:inherit}
+.lmain{display:grid;min-width:0;flex:1;color:inherit;text-decoration:none}.lmain b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lmain small{font-size:11px;opacity:.75;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lbtns{display:flex;gap:6px;flex:none}.lbtns button{font-size:12px;font-weight:700;padding:5px 8px;border-radius:8px;background:var(--sunk);color:var(--todo)}
+.lrow.light .lbtns button{background:rgba(255,255,255,.22);color:inherit}
+.lbox{display:grid;gap:2px}
+.lchips{grid-column:2 / 4;display:flex;flex-wrap:wrap;gap:6px;margin:2px 0}
+.lchip{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:4px 9px;border-radius:999px;background:var(--todo-soft);color:var(--todo);text-decoration:none}
+.lchip svg{width:13px;height:13px}
 .translit{background:var(--sunk);border-radius:10px;padding:8px 10px;font-size:15px;font-style:italic;display:grid;gap:2px}
 .translit small{font-style:normal;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
 .talk{display:grid;justify-items:center;gap:6px;padding:6px 0}
@@ -192,6 +201,7 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 #fab{width:64px;height:64px;padding:0;border-radius:50%;justify-content:center}
 #printArea{display:none}
 .sheetlink{display:inline-flex;align-items:center;justify-content:center;padding:9px 14px;border-radius:8px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--todo);text-decoration:none}
+.steps{margin:0;padding-left:20px;display:grid;gap:8px;font-size:15px}
 .setgrp{display:grid;gap:6px}
 .setlab{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding-left:4px}
 .setbox{background:var(--bg);border-radius:12px;overflow:hidden}
@@ -477,7 +487,7 @@ nav.tabs{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20p
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 27, 2026 (29)';
+var KEY='workday.v1',APPVER='Oct 27, 2026 (30)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -752,6 +762,7 @@ var IC={
   cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12l5 5 9-10"/></svg>',
   msg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>',
+  link:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
   tr:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h9M8.5 3v2M6 5c.5 3 2.5 5.5 5 7M11 5c-.8 3.5-3.4 6.4-7 8"/><path d="M13 21l4-9 4 9M14.5 18h5"/></svg>',
   tool:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.7 6.3a4 4 0 0 0 5 5L12 19a2.1 2.1 0 0 1-3-3z"/><path d="M5 5l4 4"/></svg>'
 };
@@ -816,7 +827,8 @@ function cardHtml(c,mode){
   if(c.sample)tg+='<span class="tag ex">Example</span>';
   h+='<div class="tags">'+tg+'</div></div>';
   h+='<button class="more" data-more="'+c.id+'" aria-label="Options">'+IC.more+'</button>';
-  var cm=c.comments||[];
+  var cm=c.comments||[],lks=findLinks(c.notes);cm.forEach(function(x){lks=lks.concat(findLinks(x.text))});
+  if(lks.length){var ls={},lh='';lks.forEach(function(u){u=u.replace(/[).,;!?]+$/,'');if(ls[u])return;ls[u]=1;lh+='<a class="lchip" href="'+esc(u)+'" target="_blank" rel="noopener">'+IC.link+esc(linkHost(u))+'</a>'});h+='<div class="lchips">'+lh+'</div>'}
   if(cm.length){var lc=cm[cm.length-1];h+='<div class="last">'+(lc.img?'[Photo] ':'')+esc(lc.text||'')+'</div>'}
   h+='<div class="cfoot"><button class="fbtn" data-notes="'+c.id+'">'+IC.note+'Notes'+(cm.length?' ('+cm.length+')':'')+'</button><button class="fbtn go" data-send="'+c.id+'">Send to crew</button><button class="fbtn go" data-fivestar="'+c.id+'">Five Star card</button>';
   if(mode==='missed')h+='<button class="fbtn ok" data-markdone="'+c.id+'">'+IC.check+'Mark done</button><button class="fbtn go" data-movetoday="'+c.id+'">Move to today &rarr;</button>';
@@ -1447,7 +1459,7 @@ function aiBubbles(){
   AIH.forEach(function(m,i){
     if(m.role==='user')h+='<div class="bub"><span>'+esc(m.show||m.content)+'</span></div>';
     else{
-      h+='<div class="bub ai">'+(m.reply?'<span>'+linkify(esc(m.reply))+'</span>':'');
+      h+='<div class="bub ai">'+(m.reply?'<span>'+linkify(esc(m.reply))+'</span>'+linkRows(findLinks(m.reply)):'');
       if(m.done&&m.done.length)h+='<ul class="aidone">'+m.done.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>';
       if(m.skipped&&m.skipped.length)h+='<ul class="aidone warnl">'+m.skipped.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>';
       if(m.undo&&!m.undone)h+='<button class="aiundo" data-aiundo="'+i+'">Undo these changes</button>';
@@ -2287,6 +2299,8 @@ function openEdit(id,pre){
   var ctags=String(c.type||'').split(/,\s*/).filter(function(x){return x}),tgh='';
   S.types.concat(ctags.filter(function(x){return S.types.indexOf(x)<0})).forEach(function(tn,i){tgh+='<label class="tchk"><input type="checkbox" name="fTag" value="'+esc(tn)+'"'+(ctags.indexOf(tn)>=0?' checked':'')+'>'+esc(tn)+'</label>'});
   h+='<div class="field"><label>Tags (optional)</label><div class="tchks">'+tgh+'</div></div>';
+  var elk=findLinks(c.notes);(c.comments||[]).forEach(function(x){elk=elk.concat(findLinks(x.text))});
+  if(elk.length)h+='<div class="field"><label>Links</label><div class="lbox">'+linkRows(elk)+'</div></div>';
   h+='<div class="field"><label>Notes and photos</label><div class="thread" id="thr" style="max-height:34vh">'+threadHtml(c)+'</div><div id="pend"></div><div class="compose"><label class="photo" for="nImg" aria-label="Add photo">'+IC.cam+'</label><input id="nImg" type="file" accept="image/*" hidden><textarea id="nTxt" rows="1" placeholder="Write a note"></textarea><button class="send" id="nSend" type="button">Send</button></div></div>';
   h+='<div class="field"><label for="fAddr">Address</label><input id="fAddr" autocomplete="off" value="'+esc(c.address)+'" placeholder="Start typing, like 5 Collingswood"><div class="sugs" id="fAddrS"></div><div class="row" style="gap:14px"><button type="button" class="minilink" id="fAddrL">Look up full address</button><a class="minilink" id="fMap" target="_blank" rel="noopener" href="'+(c.address?mapUrl(c.address):'#')+'"'+(c.address?'':' hidden')+'>Open in Maps</a></div><div id="fAddrOut"></div></div>';
   h+='<div class="field"><label for="fCon">Contractor</label><input id="fCon" autocomplete="off" value="'+esc(c.contractor)+'" placeholder="Search or type a new contractor"><div class="sugs" id="fConS"></div></div>';
@@ -2335,7 +2349,7 @@ function threadHtml(c){
   var cm=c.comments||[],h='',lastDay='';
   if(!cm.length)return '<div class="empty" style="text-align:center;align-self:center">No notes yet. Type a note or add a photo below.</div>';
   cm.forEach(function(m){var dd=ymd(new Date(m.t));if(dd!==lastDay){h+='<div class="tday">'+esc(engShort(dd))+'</div>';lastDay=dd}
-    h+='<div class="bub">'+(m.img?'<img src="'+m.img+'" alt="Job photo">':(m.photoUrl?'<a href="'+esc(m.photoUrl)+'" target="_blank" rel="noopener" style="color:#fff;font-weight:700">Open photo</a>':''))+(m.text?'<span>'+esc(m.text)+'</span>':'')+'<time>'+stamp(m.t)+'</time></div>'});
+    h+='<div class="bub">'+(m.img?'<img src="'+m.img+'" alt="Job photo">':(m.photoUrl?'<a href="'+esc(m.photoUrl)+'" target="_blank" rel="noopener" style="color:#fff;font-weight:700">Open photo</a>':''))+(m.text?'<span>'+linkify(esc(m.text))+'</span>':'')+linkRows(findLinks(m.text),true)+'<time>'+stamp(m.t)+'</time></div>'});
   return h;
 }
 function wireNotes(c,saved){
@@ -2438,6 +2452,7 @@ function openSettings(page){
       setRow('sTypes','Work types (tags)','',String(S.types.length)));
     h+=setGroup('Assistant',setRow('sAI','Assistant and voice',getKey()?'Key saved on this phone':'No key yet',''));
     h+=setGroup('Sheets',setRow('sSheets','View, print or open your sheets',SHEETS.length+' sheets',''));
+    h+=setGroup('Home Screen',setRow('sWidget','Widget','Today\'s jobs on your Home Screen',''));
     h+=setGroup('App','<div class="setrow static"><span><b>Version</b></span><span class="setr">'+APPVER+'</span></div><button class="setrow" id="appUpd"><span><b style="color:var(--todo)">Update app now</b></span><span></span></button>');
     h+='<button class="btn primary" id="sClose">Done</button>';
     openSheet(h);
@@ -2447,7 +2462,7 @@ function openSettings(page){
     bind('sLoc',function(){openLocation(openSettings)});
     bind('sRem',function(){openSettings('rem')});bind('sCrew',function(){openSettings('crew')});
     bind('sVeh',function(){openSettings('vehicles')});bind('sTools',function(){openSettings('tools')});bind('sTypes',function(){openSettings('types')});
-    bind('sAI',function(){openSettings('ai')});bind('sSheets',function(){openSettings('sheets')});
+    bind('sAI',function(){openSettings('ai')});bind('sWidget',openWidget);bind('sSheets',function(){openSettings('sheets')});
     return;
   }
   if(P==='rem'){h+=head('Reminders')+remEditor().replace('<label>Reminders</label>','')}
@@ -2477,6 +2492,7 @@ function openSettings(page){
 
 /* ---------- events ---------- */
 document.addEventListener('click',function(e){
+  var lg=e.target.closest('[data-lgo],[data-lcopy]');if(lg){e.preventDefault();if(lg.dataset.lgo)window.location.href=lg.dataset.lgo;else copyText(decodeURIComponent(lg.dataset.lcopy));return}
   var cdx=e.target.closest('.card');if(cdx&&cdx.dataset.id&&!e.target.closest('button,a,input,label,[data-grip]')){openEdit(cdx.dataset.id);return}
   var t=e.target.closest('[data-fivestar],[data-sheetview],[data-zmanim],[data-send],[data-crewedit],[data-printsheet],[data-printday],[data-aiundo],[data-dm],[data-dmf],[data-eq],[data-eqloc],[data-copysum],[data-notes],[data-markdone],[data-more],[data-movetoday],[data-chat],[data-tab],[data-open],[data-rm],[data-addto]');if(!t)return;
   if(t.dataset.fivestar)openFiveStar(t.dataset.fivestar);
@@ -2648,10 +2664,42 @@ function msgInbox(){
     if(ids.length)msgApi('/inbox/ack',{ids:ids}).catch(function(){});
   },function(){});
 }
+var WIDGETSIG='';
+function widgetData(){
+  var T=todayStr(),list=S.cards.filter(function(c){return c.date===T}).slice().sort(function(a,b){var sa=a.status==='done'?1:0,sb=b.status==='done'?1:0;return sa-sb||((a.time||'99')+'').localeCompare((b.time||'99')+'')||((a.o||0)-(b.o||0))});
+  var nx=null;try{var ev=remEvents(2);ev.sort(function(a,b){return a.start-b.start});if(ev[0])nx={title:ev[0].title,t:ev[0].start}}catch(e){}
+  var mi='';try{if(!noWork(T))mi=clock(minchaMs(T))}catch(e){}
+  return {date:T,dateLabel:engShort(T),heb:hebEn(T),noWork:noWork(T)||'',mincha:mi,next:nx,updated:Date.now(),
+    items:list.map(function(c){return {time:c.time?fmtTime(c.time):'',title:jobTitle(c),crew:c.crew&&c.crew!=='Me'?c.crew:'',done:c.status==='done'}})};
+}
+function widgetPush(){
+  if(!msgOK())return;var d=widgetData(),sig=JSON.stringify([d.date,d.items,d.next&&d.next.t,d.mincha]);if(sig===WIDGETSIG)return;
+  msgApi('/widget',d).then(function(){WIDGETSIG=sig},function(){});
+}
+var WIDGET_SRC="// Workday widget for Scriptable. Shows today's jobs and the next reminder.\n// Made by the Workday app. Add a Scriptable widget (medium or large) and pick this script.\nconst APP = \"https://shmuel-pixel.github.io/workday/\";\nconst isDark = Device.isUsingDarkAppearance();\nconst C = {\n  bg: Color.dynamic(new Color(\"#FFFFFF\"), new Color(\"#1C1C1E\")),\n  fg: Color.dynamic(new Color(\"#1C1C1E\"), new Color(\"#F2F2F7\")),\n  muted: Color.dynamic(new Color(\"#6E6E73\"), new Color(\"#98989F\")),\n  blue: Color.dynamic(new Color(\"#007AFF\"), new Color(\"#0A84FF\")),\n  green: Color.dynamic(new Color(\"#34C759\"), new Color(\"#30D158\")),\n  red: Color.dynamic(new Color(\"#FF3B30\"), new Color(\"#FF453A\"))\n};\nasync function getData() {\n  const fm = FileManager.local(), path = fm.joinPath(fm.cacheDirectory(), \"workday-widget.json\");\n  try {\n    const r = new Request(WD_URL + \"/widget?w=\" + encodeURIComponent(WD_KEY));\n    r.timeoutInterval = 10;\n    const d = await r.loadJSON();\n    if (d && d.items) { fm.writeString(path, JSON.stringify(d)); return d; }\n  } catch (e) {}\n  if (fm.fileExists(path)) { const d = JSON.parse(fm.readString(path)); d.stale = true; return d; }\n  return null;\n}\nfunction clock(ms) { const df = new DateFormatter(); df.dateFormat = \"h:mm a\"; return df.string(new Date(ms)); }\nconst size = config.widgetFamily || \"large\";\nconst max = size === \"small\" ? 3 : size === \"medium\" ? 4 : 10;\nconst d = await getData();\nconst w = new ListWidget();\nw.backgroundColor = C.bg; w.url = APP; w.setPadding(12, 14, 12, 14);\nconst top = w.addStack(); top.centerAlignContent();\nconst t1 = top.addText(\"Workday\"); t1.font = Font.boldSystemFont(15); t1.textColor = C.blue;\ntop.addSpacer();\nconst t2 = top.addText(d ? d.dateLabel : \"\"); t2.font = Font.mediumSystemFont(12); t2.textColor = C.muted;\nif (d && d.heb && size !== \"small\") { const hb = w.addText(d.heb); hb.font = Font.systemFont(11); hb.textColor = C.muted; }\nw.addSpacer(6);\nif (!d) {\n  const m = w.addText(\"Open Workday once to load your day.\"); m.font = Font.systemFont(13); m.textColor = C.muted;\n} else {\n  if (d.noWork) { const n = w.addText(d.noWork); n.font = Font.semiboldSystemFont(13); n.textColor = C.red; w.addSpacer(4); }\n  const items = d.items.slice(0, max);\n  if (!items.length) { const m = w.addText(\"No jobs today\"); m.font = Font.systemFont(13); m.textColor = C.muted; }\n  for (const it of items) {\n    const row = w.addStack(); row.centerAlignContent(); row.spacing = 6;\n    const dot = row.addText(it.done ? \"\\u2713\" : \"\\u25CF\"); dot.font = Font.boldSystemFont(11); dot.textColor = it.done ? C.green : (it.missed ? C.red : C.blue);\n    if (it.time) { const tm = row.addText(it.time); tm.font = Font.semiboldMonospacedSystemFont(12); tm.textColor = C.muted; }\n    const tt = row.addText(it.title + (it.crew && size !== \"small\" ? \" \\u00B7 \" + it.crew : \"\")); tt.font = Font.mediumSystemFont(13);\n    tt.textColor = it.done ? C.muted : C.fg; tt.lineLimit = 1;\n    w.addSpacer(3);\n  }\n  if (d.items.length > max) { const more = w.addText(\"+\" + (d.items.length - max) + \" more\"); more.font = Font.systemFont(11); more.textColor = C.muted; }\n  w.addSpacer();\n  const bot = w.addStack(); bot.centerAlignContent();\n  if (d.next) { const nx = bot.addText(\"\\u23F0 \" + d.next.title + \" \" + clock(d.next.t)); nx.font = Font.systemFont(11); nx.textColor = C.muted; nx.lineLimit = 1; }\n  bot.addSpacer();\n  if (d.mincha && size !== \"small\") { const mi = bot.addText(\"Mincha \" + d.mincha); mi.font = Font.semiboldSystemFont(11); mi.textColor = C.blue; }\n  if (d.stale) { const st = w.addText(\"Offline, showing last saved\"); st.font = Font.italicSystemFont(9); st.textColor = C.muted; }\n}\nw.refreshAfterDate = new Date(Date.now() + 15 * 60 * 1000);\nif (config.runsInWidget) Script.setWidget(w); else await w.presentLarge();\nScript.complete();\n";
+function openWidget(){
+  var h='<div class="sethead"><button class="minilink" id="wBack">&lsaquo; Settings</button></div><h3>Home Screen widget</h3>';
+  if(!msgOK()){h+='<div class="warn">The widget needs Messages and notifications set up first.</div><button class="btn" id="wDone">Done</button>';openSheet(h);bind('wBack',function(){openSettings('main')});bind('wDone',closeSheet);return}
+  h+='<div class="mt">Shows today\'s jobs, the next reminder and mincha on your Home Screen. It uses the free Scriptable app.</div>';
+  h+='<ol class="steps"><li>Get <b>Scriptable</b> from the App Store (free). <a href="https://apps.apple.com/app/scriptable/id1405459188" target="_blank" rel="noopener">Open App Store</a></li><li>Tap <b>Copy widget script</b> below.</li><li>Open Scriptable, tap <b>+</b>, paste, then tap the title at the top and name it <b>Workday</b>. Tap <b>Done</b>.</li><li>Go to your Home Screen, press and hold an empty spot, tap <b>Edit</b> (or <b>+</b>), find <b>Scriptable</b>, pick the medium or large size, and <b>Add Widget</b>.</li><li>Press and hold the new widget, tap <b>Edit Widget</b>, and for <b>Script</b> choose <b>Workday</b>.</li></ol>';
+  h+='<div class="row"><button class="btn primary" id="wCopy">Copy widget script</button></div><div id="wOut"></div>';
+  h+='<div class="mt">The script has a read-only key that only shows your day on the widget. Do not share it.</div>';
+  h+='<button class="btn" id="wDone">Done</button>';
+  openSheet(h);
+  bind('wBack',function(){openSettings('main')});bind('wDone',function(){closeSheet();render()});
+  bind('wCopy',function(){
+    var out=document.getElementById('wOut');out.innerHTML='<div class="mt">Getting it ready...</div>';
+    WIDGETSIG='';widgetPush();
+    msgApi('/widget-key').then(function(j){
+      var code='const WD_URL = "'+MSG.url+'";\nconst WD_KEY = "'+j.key+'";\n'+WIDGET_SRC;
+      out.innerHTML='';copyText(code);
+    },function(e){out.innerHTML='<div class="warn">'+esc(e.message)+'</div>'});
+  });
+}
 var msgTimer=null;
 function msgTick(){
   clearTimeout(msgTimer);if(!msgOK())return;
-  msgInbox();
+  msgInbox();widgetPush();
   var fast=S.view==='msg'&&!document.hidden;
   (MSG.cur&&S.view==='msg'?msgPollThread():msgPollChats()).then(function(){msgTimer=setTimeout(msgTick,fast?4000:60000)},function(){msgTimer=setTimeout(msgTick,fast?8000:60000)});
 }
@@ -2746,6 +2794,16 @@ function msgDrawThread(scroll){
   });
   t.innerHTML=h;
   if(scroll||near){t.scrollTop=t.scrollHeight;[].forEach.call(t.querySelectorAll('img'),function(im){im.onload=function(){t.scrollTop=t.scrollHeight}})}
+}
+function findLinks(t){return String(t||'').match(/https?:\/\/[^\s<>"']+/g)||[]}
+function linkHost(u){var m=/^https?:\/\/(www\.)?([^\/?#]+)/i.exec(u);return m?m[2]:u}
+function chromeUrl(u){return u.replace(/^https:\/\//i,'googlechromes://').replace(/^http:\/\//i,'googlechrome://')}
+function appUrl(u){if(/^https?:\/\/(www\.|smile\.)?amazon\.com/i.test(u))return 'com.amazon.mobile.shopping.web://'+u.replace(/^https?:\/\//i,'');return ''}
+function linkRows(urls,light){
+  var seen={},h='';
+  urls.forEach(function(u){u=u.replace(/[).,;!?]+$/,'');if(seen[u])return;seen[u]=1;var e=encodeURIComponent(u),ap=appUrl(u);
+    h+='<div class="lrow'+(light?' light':'')+'"><a class="lmain" href="'+esc(u)+'" target="_blank" rel="noopener"><b>'+esc(linkHost(u))+'</b><small>'+esc(u.length>60?u.slice(0,60)+'...':u)+'</small></a><span class="lbtns">'+(ap?'<button type="button" data-lgo="'+esc(ap)+'">App</button>':'')+'<button type="button" data-lgo="'+esc(chromeUrl(u))+'">Chrome</button><button type="button" data-lcopy="'+e+'">Copy</button></span></div>'});
+  return h;
 }
 function linkify(s){return s.replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">$1</a>')}
 function openMsgNew(){
