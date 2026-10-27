@@ -170,6 +170,7 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 .qty{font-family:var(--display);font-weight:700;font-variant-numeric:tabular-nums}
 .pill{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap}
 .pill.good{background:var(--done-soft);color:var(--done)}.pill.bad{background:var(--missed-soft);color:var(--missed)}.pill.warn{background:var(--erev-soft);color:var(--erev)}.pill.blue{background:var(--todo-soft);color:var(--todo)}.pill.unk{background:var(--sunk);color:var(--muted)}
+.tren{font-size:15px;white-space:pre-wrap;margin-bottom:6px}
 .translit{background:var(--sunk);border-radius:10px;padding:8px 10px;font-size:15px;font-style:italic;display:grid;gap:2px}
 .translit small{font-style:normal;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
 .talk{display:grid;justify-items:center;gap:6px;padding:6px 0}
@@ -191,6 +192,14 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 #fab{width:64px;height:64px;padding:0;border-radius:50%;justify-content:center}
 #printArea{display:none}
 .sheetlink{display:inline-flex;align-items:center;justify-content:center;padding:9px 14px;border-radius:8px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--todo);text-decoration:none}
+.setgrp{display:grid;gap:6px}
+.setlab{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding-left:4px}
+.setbox{background:var(--bg);border-radius:12px;overflow:hidden}
+.setrow{display:flex;width:100%;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;text-align:left;border-bottom:1px solid var(--line);color:var(--fg)}
+.setbox>.setrow:last-child{border-bottom:0}
+.setrow span:first-child{display:grid;min-width:0}.setrow b{font-weight:600}.setrow small{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.setr{color:var(--muted);white-space:nowrap;font-size:15px}
+.sethead{margin-bottom:-6px}
 .sheetrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--bg);color:var(--fg);text-decoration:none}
 .sheetrow b{color:var(--todo);font-size:13px}
 @media print{@page{margin:0.5in}body>*:not(#printArea){display:none!important}#printArea{display:block!important;color:#000;background:#fff;font:11pt/1.4 Arial,Helvetica,sans-serif}#printArea h1{font-size:18pt;margin:0}#printArea .ph2{color:#555;margin:2pt 0 12pt;font-size:10.5pt}#printArea h2{font-size:13pt;margin:14pt 0 2pt;padding-bottom:3pt;border-bottom:2px solid #000}#printArea .pb{padding:7pt 0;border-bottom:1px solid #bbb;page-break-inside:avoid}#printArea .pt{font-size:12pt;font-weight:bold;margin-bottom:3pt}#printArea .pt span{font-weight:normal;color:#444}#printArea .pr{display:grid;grid-template-columns:1.25in 1fr;gap:1pt 10pt}#printArea .pr b{color:#555;font-weight:bold}#printArea .pst{float:right;font-weight:bold;font-size:10pt;border:1px solid #000;padding:0 5pt}#printArea .psum{margin-top:12pt}#printArea .foot{color:#666;font-size:9pt;margin-top:14pt}}
@@ -468,7 +477,7 @@ nav.tabs{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20p
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 26, 2026 (27)';
+var KEY='workday.v1',APPVER='Oct 26, 2026 (28)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -765,7 +774,7 @@ function renderHeader(){
     else mh+='<div class="mtitle"><b class="mbig">Messages</b></div>'+(msgOK()?'<button class="btn" id="mNew">New message</button>':'');
     mh+='<button class="iconbtn" id="gear" aria-label="Settings">'+IC.gear+'</button></div>';
     el.innerHTML=mh;
-    document.getElementById('gear').onclick=openSettings;
+    document.getElementById('gear').onclick=function(){openSettings('main')};
     bind('mBack',function(){MSG.cur=null;render();msgPollChats()});
     bind('mNew',openMsgNew);
     return;
@@ -780,7 +789,7 @@ function renderHeader(){
     h+='<button class="navbtn" id="next" aria-label="Next day">&rsaquo;</button></div>';
   }
   el.innerHTML=h;
-  document.getElementById('gear').onclick=openSettings;
+  document.getElementById('gear').onclick=function(){openSettings('main')};
   document.getElementById('openCal').onclick=function(){if(S.view==='cal'){S.view='day'}else{var d=parse(S.view==='day'?S.cur:todayStr());S.calY=d.getFullYear();S.calM=d.getMonth();S.view='cal'}render();mainTop()};
   if(S.view==='day'){
     document.getElementById('prev').onclick=function(){go(-1)};
@@ -887,7 +896,7 @@ function summaryHtml(s){
   return h+'</details>';
 }
 function copyText(t){
-  try{navigator.clipboard.writeText(t).then(function(){toast('Summary copied')},function(){showCopy(t)})}catch(e){showCopy(t)}
+  try{navigator.clipboard.writeText(t).then(function(){toast('Copied')},function(){showCopy(t)})}catch(e){showCopy(t)}
 }
 function showCopy(t){openSheet('<h3>Copy this text</h3><textarea id="cpT" rows="8" style="width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit">'+esc(t)+'</textarea><p style="margin:0;color:var(--muted);font-size:14px">Press and hold the text to copy it.</p><button class="btn" id="cpX">Close</button>');var a=document.getElementById('cpT');a.focus();a.select();bind('cpX',closeSheet)}
 function bind(id,fn){var e=document.getElementById(id);if(e)e.onclick=fn}
@@ -1392,7 +1401,8 @@ function aiContext(){
   L.push('Cards (id | date | time | status | type | address | contractor | crew | vehicle):');
   cs.forEach(function(c){L.push([c.id,c.date,c.time||'-',c.status==='done'?'done':(diff(c.date,T)<0?'missed':'to-do'),c.type,c.address||'-',c.contractor||'-',c.crew||'-',c.vehicle||'-'].join(' | '))});
   if(!cs.length)L.push('(no cards yet)');
-  L.push('Answer with only a JSON object and nothing else: {"reply":"...","actions":[...]}. Action forms: {"do":"add","date":"","time":"","type":"","address":"","contractor":"","foreman":"","phone":"","crew":"","vehicle":"","materials":[],"tools":[],"note":""}; {"do":"update","id":"","fields":{...only the fields to change}}; {"do":"done","id":""}; {"do":"todo","id":""}; {"do":"move","id":"","date":"","time":""}; {"do":"note","id":"","text":""}; {"do":"delete","id":""}. Use an empty actions list when you only answer a question or need more details first.');
+  L.push('Places: when he names a place without a full street address (a store, business, supply house, landmark, or something like the UPS store on Route 9), look it up with find_place, and with web_search if find_place has no good match. If there is one clear match, give the full address in your reply with its Google Maps link and Waze link, and ask if that is the right place before using it in a job (unless he already confirmed it). If several places match, list up to 3 with their addresses and links and ask which one. If he only asks for an address or directions, just answer with the address and links. Never invent an address.');
+  L.push('Answer with only a JSON object and nothing else (after any tool use): {"reply":"...","actions":[...]}. A card can be a plain to-do with only a title. Action forms: {"do":"add","date":"","time":"","title":"","type":"","address":"","contractor":"","foreman":"","phone":"","crew":"","vehicle":"","materials":[],"tools":[],"note":""}; {"do":"update","id":"","fields":{...only the fields to change}}; {"do":"done","id":""}; {"do":"todo","id":""}; {"do":"move","id":"","date":"","time":""}; {"do":"note","id":"","text":""}; {"do":"delete","id":""}. Use an empty actions list when you only answer a question or need more details first.');
   return L.join('\n');
 }
 function aiParse(txt){
@@ -1403,13 +1413,13 @@ function aiParse(txt){
 function cardLabel(c){return jobTitle(c)+(c.address?' at '+c.address.split(',')[0]:'')+', '+engShort(c.date)+(c.time?' '+fmtTime(c.time):'')+(c.crew?' ('+c.crew+')':'')}
 function aiApply(actions){
   var done=[],skipped=[],T=todayStr();
-  var okField={date:1,time:1,type:1,address:1,contractor:1,foreman:1,phone:1,crew:1,vehicle:1,materials:1,tools:1,notes:1};
+  var okField={title:1,date:1,time:1,type:1,address:1,contractor:1,foreman:1,phone:1,crew:1,vehicle:1,materials:1,tools:1,notes:1};
   actions.forEach(function(a){
     var c=a.id?find(a.id):null;
     if(a['do']==='add'){
       if(!a.date){a.date=T}
-      if(noWork(a.date)){skipped.push('Did not add '+(a.type||'job')+' on '+engShort(a.date)+' because it is '+noWork(a.date)+'.');return}
-      var n={id:nid(),date:a.date,time:a.time||'',type:a.type||'Job',address:a.address||'',contractor:a.contractor||'',foreman:a.foreman||'',phone:a.phone||'',crew:a.crew||'',vehicle:a.vehicle||'',materials:a.materials||[],tools:a.tools||[],notes:'',status:'todo',source:'assistant',sample:false,comments:[]};
+      if(noWork(a.date)){skipped.push('Did not add '+(a.title||a.type||'job')+' on '+engShort(a.date)+' because it is '+noWork(a.date)+'.');return}
+      var n={id:nid(),date:a.date,time:a.time||'',title:a.title||'',type:a.type||(a.title?'':'Job'),address:a.address||'',contractor:a.contractor||'',foreman:a.foreman||'',phone:a.phone||'',crew:a.crew||'',vehicle:a.vehicle||'',materials:a.materials||[],tools:a.tools||[],notes:'',status:'todo',source:'assistant',sample:false,comments:[]};
       if(a.note)n.comments.push({t:Date.now(),text:a.note});
       S.cards.push(n);if(typeof rememberJob==='function')rememberJob(n);done.push('Added: '+cardLabel(n));return;
     }
@@ -1437,7 +1447,7 @@ function aiBubbles(){
   AIH.forEach(function(m,i){
     if(m.role==='user')h+='<div class="bub"><span>'+esc(m.show||m.content)+'</span></div>';
     else{
-      h+='<div class="bub ai">'+(m.reply?'<span>'+esc(m.reply)+'</span>':'');
+      h+='<div class="bub ai">'+(m.reply?'<span>'+linkify(esc(m.reply))+'</span>':'');
       if(m.done&&m.done.length)h+='<ul class="aidone">'+m.done.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>';
       if(m.skipped&&m.skipped.length)h+='<ul class="aidone warnl">'+m.skipped.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>';
       if(m.undo&&!m.undone)h+='<button class="aiundo" data-aiundo="'+i+'">Undo these changes</button>';
@@ -1475,6 +1485,38 @@ function openAI(talk){
   if(talk)voiceStart();
 }
 function aiRedraw(){var thr=document.getElementById('aiThr');if(!thr)return;thr.innerHTML=aiBubbles();thr.scrollTop=thr.scrollHeight}
+var AIWEB=true;
+function placeLookup(q){
+  if(!connOK())return Promise.resolve({error:'The Google connection is not set up, so Maps lookup is not available. Use web search instead.'});
+  var qs=[q];if(!/\bnj\b|new jersey/i.test(q))qs.push(q+', NJ');if(!/lakewood/i.test(q))qs.push(q+', Lakewood, NJ');
+  return Promise.all(qs.map(function(x){return bridge('geocode',{q:x}).then(function(d){return d.places||[]},function(){return []})})).then(function(ls){
+    var seen={},out=[];ls.forEach(function(l){l.forEach(function(p){var k=p.address.toLowerCase();if(seen[k])return;seen[k]=1;out.push({address:p.address,close_match_only:!!p.partial,maps:'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(p.address),waze:'https://waze.com/ul?q='+encodeURIComponent(p.address)+'&navigate=yes'})})});
+    return {results:out.slice(0,6)};
+  });
+}
+function aiTools(){
+  var t=[{name:'find_place',description:'Look up a business, store, landmark or partial address on Google Maps (biased to the Lakewood, NJ area). Returns matching full street addresses with Google Maps and Waze links. Use it whenever Shmuel names a place without a full street address.',input_schema:{type:'object',properties:{query:{type:'string',description:'What to look up, for example: UPS Store Route 9 Lakewood NJ'}},required:['query']}}];
+  if(AIWEB)t.push({type:'web_search_20250305',name:'web_search',max_uses:3,user_location:{type:'approximate',city:'Lakewood',region:'New Jersey',country:'US',timezone:'America/New_York'}});
+  return t;
+}
+function aiCall(key,msgs,round){
+  return fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:AIMODEL,max_tokens:2000,system:aiContext(),tools:aiTools(),messages:msgs})})
+  .then(function(r){return r.json().then(function(j){return {ok:r.ok,status:r.status,j:j}})})
+  .then(function(res){
+    if(!res.ok&&res.status===400&&AIWEB&&/web.?search/i.test(JSON.stringify(res.j||''))){AIWEB=false;return aiCall(key,msgs,round)}
+    if(!res.ok||res.j.stop_reason!=='tool_use'||round>=4)return res;
+    var uses=(res.j.content||[]).filter(function(b){return b.type==='tool_use'});
+    if(!uses.length)return res;
+    var hear=document.getElementById('aiHear');if(hear)hear.textContent='Looking it up...';
+    return Promise.all(uses.map(function(u){
+      if(u.name==='find_place')return placeLookup((u.input&&u.input.query)||'').then(function(r){return {type:'tool_result',tool_use_id:u.id,content:JSON.stringify(r)}});
+      return Promise.resolve({type:'tool_result',tool_use_id:u.id,content:'Unknown tool',is_error:true});
+    })).then(function(results){
+      var next=msgs.concat([{role:'assistant',content:res.j.content},{role:'user',content:results}]);
+      return aiCall(key,next,round+1);
+    });
+  });
+}
 function aiSend(text){
   var key=getKey();if(!key){openAI();return}
   AIH.push({role:'user',content:text});AIBUSY=true;
@@ -1482,28 +1524,27 @@ function aiSend(text){
   aiRedraw();
   var msgs=AIH.filter(function(m){return !m.fail}).slice(-12).map(function(m){return {role:m.role,content:m.role==='user'?m.content:(m.raw||m.reply||'')}});
   while(msgs.length&&msgs[0].role!=='user')msgs.shift();
-  fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:AIMODEL,max_tokens:1500,system:aiContext(),messages:msgs})})
-  .then(function(r){return r.json().then(function(j){return {ok:r.ok,status:r.status,j:j}})})
+  aiCall(key,msgs,0)
   .then(function(res){
     AIBUSY=false;
     if(!res.ok){
       var msg=res.status===401?'The key was not accepted. Open Settings, remove the key, and paste it again.':res.status===402||(res.j&&res.j.error&&/credit/i.test(res.j.error.message||''))?'Your Claude API account is out of credit. Add credit at console.anthropic.com under Billing.':(res.status===429||res.status===529)?'The assistant is busy. Wait a minute and send it again.':'The assistant could not answer (error '+res.status+'). Send it again in a minute.';
       AIH.push({role:'assistant',reply:msg,raw:msg,fail:true});AIH.splice(AIH.length-2,1);
-      if(ta)ta.value=text;aiRedraw();return;
+      if(ta)ta.value=text;aiRedraw();voiceUI('');return;
     }
     var txt=(res.j.content||[]).filter(function(b){return b.type==='text'}).map(function(b){return b.text}).join('');
     var o=aiParse(txt),before=JSON.stringify(S.cards);
     var out=aiApply(o.actions||[]);
     var changed=out.done.length>0;
     if(changed){save();render()}
-    AIH.push({role:'assistant',reply:o.reply||'',raw:txt,done:out.done,skipped:out.skipped,undo:changed?before:null});
+    AIH.push({role:'assistant',reply:o.reply||'',raw:JSON.stringify({reply:o.reply||'',actions:o.actions||[]}),done:out.done,skipped:out.skipped,undo:changed?before:null});
     aiRedraw();
     if(VOICE.last)aiSpeak(o.reply||(out.done.length?out.done.join('. '):''));voiceUI('');
   })
   .catch(function(){
     AIBUSY=false;AIH.pop();
     AIH.push({role:'assistant',reply:'No connection right now, so nothing was sent. Your message is back in the box. Send it again when you have signal.',raw:'',fail:true});
-    var t2=document.getElementById('aiTxt');if(t2)t2.value=text;aiRedraw();
+    var t2=document.getElementById('aiTxt');if(t2)t2.value=text;aiRedraw();voiceUI('');
   });
 }
 /* ---------- voice: talk to the assistant, hear the answer ---------- */
@@ -1617,7 +1658,7 @@ function nativeStart(SR){
 }
 function aiSpeak(text){
   if(!speakOn()||!window.speechSynthesis||!text)return;
-  try{speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(String(text).replace(/[*_#`]/g,''));u.lang='en-US';u.rate=1.05;
+  try{speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(String(text).replace(/https?:\/\/\S+/g,'').replace(/[*_#`]/g,''));u.lang='en-US';u.rate=1.05;
     var vs=speechSynthesis.getVoices().filter(function(v){return /^en-US/.test(v.lang)});var pref=vs.filter(function(v){return /Samantha|Ava|Allison|Google US/i.test(v.name)})[0]||vs[0];if(pref)u.voice=pref;
     speechSynthesis.speak(u)}catch(e){}
 }
@@ -1857,7 +1898,7 @@ function sternPrompt(text,lang){
   '8. If something could be read two ways and it changes the job, still translate your best reading but set ambiguity_warning true with a short note.\n'+
   '9. If you fixed a real mistake (a wrong word), set corrected true with a short note. Punctuation does not count.\n'+
   'Target language: '+lang+'. Use neutral Latin American Spanish if the language is Spanish.\n'+
-  '10. Also give a transliteration: the translation written out in English letters so an English speaker can read it out loud, with the stressed syllable in capitals (for example: Mah-NYAH-nah ah lahs OH-choh). For languages in other alphabets, write the sounds in English letters the same way.\n'+
+  (trOn()?'10. Also give a transliteration: the translation written out in English letters so an English speaker can read it out loud, with the stressed syllable in capitals (for example: Mah-NYAH-nah ah lahs OH-choh). For languages in other alphabets, write the sounds in English letters the same way.\n':'10. Leave transliteration empty.\n')+
   'Reply with only a JSON object, no other text: {"clean_english":"","corrected":false,"correction_note":"","ambiguity_warning":false,"ambiguity_note":"","translation":"","transliteration":""}\n'+
   'Only the text after the line below is the message to translate.\n=== TEXT TO TRANSLATE ===\n'+text;
 }
@@ -1869,7 +1910,7 @@ function translateBack(text,lang){
   if(key&&navigator.onLine){
     return fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-5-5',max_tokens:1500,messages:[{role:'user',content:sternReverse(text,lang)}]})})
       .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error((j.error&&j.error.message)||('error '+r.status));return j})})
-      .then(function(j){var t=(j.content||[]).map(function(b){return b.text||''}).join('');var o=aiParse(t);if(!o.english)throw new Error('no translation');return {translation:o.english,translit:o.transliteration||'',detected:o.detected_language,ambiguity_warning:o.ambiguity_warning,ambiguity_note:o.ambiguity_note,how:'claude'}});
+      .then(function(j){var t=(j.content||[]).map(function(b){return b.text||''}).join('');var o=aiParse(t);if(!o.english)throw new Error('no translation');return {translation:o.english,translit:trOn()?(o.transliteration||''):'',detected:o.detected_language,ambiguity_warning:o.ambiguity_warning,ambiguity_note:o.ambiguity_note,how:'claude'}});
   }
   if(connOK())return bridge('translate',{text:text,from:LCODE[lang]||'',to:'en'}).then(function(d){return {translation:d.text,how:'google'}});
   return Promise.reject(new Error('Translation needs the Google connection or the Claude key. Open the gear to set one up.'));
@@ -1880,7 +1921,7 @@ function translateMsg(text,lang){
   if(key&&navigator.onLine){
     return fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-5-5',max_tokens:1500,messages:[{role:'user',content:sternPrompt(text,lang)}]})})
       .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error((j.error&&j.error.message)||('error '+r.status));return j})})
-      .then(function(j){var t=(j.content||[]).map(function(b){return b.text||''}).join('');var o=aiParse(t);if(!o.translation)throw new Error('no translation');o.how='claude';o.translit=o.transliteration||'';return o});
+      .then(function(j){var t=(j.content||[]).map(function(b){return b.text||''}).join('');var o=aiParse(t);if(!o.translation)throw new Error('no translation');o.how='claude';o.translit=trOn()?(o.transliteration||''):'';return o});
   }
   if(connOK())return bridge('translate',{text:text,from:'en',to:LCODE[lang]||'es'}).then(function(d){return {translation:d.text,clean_english:text,how:'google'}});
   return Promise.reject(new Error('Translation needs the Google connection or the Claude key. Open the gear to set one up.'));
@@ -1893,9 +1934,9 @@ function openSend(id){
   h+='<div class="field"><label for="sTo">Send to</label><select id="sTo">'+opts(names,c.crew&&c.crew!=='Me'?c.crew:names[0])+'</select></div>';
   h+='<div id="sInfo" class="mt"></div>';
   h+='<div class="field"><label for="sMsg">Message (English)</label><textarea id="sMsg" rows="7">'+esc(jobMessage(c))+'</textarea></div>';
-  h+='<div class="row"><button class="btn primary" id="sTr">Translate</button><label class="tchk"><input type="checkbox" id="sBoth" checked>Send English too</label></div>';
+  h+='<div class="row"><button class="btn primary" id="sTr">Translate</button><label class="tchk"><input type="checkbox" id="sBoth" checked>Send English too</label><label class="tchk"><input type="checkbox" id="sTl"'+(trOn()?' checked':'')+'>How to say it</label></div>';
   h+='<div id="sOut"></div>';
-  h+='<div class="row">'+(msgOK()?'<button class="btn good" id="sIn">Send in Workday</button>':'')+'<button class="btn'+(msgOK()?'':' good')+'" id="sWa">WhatsApp</button><button class="btn" id="sShare">Share with photos</button><button class="btn" id="sClose">Close</button></div><div id="sWarn"></div>';
+  h+='<div class="row">'+(msgOK()?'<button class="btn good" id="sIn">Send in Workday</button>':'')+'<button class="btn'+(msgOK()?'':' good')+'" id="sWa">WhatsApp</button><button class="btn" id="sSms">Text message</button><button class="btn" id="sShare">Share with photos</button><button class="btn" id="sClose">Close</button></div><div id="sWarn"></div>';
   openSheet(h);
   var tr=null;
   function info(){var ci=crewInfo(val('sTo'));document.getElementById('sInfo').innerHTML=esc(ci.name)+': '+(ci.phone?esc(ci.phone):'no phone number saved yet')+' '+MID+' '+(ci.lang?esc(ci.lang):'language not set')+' <button type="button" id="sEditCrew" style="color:var(--todo);font-weight:600">Change</button>';bind('sEditCrew',function(){openCrewEdit(val('sTo'),function(){openSend(id)})});tr=null;document.getElementById('sOut').innerHTML=''}
@@ -1913,7 +1954,9 @@ function openSend(id){
       out.innerHTML=x;
     },function(e){out.innerHTML='<div class="warn">'+esc(e.message||String(e))+'</div>'});
   });
-  function finalText(){var t=document.getElementById('sTrTxt');var en=val('sMsg');if(!t)return en;return document.getElementById('sBoth').checked?t.value+'\n\n---\n'+en:t.value}
+  function finalText(){var t=document.getElementById('sTrTxt');var en=val('sMsg');if(!t)return en;var lg=(tr&&tr.lang)||crewInfo(val('sTo')).lang||'Spanish';return document.getElementById('sBoth').checked?trBoth(t.value,(tr&&tr.clean)||en,lg):t.value}
+  document.getElementById('sTl').onchange=function(e){trSet(e.target.checked)};
+  bind('sSms',function(){var ci=crewInfo(val('sTo')),d=digits(ci.phone);window.location.href='sms:'+(d?'+'+d:'')+'&body='+encodeURIComponent(finalText())});
   bind('sWa',function(){
     var ci=crewInfo(val('sTo')),d=digits(ci.phone);
     if(!d){document.getElementById('sWarn').innerHTML='<div class="warn">Add '+esc(ci.name)+'\'s phone number first (tap Change above), or use Share.</div>';return}
@@ -1997,7 +2040,7 @@ function remEditor(){
   });
   var T=todayStr();
   h+='</div><div class="mt" style="margin-top:4px">Today: '+(noWork(T)?esc(noWork(T))+', no reminders.':'mincha '+clock(minchaMs(T))+'.')+' No reminders on Friday night, Shabbos or Yom Tov.</div>';
-  h+='<div class="mt">Reminders go on your Google Calendar ("Workday Reminders") with an alert, so your phone notifies you. Jobs go on "Workday Jobs".'+(connOK()?'':' This starts once Google is connected.')+'</div>';
+  h+='<div class="mt">Reminders come as notifications on this phone'+(msgOK()?'':' once Messages is set up')+'. They also go on your Google Calendar ("Workday Reminders"), and jobs go on "Workday Jobs".</div>';
   h+='<div class="row"><button class="btn primary" id="remSave">Save reminders</button></div></div>';
   return h;
 }
@@ -2055,17 +2098,22 @@ function projLink(){try{return localStorage.getItem('workday.proj')||''}catch(e)
 
 /* ---------- Translate tab ---------- */
 var TRS={lang:'Spanish',rev:false,text:'',out:null};
+var NATIVE={Spanish:'Espa\u00f1ol',Portuguese:'Portugu\u00eas',Polish:'Polski',Russian:'\u0420\u0443\u0441\u0441\u043a\u0438\u0439',Ukrainian:'\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430',Hebrew:'\u05e2\u05d1\u05e8\u05d9\u05ea',Arabic:'\u0627\u0644\u0639\u0631\u0628\u064a\u0629',French:'Fran\u00e7ais','Haitian Creole':'Krey\u00f2l'};
+function trOn(){try{return localStorage.getItem('workday.translit')!=='0'}catch(e){return true}}
+function trSet(v){try{localStorage.setItem('workday.translit',v?'1':'0')}catch(e){}}
+function trBoth(tr,en,lang){return (NATIVE[lang]||lang)+':\n'+tr+'\n\nEnglish:\n'+en}
 function renderTr(){
   var h='<section class="ph" style="gap:12px">';
   h+='<div class="row" style="align-items:center;justify-content:space-between"><b style="font-family:var(--display);font-size:19px">'+(TRS.rev?esc(TRS.lang)+' to English':'English to '+esc(TRS.lang))+'</b><button class="btn" id="trSwap">Swap</button></div>';
   h+='<div class="field"><label for="trLang">Language</label><select id="trLang">'+opts(LANGS.filter(function(x){return x!=='English'&&x!=='Other'}),TRS.lang)+'</select></div>';
   h+='<div class="field"><label for="trIn">'+(TRS.rev?'Paste what they sent':'Type or dictate (tap the keyboard mic)')+'</label><textarea id="trIn" rows="5" placeholder="'+(TRS.rev?'Paste the message here':'Tell him the boards need to be cut 16 inches')+'">'+esc(TRS.text)+'</textarea></div>';
-  h+='<div class="row"><button class="btn primary" id="trGo">Translate</button><button class="btn" id="trClr">Clear</button></div><div id="trRes"></div>';
+  h+='<div class="row" style="align-items:center"><button class="btn primary" id="trGo">Translate</button><button class="btn" id="trClr">Clear</button><label class="tchk"><input type="checkbox" id="trTl"'+(trOn()?' checked':'')+'>How to say it</label></div><div id="trRes"></div>';
   h+='<div class="mt">'+(getKey()?'Uses Claude with your Stern Translator rules: it cleans up voice dictation and keeps names, addresses and numbers exactly.':(connOK()?'Uses Google Translate (free). Add the Claude key in the Assistant for the Stern Translator quality.':'Needs the Google connection (free) or the Claude key. Open the gear to set one up.'))+'</div></section>';
   document.getElementById('mainIn').innerHTML=h;document.getElementById('main').className='';
   if(TRS.out)showTr();
   document.getElementById('trLang').onchange=function(){TRS.lang=val('trLang');TRS.out=null;renderTr()};
   document.getElementById('trIn').oninput=function(){TRS.text=val('trIn')};
+  document.getElementById('trTl').onchange=function(e){trSet(e.target.checked)};
   bind('trSwap',function(){TRS.rev=!TRS.rev;TRS.text='';TRS.out=null;renderTr()});
   bind('trClr',function(){TRS.text='';TRS.out=null;renderTr()});
   bind('trGo',function(){
@@ -2079,10 +2127,17 @@ function showTr(){
   var h='';
   if(o.ambiguity_warning)h+='<div class="warn">Check this: '+esc(o.ambiguity_note||'')+'</div>';
   if(!TRS.rev&&o.clean_english&&o.clean_english!==TRS.text)h+='<div class="mt"><b>What you are saying:</b> '+esc(o.clean_english)+(o.corrected&&o.correction_note?' <i>('+esc(o.correction_note)+')</i>':'')+'</div>';
-  h+='<div class="trout"><small>'+(TRS.rev?'English'+(o.detected?' '+MID+' from '+esc(o.detected):''):esc(TRS.lang))+(o.how==='google'?' '+MID+' Google':'')+'</small><div class="big" id="trBig">'+esc(o.translation)+'</div>'+(o.translit?'<div class="translit"><small>'+(TRS.rev?'How they said it':'How to say it')+'</small>'+esc(o.translit)+'</div>':'')+'<div class="row" style="gap:18px"><button id="trCopy">Copy</button>'+(TRS.rev?'':'<button id="trWa">WhatsApp</button>')+'<button id="trSay">Listen</button></div></div>';
+  var both=TRS.rev?o.translation:trBoth(o.translation,o.clean_english||TRS.text,TRS.lang);
+  h+='<div class="trout">';
+  if(TRS.rev)h+='<small>English'+(o.detected?' '+MID+' from '+esc(o.detected):'')+(o.how==='google'?' '+MID+' Google':'')+'</small><div class="big" id="trBig">'+esc(o.translation)+'</div>';
+  else h+='<small>'+esc(NATIVE[TRS.lang]||TRS.lang)+(o.how==='google'?' '+MID+' Google':'')+'</small><div class="big" id="trBig">'+esc(o.translation)+'</div><small>English</small><div class="tren">'+esc(o.clean_english||TRS.text)+'</div>';
+  if(o.translit)h+='<div class="translit"><small>'+(TRS.rev?'How they said it':'How to say it')+'</small>'+esc(o.translit)+'</div>';
+  h+='<div class="row" style="gap:18px"><button id="trCopy">Copy</button>'+(TRS.rev?'':'<button id="trWa">WhatsApp</button><button id="trSms">Text message</button>')+'<button id="trSay">Listen</button></div></div>';
+  if(!TRS.rev)h+='<div class="mt">Copy and Send include both: '+esc(NATIVE[TRS.lang]||TRS.lang)+' on top, English under it.</div>';
   res.innerHTML=h;
-  bind('trCopy',function(){copyText(o.translation)});
-  bind('trWa',function(){window.location.href='https://wa.me/?text='+encodeURIComponent(o.translation)});
+  bind('trCopy',function(){copyText(both)});
+  bind('trWa',function(){window.location.href='https://wa.me/?text='+encodeURIComponent(both)});
+  bind('trSms',function(){window.location.href='sms:&body='+encodeURIComponent(both)});
   bind('trSay',function(){try{var u=new SpeechSynthesisUtterance(o.translation);u.lang=TRS.rev?'en-US':({Spanish:'es-MX',Portuguese:'pt-BR',Polish:'pl-PL',Russian:'ru-RU',Ukrainian:'uk-UA',Hebrew:'he-IL',Arabic:'ar-SA',French:'fr-FR','Haitian Creole':'ht-HT'}[TRS.lang]||'');u.rate=0.9;speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){toast('This phone has no voice for that language')}});
 }
 
@@ -2340,28 +2395,63 @@ function updateApp(){
   try{if(navigator.serviceWorker)p.push(navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.update().catch(function(){})}))}))}catch(e){}
   Promise.all(p).catch(function(){}).then(function(){location.replace(location.pathname+'?v='+Date.now())});
 }
-function openSettings(){
-  var T=todayStr(),sat=T;while(dow(sat)!==6)sat=addDays(sat,1);
-  var h='<h3>Settings</h3>';
-  h+='<div class="field"><label>Google connection</label><button class="sheetrow" id="sConn" style="width:100%;text-align:left"><span><span style="font-weight:600">'+(connOK()?(SYNC.err?'Connected, with a problem':'Connected'):'Not connected')+'</span><br><small style="color:var(--muted)">'+(connOK()?(SYNC.last?'Last sync '+esc(clockAt(SYNC.last)):'Not synced yet'):'Needed for syncing, contacts and address lookup')+'</small></span><b>'+(connOK()?'Manage':'Connect')+'</b></button></div>';
-  h+='<div class="field"><label>Messages</label><button class="sheetrow" id="sMsg" style="width:100%;text-align:left"><span><span style="font-weight:600">'+(msgOK()?(MSG.wa?'WhatsApp connected':'Connected, test mode'):'Not set up')+'</span><br><small style="color:var(--muted)">WhatsApp Business messages inside Workday</small></span><b>'+(msgOK()?'Manage':'Set up')+'</b></button></div>';
-  h+='<div class="field"><label>Zmanim</label><button class="sheetrow" id="sLoc" style="width:100%;text-align:left"><span><span style="font-weight:600">'+esc(LOCNAME)+'</span><br><small style="color:var(--muted)">'+(KZ?'KosherJava (KosherZmanim '+esc(KZV)+'), sea level':'Built-in formula until KosherJava loads')+'</small></span><b>Change</b></button></div>';
-  h+=remEditor();
-  h+=crewEditor()+listEditor('vehicles','Vehicles')+listEditor('tools','Tools')+listEditor('types','Work types');
-  h+='<div class="field"><label for="projIn">Claude Project link (the Assistant button opens it)</label><div class="addrow"><input id="projIn" autocapitalize="off" spellcheck="false" placeholder="https://claude.ai/project/..." value="'+esc(projLink())+'"><button class="btn" id="projSave">Save</button></div></div>';
-  h+='<div class="field"><label>Assistant key</label><div class="rem"><div><span>'+(getKey()?'Claude API key saved on this phone':'No key yet. Tap Assistant to add one.')+'</span><b>'+(getKey()?'Saved':'')+'</b></div></div>'+(getKey()?'<div class="row"><button class="btn" id="kDel">Remove key</button></div>':'')+'</div>';
-  h+='<div class="field"><label>Sheets</label><div class="listed">'+SHEETS.map(function(x){return '<div class="sheetrow"><span><span style="font-weight:600">'+esc(x[0])+'</span><br><small style="color:var(--muted)">'+esc(x[2])+'</small></span><span class="row" style="gap:14px"><button data-sheetview="'+x[1]+'" style="color:var(--todo);font-weight:700;font-size:13px">View</button><button data-printsheet="'+x[1]+'" style="color:var(--todo);font-weight:700;font-size:13px">Print</button><a href="'+sheetUrl(x[1])+'" target="_blank" rel="noopener" style="color:var(--todo);font-weight:700;font-size:13px;text-decoration:none">Open</a></span></div>'}).join('')+'</div><div class="mt" style="margin-top:4px">Print makes a clean list straight from the app. Workday prints the next 2 weeks of jobs.</div></div>';
-  h+='<div class="field"><label>App</label><div class="rem"><div><span>Version</span><b>'+APPVER+'</b></div></div><div class="row"><button class="btn" id="appUpd">Update app now</button></div></div>';
+var SETPAGE='main';
+function setRow(id,title,sub,right){return '<button class="setrow" id="'+id+'"><span><b>'+esc(title)+'</b>'+(sub?'<small>'+sub+'</small>':'')+'</span><span class="setr">'+(right||'')+' &rsaquo;</span></button>'}
+function setGroup(label,rows){return '<div class="setgrp">'+(label?'<div class="setlab">'+esc(label)+'</div>':'')+'<div class="setbox">'+rows+'</div></div>'}
+function openSettings(page){
+  if(typeof page==='string')SETPAGE=page;
+  var P=SETPAGE,h='';
+  function head(t){return '<div class="sethead"><button class="minilink" id="sBack">&lsaquo; Settings</button></div><h3>'+esc(t)+'</h3>'}
+  if(P==='main'){
+    h+='<h3>Settings</h3>';
+    h+=setGroup('Connections',
+      setRow('sConn','Google',connOK()?(SYNC.err?'Connected, with a problem':'Connected'+(SYNC.last?' '+MID+' synced '+esc(clockAt(SYNC.last)):'')):'Not connected','')+
+      setRow('sMsg','Messages and notifications',msgOK()?(MSG.wa?'WhatsApp connected':'Connected, test mode'):'Not set up',''));
+    h+=setGroup('Your day',
+      setRow('sRem','Reminders','Morning brief, mincha, summaries, Trello','')+
+      setRow('sLoc','Zmanim and location',esc(LOCNAME),''));
+    h+=setGroup('People and lists',
+      setRow('sCrew','Crew',S.crew.length+' people',String(S.crew.length))+
+      setRow('sVeh','Vehicles','',String(S.vehicles.length))+
+      setRow('sTools','Tools','',String(S.tools.length))+
+      setRow('sTypes','Work types (tags)','',String(S.types.length)));
+    h+=setGroup('Assistant',setRow('sAI','Assistant and voice',getKey()?'Key saved on this phone':'No key yet',''));
+    h+=setGroup('Sheets',setRow('sSheets','View, print or open your sheets',SHEETS.length+' sheets',''));
+    h+=setGroup('App','<div class="setrow static"><span><b>Version</b></span><span class="setr">'+APPVER+'</span></div><button class="setrow" id="appUpd"><span><b style="color:var(--todo)">Update app now</b></span><span></span></button>');
+    h+='<button class="btn primary" id="sClose">Done</button>';
+    openSheet(h);
+    bind('sClose',function(){closeSheet();render()});
+    bind('appUpd',updateApp);
+    bind('sConn',openConn);bind('sMsg',openMsgSetup);
+    bind('sLoc',function(){openLocation(openSettings)});
+    bind('sRem',function(){openSettings('rem')});bind('sCrew',function(){openSettings('crew')});
+    bind('sVeh',function(){openSettings('vehicles')});bind('sTools',function(){openSettings('tools')});bind('sTypes',function(){openSettings('types')});
+    bind('sAI',function(){openSettings('ai')});bind('sSheets',function(){openSettings('sheets')});
+    return;
+  }
+  if(P==='rem'){h+=head('Reminders')+remEditor().replace('<label>Reminders</label>','')}
+  else if(P==='crew'){h+=head('Crew')+crewEditor().replace('<label>Crew</label>','')}
+  else if(P==='vehicles'){h+=head('Vehicles')+listEditor('vehicles','Vehicles').replace('<label>Vehicles</label>','')}
+  else if(P==='tools'){h+=head('Tools')+listEditor('tools','Tools').replace('<label>Tools</label>','')}
+  else if(P==='types'){h+=head('Work types (tags)')+'<div class="mt">These are the tags you can pick on a job, like Cleanup or Install.</div>'+listEditor('types','Work types').replace('<label>Work types</label>','')}
+  else if(P==='sheets'){h+=head('Sheets')+'<div class="listed">'+SHEETS.map(function(x){return '<div class="sheetrow"><span><span style="font-weight:600">'+esc(x[0])+'</span><br><small style="color:var(--muted)">'+esc(x[2])+'</small></span><span class="row" style="gap:14px"><button data-sheetview="'+x[1]+'" style="color:var(--todo);font-weight:700;font-size:13px">View</button><button data-printsheet="'+x[1]+'" style="color:var(--todo);font-weight:700;font-size:13px">Print</button><a href="'+sheetUrl(x[1])+'" target="_blank" rel="noopener" style="color:var(--todo);font-weight:700;font-size:13px;text-decoration:none">Open</a></span></div>'}).join('')+'</div><div class="mt" style="margin-top:4px">Print makes a clean list straight from the app. Workday prints the next 2 weeks of jobs.</div>'}
+  else if(P==='ai'){
+    h+=head('Assistant and voice');
+    h+='<div class="field"><label>Claude API key</label><div class="rem"><div><span>'+(getKey()?'Saved on this phone only':'No key yet. Tap the Assistant button to add one.')+'</span><b>'+(getKey()?'Saved':'')+'</b></div></div>'+(getKey()?'<div class="row"><button class="btn" id="kDel">Remove key</button></div>':'')+'</div>';
+    h+='<div class="field"><label>Voice</label><label class="tchk"><input type="checkbox" id="vAuto"'+(autoTalk()?' checked':'')+'>Start listening when I open the Assistant</label><label class="tchk"><input type="checkbox" id="vSpk"'+(speakOn()?' checked':'')+'>Speak the answers out loud</label></div>';
+    h+='<div class="field"><label>Translation</label><label class="tchk"><input type="checkbox" id="vTl"'+(trOn()?' checked':'')+'>Show how to say it (transliteration)</label></div>';
+    h+='<div class="field"><label for="projIn">Claude Project link (optional)</label><div class="mt">Only if you made a Workday project on claude.ai. When there is no API key, the Assistant button opens that project instead. Paste its link and tap Save. Leave empty if you use the key.</div><div class="addrow"><input id="projIn" autocapitalize="off" spellcheck="false" placeholder="https://claude.ai/project/..." value="'+esc(projLink())+'"><button class="btn" id="projSave">Save</button></div></div>';
+  }
   h+='<button class="btn primary" id="sClose">Done</button>';
   openSheet(h);
+  bind('sBack',function(){openSettings('main')});
   bind('sClose',function(){closeSheet();render()});
-  bind('appUpd',updateApp);
-  bind('sConn',openConn);
-  bind('sMsg',openMsgSetup);
-  bind('sLoc',function(){openLocation(openSettings)});
   bind('remSave',saveRem);
   bind('projSave',function(){var v=val('projIn').trim();if(v&&!/^https:\/\/claude\.ai\//.test(v)){toast('Paste the link to your Claude Project (it starts with https://claude.ai/)');return}try{if(v)localStorage.setItem('workday.proj',v);else localStorage.removeItem('workday.proj')}catch(e){}toast(v?'Project link saved':'Project link removed');openSettings()});
-  bind('kDel',function(){confirmSheet('Remove the assistant key?','The assistant stops working on this phone until you paste the key again.','Remove key',function(){setKey('');closeSheet();toast('Key removed')})});
+  bind('kDel',function(){confirmSheet('Remove the assistant key?','The assistant stops working on this phone until you paste the key again.','Remove key',function(){setKey('');openSettings('ai');toast('Key removed')})});
+  var va=document.getElementById('vAuto');if(va)va.onchange=function(e){try{localStorage.setItem('workday.autotalk',e.target.checked?'1':'0')}catch(x){}};
+  var vs=document.getElementById('vSpk');if(vs)vs.onchange=function(e){try{localStorage.setItem('workday.speak',e.target.checked?'1':'0')}catch(x){}};
+  var vt=document.getElementById('vTl');if(vt)vt.onchange=function(e){trSet(e.target.checked)};
 }
 
 /* ---------- events ---------- */
@@ -2597,7 +2687,7 @@ function msgThreadView(){
     translateMsg(txt,lang).then(function(o){
       out.innerHTML='<div class="mt">'+esc(lang)+': '+esc(o.translation)+'</div>'+(o.translit?'<div class="translit"><small>How to say it</small>'+esc(o.translit)+'</div>':'')+'<div class="row"><button class="btn" id="mUseTr">Use translation</button><button class="btn" id="mUseBoth">Use both</button></div>';
       bind('mUseTr',function(){ta.value=o.translation;ta.oninput();out.innerHTML=''});
-      bind('mUseBoth',function(){ta.value=o.translation+'\n\n---\n'+txt;ta.oninput();out.innerHTML=''});
+      bind('mUseBoth',function(){ta.value=trBoth(o.translation,o.clean_english||txt,lang);ta.oninput();out.innerHTML=''});
     },function(e){out.innerHTML='<div class="warn">'+esc(e.message||String(e))+'</div>'});
   });
 }
