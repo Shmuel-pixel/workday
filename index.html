@@ -218,6 +218,8 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 .hocode{font-family:var(--display);font-size:52px;font-weight:800;text-align:center;letter-spacing:.06em;color:var(--todo);font-variant-numeric:tabular-nums}
 .hoin{width:100%;box-sizing:border-box;text-align:center;font-size:34px!important;font-weight:800;letter-spacing:.12em;padding:12px;border-radius:14px;border:2px solid var(--todo);background:var(--surface);color:var(--fg)}
 .newdev{display:grid;gap:6px;background:var(--todo-soft);border-radius:14px;padding:14px}.newdev span{color:var(--muted);font-size:14px}
+.stylebtns{display:flex;flex-wrap:wrap;gap:8px}
+.wrout{width:100%;box-sizing:border-box;border:0;background:transparent;color:inherit;font:inherit;font-size:17px;resize:vertical;padding:4px 0}
 .setgrp{display:grid;gap:6px}
 .setlab{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding-left:4px}
 .setbox{background:var(--bg);border-radius:12px;overflow:hidden}
@@ -504,7 +506,7 @@ nav.tabs{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20p
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 27, 2026 (34)';
+var KEY='workday.v1',APPVER='Oct 27, 2026 (35)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -2158,8 +2160,47 @@ var NATIVE={Spanish:'Espa\u00f1ol',Portuguese:'Portugu\u00eas',Polish:'Polski',R
 function trOn(){try{return localStorage.getItem('workday.translit')!=='0'}catch(e){return true}}
 function trSet(v){try{localStorage.setItem('workday.translit',v?'1':'0')}catch(e){}}
 function trBoth(tr,en,lang){return (NATIVE[lang]||lang)+':\n'+tr+'\n\nEnglish:\n'+en}
+var WRS={text:'',out:null,style:''};
+function trSeg(){return '<div class="seg"><button class="'+(TRS.mode!=='write'?'on':'')+'" data-trmode="tr">Translate</button><button class="'+(TRS.mode==='write'?'on':'')+'" data-trmode="write">Write a text</button></div>'}
+function writePrompt(text,style){
+  var base='You help Shmuel, a scheduler at Five Star Services (a construction and demolition company in Lakewood, NJ), write text messages to contractors, foremen, crew and customers. The draft may have voice-to-text mistakes; work out what he means. Keep every name, address, time, date, number, price and link exactly. Never add facts, promises or details he did not say. Keep it a natural text message, about as long as his draft or shorter, no greeting card language, no emojis unless he used them, in English.\n';
+  if(style==='carnegie')base+='Rewrite it the way Dale Carnegie would (How to Win Friends and Influence People): friendly and warm, sincere appreciation where it fits, talk in terms of what the other person cares about, ask instead of order where it still gets the job done, make it easy to say yes, let the other person save face, no criticism, no blame, no complaining. It must still be clear what he needs and by when. Sound like a real person on a job site, not a salesman.\n';
+  else if(style==='firm')base+='Rewrite it clear and firm: polite but direct, no softening words, says exactly what is needed and by when.\n';
+  else if(style==='short')base+='Rewrite it as short as possible while keeping everything that matters.\n';
+  else base+='Clean it up: fix the voice-to-text mistakes, grammar and punctuation, keep his tone and wording as much as possible.\n';
+  return base+'Reply with only a JSON object: {"text":""}\n=== DRAFT ===\n'+text;
+}
+function writeMsg(text,style){
+  var key=getKey();if(!key)return Promise.reject(new Error('Writing help needs the Claude key. Tap the Assistant button to add it.'));
+  return fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:AIMODEL,max_tokens:1200,messages:[{role:'user',content:writePrompt(text,style)}]})})
+    .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error((j.error&&j.error.message)||('error '+r.status));return j})})
+    .then(function(j){var t=(j.content||[]).map(function(b){return b.text||''}).join('');var o=aiParse(t);return o.text||t.trim()});
+}
+function renderWrite(){
+  var h='<section class="ph" style="gap:12px">'+trSeg();
+  h+='<div class="field"><label for="wrIn">Your message (type or dictate)</label><textarea id="wrIn" rows="5" placeholder="tell him we need the dumpster moved before 8 tomorrow">'+esc(WRS.text)+'</textarea></div>';
+  h+='<div class="stylebtns"><button class="btn primary" data-wstyle="carnegie">Dale Carnegie</button><button class="btn" data-wstyle="clean">Clean it up</button><button class="btn" data-wstyle="firm">Clear and firm</button><button class="btn" data-wstyle="short">Shorter</button></div>';
+  h+='<div id="wrRes"></div>';
+  if(!getKey())h+='<div class="mt">Needs the Claude key (tap Assistant once to add it).</div>';
+  h+='</section>';
+  document.getElementById('mainIn').innerHTML=h;document.getElementById('main').className='';
+  document.getElementById('wrIn').oninput=function(){WRS.text=val('wrIn')};
+  if(WRS.out)showWrite();
+}
+function showWrite(){
+  var res=document.getElementById('wrRes');if(!res)return;
+  var names={carnegie:'Dale Carnegie',clean:'Cleaned up',firm:'Clear and firm',short:'Shorter'};
+  res.innerHTML='<div class="trout"><small>'+esc(names[WRS.style]||'')+'</small><textarea id="wrOut" rows="6" class="wrout">'+esc(WRS.out)+'</textarea><div class="row" style="gap:18px"><button id="wrCopy">Copy</button><button id="wrWa">WhatsApp</button><button id="wrSms">Text message</button><button id="wrTr">Translate it</button></div></div>';
+  try{res.scrollIntoView({block:'start',behavior:'smooth'})}catch(e){}
+  function cur(){return val('wrOut')}
+  bind('wrCopy',function(){copyText(cur())});
+  bind('wrWa',function(){window.location.href='https://wa.me/?text='+encodeURIComponent(cur())});
+  bind('wrSms',function(){window.location.href='sms:&body='+encodeURIComponent(cur())});
+  bind('wrTr',function(){TRS.mode='tr';TRS.rev=false;TRS.text=cur();TRS.out=null;render();setTimeout(function(){var g=document.getElementById('trGo');if(g)g.click()},50)});
+}
 function renderTr(){
-  var h='<section class="ph" style="gap:12px">';
+  if(TRS.mode==='write'){renderWrite();return}
+  var h='<section class="ph" style="gap:12px">'+trSeg();
   h+='<div class="row" style="align-items:center;justify-content:space-between"><b style="font-family:var(--display);font-size:19px">'+(TRS.rev?esc(TRS.lang)+' to English':'English to '+esc(TRS.lang))+'</b><button class="btn" id="trSwap">Swap</button></div>';
   h+='<div class="field"><label for="trLang">Language</label><select id="trLang">'+opts(LANGS.filter(function(x){return x!=='English'&&x!=='Other'}),TRS.lang)+'</select></div>';
   h+='<div class="field"><label for="trIn">'+(TRS.rev?'Paste what they sent':'Type or dictate (tap the keyboard mic)')+'</label><textarea id="trIn" rows="5" placeholder="'+(TRS.rev?'Paste the message here':'Tell him the boards need to be cut 16 inches')+'">'+esc(TRS.text)+'</textarea></div>';
@@ -2518,6 +2559,11 @@ function openSettings(page){
 /* ---------- events ---------- */
 document.addEventListener('click',function(e){
   if(e.target.closest('[data-handoff]')){openHandoffTake();return}
+  var tm=e.target.closest('[data-trmode],[data-wstyle]');if(tm){
+    if(tm.dataset.trmode){TRS.mode=tm.dataset.trmode;render();return}
+    var t=(document.getElementById('wrIn')||{}).value||'';t=t.trim();if(!t){toast('Write or say the message first');return}
+    WRS.text=t;WRS.style=tm.dataset.wstyle;var res=document.getElementById('wrRes');res.innerHTML='<div class="mt">Writing...</div>';
+    writeMsg(t,WRS.style).then(function(o){WRS.out=o;showWrite()},function(er){res.innerHTML='<div class="warn">'+esc(er.message||String(er))+'</div>'});return}
   var lg=e.target.closest('[data-lgo],[data-lcopy]');if(lg){e.preventDefault();if(lg.dataset.lgo)window.location.href=lg.dataset.lgo;else copyText(decodeURIComponent(lg.dataset.lcopy));return}
   var ks=e.target.closest('[data-toolseg],[data-key]');if(ks){if(ks.dataset.toolseg){TOOLSEG=ks.dataset.toolseg;try{localStorage.setItem('workday.toolseg',TOOLSEG)}catch(x){}render();mainTop();if(TOOLSEG==='keys')keysLoad()}else openKey(ks.dataset.key);return}
   var cdx=e.target.closest('.card');if(cdx&&cdx.dataset.id&&!e.target.closest('button,a,input,label,[data-grip]')){openEdit(cdx.dataset.id);return}
