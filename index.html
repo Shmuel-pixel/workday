@@ -504,7 +504,7 @@ nav.tabs{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20p
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 27, 2026 (33)';
+var KEY='workday.v1',APPVER='Oct 27, 2026 (34)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -2478,7 +2478,7 @@ function openSettings(page){
     h+=setGroup('Sheets',setRow('sSheets','View, print or open your sheets',SHEETS.length+' sheets',''));
     h+=setGroup('Devices',setRow('sHoMake','Set up another device','Copy everything to your iPad with a code','')+setRow('sHoTake','Set up from my iPhone','Type the code from your other device',''));
     h+=setGroup('Home Screen',setRow('sWidget','Widget','Today\'s jobs on your Home Screen',''));
-    h+=setGroup('App','<div class="setrow static"><span><b>Version</b></span><span class="setr">'+APPVER+'</span></div><button class="setrow" id="appUpd"><span><b style="color:var(--todo)">Update app now</b></span><span></span></button>');
+    h+=setGroup('App','<div class="setrow static"><span><b>Version '+esc((APPVER.match(/\((\d+)\)/)||[])[1]||APPVER)+'</b><small>'+esc(APPVER.replace(/\s*\(\d+\)/,''))+'</small></span><span class="setr"></span></div><button class="setrow" id="appUpd"><span><b style="color:var(--todo)">Update app now</b></span><span></span></button>');
     h+='<button class="btn primary" id="sClose">Done</button>';
     openSheet(h);
     bind('sClose',function(){closeSheet();render()});
