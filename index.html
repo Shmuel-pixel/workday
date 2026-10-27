@@ -242,6 +242,7 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 .svt tr.new td{background:var(--done-soft)}
 .svtabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}.svtabs::-webkit-scrollbar{display:none}
 .swhint{font-size:12px;color:var(--muted);text-align:center}
+.card{touch-action:pan-y}
 .grip{width:30px;height:44px;display:grid;place-items:center;color:var(--muted);touch-action:none;cursor:grab}
 .grip svg{width:16px;height:16px}
 .cbody{min-width:0;display:grid;gap:3px}
@@ -503,7 +504,7 @@ nav.tabs{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20p
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 27, 2026 (32)';
+var KEY='workday.v1',APPVER='Oct 27, 2026 (33)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -2603,7 +2604,7 @@ document.addEventListener('touchstart',function(e){
 document.addEventListener('touchmove',function(e){
   if(!cs)return;var t=e.touches[0],dx=t.clientX-cs.x,dy=t.clientY-cs.y;
   if(!cs.lock){if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy))cs.lock='h';else if(Math.abs(dy)>10){cs=null;return}else return}
-  e.preventDefault();
+  if(e.cancelable)e.preventDefault();
   var c=find(cs.id);if(!c){cs=null;return}
   if(c.status==='done'&&dx>0)dx=dx/4;if(c.status==='todo'&&dx<0)dx=dx/4;
   cs.dx=dx;cs.el.classList.add('swiping');cs.el.style.transform='translateX('+dx+'px)';
