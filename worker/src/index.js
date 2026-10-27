@@ -168,7 +168,10 @@ export class Box extends DurableObject {
       webhookUrl: url.origin + '/webhook',
       verifyToken: this.get('verify_token') || '',
       lastWebhook: +(this.get('last_webhook') || 0),
-      subs: this.sql.exec('SELECT COUNT(*) AS n FROM subs').toArray()[0].n
+      subs: this.sql.exec('SELECT COUNT(*) AS n FROM subs').toArray()[0].n,
+      rems: this.sql.exec('SELECT COUNT(*) AS n FROM rems').toArray()[0].n,
+      nextRem: this.sql.exec('SELECT t,title FROM rems ORDER BY t LIMIT 1').toArray()[0] || null,
+      lastPush: this.get('last_push') ? JSON.parse(this.get('last_push')) : null
     };
   }
   async config(b, url) {
@@ -370,7 +373,7 @@ export class Box extends DurableObject {
   }
   async pushAll() {
     var subs = this.sql.exec('SELECT endpoint FROM subs').toArray();
-    if (!subs.length) return { sent: 0, subs: 0 };
+    if (!subs.length) { this.put('last_push', JSON.stringify({ ts: Date.now(), sent: 0, subs: 0, errors: ['no phone signed up for notifications'] })); return { sent: 0, subs: 0 }; }
     var keys = await this.vapidKeys();
     var signKey = await crypto.subtle.importKey('jwk', keys.priv, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
     var sent = 0, self = this, errors = [];
@@ -387,6 +390,7 @@ export class Box extends DurableObject {
         else errors.push(r.status + ' ' + (await r.text()).slice(0, 120));
       } catch (e) { errors.push(String(e)); }
     }));
+    this.put('last_push', JSON.stringify({ ts: Date.now(), sent: sent, subs: subs.length, errors: errors.slice(0, 3) }));
     return { sent: sent, subs: subs.length, errors: errors };
   }
 

@@ -477,7 +477,7 @@ nav.tabs{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20p
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 26, 2026 (28)';
+var KEY='workday.v1',APPVER='Oct 27, 2026 (29)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -1588,14 +1588,18 @@ function voiceToggle(){if(VOICE.busy){if(VOICE.mode==='rec')recStop(true);else i
 function voiceStart(){
   if(AIBUSY)return;
   try{window.speechSynthesis&&speechSynthesis.cancel();if(window.speechSynthesis){var u=new SpeechSynthesisUtterance('');speechSynthesis.speak(u)}}catch(e){}
-  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition,AC=window.AudioContext||window.webkitAudioContext;
+  /* make the audio engine now, while the tap counts, in case we need the backup way */
+  try{if(!VOICE.ctx||VOICE.ctx.state==='closed')VOICE.ctx=new AC()}catch(e){}
+  if(SR&&!noNative())return nativeStart(SR);
   if(msgOK()&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)return recStart();
-  if(SR)return nativeStart(SR);
   voiceUI('','Voice needs the Messages connection (gear, Messages). You can type below for now.');
 }
+function noNative(){try{return localStorage.getItem('workday.nonative')==='1'}catch(e){return false}}
 function recStart(){
   var AC=window.AudioContext||window.webkitAudioContext;
-  try{VOICE.ctx=new AC()}catch(e){voiceUI('','This phone would not start the microphone.');return}
+  try{if(!VOICE.ctx||VOICE.ctx.state==='closed')VOICE.ctx=new AC()}catch(e){voiceUI('','This phone would not start the microphone.');return}
+  VOICE.partAt=Date.now();VOICE.partBusy=false;
   VOICE.busy=true;VOICE.mode='rec';VOICE.chunks=[];VOICE.heard=false;VOICE.floor=0;VOICE.start=Date.now();VOICE.quiet=Date.now();
   voiceUI('listen');
   navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}}).then(function(stream){
@@ -1612,7 +1616,13 @@ function recStart(){
       if(loud){VOICE.heard=true;VOICE.quiet=now}
       else if(VOICE.heard&&now-VOICE.quiet>1600){recStop(true);return}
       if(!VOICE.heard&&now-VOICE.start>9000){recStop(false);voiceUI('','I did not hear anything. Tap to talk.');return}
-      if(now-VOICE.start>60000)recStop(true);
+      if(now-VOICE.start>60000){recStop(true);return}
+      /* live words while you talk: write down what we have so far every couple of seconds */
+      if(VOICE.heard&&!VOICE.partBusy&&now-VOICE.partAt>1700){
+        VOICE.partAt=now;VOICE.partBusy=true;
+        var part=wavB64(VOICE.chunks.slice(),VOICE.rate);
+        msgApi('/transcribe',{audio:part}).then(function(j){VOICE.partBusy=false;if(VOICE.busy&&VOICE.mode==='rec'&&j&&j.text)voiceUI('listen',j.text)},function(){VOICE.partBusy=false});
+      }
     };
     try{var an=ctx.createAnalyser();an.fftSize=1024;an.smoothingTimeConstant=0.2;src.connect(an);WAVE.an=an;WAVE.buf=new Uint8Array(an.fftSize)}catch(x){}
     src.connect(proc);proc.connect(ctx.destination);
@@ -1648,13 +1658,24 @@ function wavB64(chunks,rate){
   return btoa(bin);
 }
 function nativeStart(SR){
-  var r;try{r=new SR()}catch(e){voiceUI('','Voice is not available here. Type below.');return}
-  VOICE.rec=r;VOICE.busy=true;VOICE.mode='native';var fin='';
-  r.lang='en-US';r.interimResults=true;r.continuous=false;
-  r.onresult=function(e){var t='';for(var i=0;i<e.results.length;i++){t+=e.results[i][0].transcript;if(e.results[i].isFinal)fin=t}voiceUI('listen',t)};
-  r.onerror=function(e){VOICE.busy=false;voiceUI('',e.error==='not-allowed'||e.error==='service-not-allowed'?'Voice is blocked here. Connect Messages (gear) for voice, or type below.':'I did not catch that. Tap to try again.')};
-  r.onend=function(){VOICE.busy=false;var t=(fin||'').trim();if(t){voiceUI('',t);VOICE.last=true;aiSend(t)}else voiceUI('')};
-  voiceUI('listen');try{r.start()}catch(e){VOICE.busy=false;voiceUI('','Voice could not start. Type below.')}
+  var r;try{r=new SR()}catch(e){try{localStorage.setItem('workday.nonative','1')}catch(x){}if(msgOK())return recStart();voiceUI('','Voice is not available here. Type below.');return}
+  VOICE.rec=r;VOICE.busy=true;VOICE.mode='native';var fin='',live='',got=false,timer=null,started=Date.now();
+  function hush(){clearTimeout(timer);timer=setTimeout(function(){try{r.stop()}catch(e){}},1800)}
+  r.lang='en-US';r.interimResults=true;r.continuous=true;
+  r.onresult=function(e){var t='',f='';for(var i=0;i<e.results.length;i++){t+=e.results[i][0].transcript;if(e.results[i].isFinal)f+=e.results[i][0].transcript}live=t;fin=f;got=true;voiceUI('listen',t);hush()};
+  r.onerror=function(e){
+    clearTimeout(timer);VOICE.busy=false;
+    if(e.error==='not-allowed'||e.error==='service-not-allowed'||e.error==='audio-capture'||e.error==='network'||e.error==='language-not-supported'){
+      try{localStorage.setItem('workday.nonative','1')}catch(x){}
+      if(msgOK()){VOICE.fell=true;recStart();return}
+      voiceUI('',e.error==='not-allowed'?'Microphone or speech is blocked. Turn on Microphone and Speech Recognition for Workday (or Safari) in iPhone Settings.':'Voice is not available here. Type below.');return;
+    }
+    if(e.error!=='no-speech'&&e.error!=='aborted')voiceUI('','I did not catch that. Tap to try again.');
+  };
+  r.onend=function(){clearTimeout(timer);if(VOICE.fell){VOICE.fell=false;return}if(VOICE.mode!=='native')return;VOICE.busy=false;if(!got){VOICE.nmiss=(VOICE.nmiss||0)+1;if(VOICE.nmiss>=2)try{localStorage.setItem('workday.nonative','1')}catch(x){}}else VOICE.nmiss=0;var t=(fin||live||'').trim();if(t){voiceUI('',t);VOICE.last=true;aiSend(t)}else voiceUI('',got?'':'I did not hear anything. Tap to talk.')};
+  voiceUI('listen');
+  setTimeout(function(){if(VOICE.busy&&VOICE.mode==='native'&&!got){try{r.stop()}catch(e){}}},9000);
+  try{r.start()}catch(e){VOICE.busy=false;try{localStorage.setItem('workday.nonative','1')}catch(x){}if(msgOK())return recStart();voiceUI('','Voice could not start. Type below.')}
 }
 function aiSpeak(text){
   if(!speakOn()||!window.speechSynthesis||!text)return;
@@ -2776,7 +2797,10 @@ function openMsgSetup(){
   bind('msDone',function(){closeSheet();render()});
   function showSt(st){
     MSG.wa=st.whatsapp;msgSave();
-    document.getElementById('msSt').innerHTML='<b>Service connected.</b> WhatsApp: '+(st.whatsapp?'connected':'not connected yet (test mode)')+'. Notifications on '+st.subs+(st.subs===1?' device':' devices')+'.'+(st.lastWebhook?' Last message from WhatsApp '+esc(clockAt(st.lastWebhook))+'.':'');
+    document.getElementById('msSt').innerHTML='<b>Service connected.</b> WhatsApp: '+(st.whatsapp?'connected':'not connected yet (test mode)')+'. Notifications on '+st.subs+(st.subs===1?' device':' devices')+'.'+(st.lastWebhook?' Last message from WhatsApp '+esc(clockAt(st.lastWebhook))+'.':'')+
+      '<br>This phone: notifications '+(window.Notification?(Notification.permission==='granted'?'allowed':Notification.permission==='denied'?'<b>blocked</b> (turn on in iPhone Settings, Notifications, Workday)':'not turned on yet'):'not available (open Workday from the Home Screen icon)')+'.'+
+      '<br>Reminders waiting: '+(st.rems||0)+(st.nextRem?' (next: '+esc(st.nextRem.title)+', '+esc(clockAt(st.nextRem.t))+')':'')+'.'+
+      (st.lastPush?'<br>Last notification sent '+esc(clockAt(st.lastPush.ts))+': '+(st.lastPush.sent?'delivered to '+st.lastPush.sent+' of '+st.lastPush.subs:'<b>not delivered</b>'+(st.lastPush.errors&&st.lastPush.errors.length?' ('+esc(st.lastPush.errors.join('; '))+')':''))+'.':'');
     if(st.phoneId)document.getElementById('msPh').value=st.phoneId;
     document.getElementById('msHook').innerHTML='<div class="mt" style="margin-top:8px">For the Meta webhook setup:<br>Callback URL: <b style="word-break:break-all">'+esc(st.webhookUrl)+'</b> <button class="minilink" id="msCU">Copy</button><br>Verify token: <b style="word-break:break-all">'+esc(st.verifyToken)+'</b> <button class="minilink" id="msCV">Copy</button></div>';
     bind('msCU',function(){copyText(st.webhookUrl)});bind('msCV',function(){copyText(st.verifyToken)});
@@ -2819,7 +2843,7 @@ try{var qch=new URLSearchParams(location.search).get('chat');if(qch&&msgOK()){S.
 render();
 if(MSG.cur)msgOpen(MSG.cur);
 setTimeout(loadKZ,400);
-if(msgOK()){msgCfgToSW();setTimeout(msgTick,1500);setTimeout(remPush,5000)}
+if(msgOK()){msgCfgToSW();setTimeout(msgTick,1500);setTimeout(function(){remPush(true)},5000);setTimeout(function(){try{if(window.Notification&&Notification.permission==='granted')msgPushOn().catch(function(){})}catch(e){}},3000)}
 try{if(navigator.serviceWorker)navigator.serviceWorker.addEventListener('message',function(e){var d=e.data||{};if(d.type==='openDay'){closeSheet();S.view='day';S.cur=todayStr();render();mainTop();return}if(d.type==='openChat'&&msgOK()){closeSheet();if(d.chat)msgOpen(d.chat);else{MSG.cur=null;S.view='msg';render();msgTick()}}})}catch(e){}
 try{if(location.search.indexOf('chat=')>=0&&history.replaceState)history.replaceState(null,'',location.pathname)}catch(e){}
 if(connOK()){setTimeout(function(){syncNow()},800);setInterval(function(){if(!document.hidden)syncNow()},120000)}
