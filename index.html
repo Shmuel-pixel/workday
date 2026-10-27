@@ -335,7 +335,7 @@ body.msgmode .msgq,body.msgmode .msgtest,body.msgmode .compose,body.msgmode .mac
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 26, 2026 (21)';
+var KEY='workday.v1',APPVER='Oct 26, 2026 (22)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -1523,20 +1523,32 @@ function suggestBox(inputId,boxId,getList,onPick){
 }
 
 /* address lookup through Google (free) */
-function lookupAddress(q,outId,onPick){
-  var out=document.getElementById(outId);
-  if(!q.trim()){out.innerHTML='<div class="warn">Type part of the address first, like 5 Collingswood.</div>';return}
-  if(!connOK()){out.innerHTML='<div class="warn">Address lookup needs the Google connection. Open the gear to connect it.</div>';return}
-  out.innerHTML='<div class="mt">Looking up...</div>';
-  bridge('geocode',{q:q}).then(function(d){
-    var ps=d.places||[];
+var ADDRTOWNS=['Lakewood','Jackson','Toms River','Howell','Brick','Manchester','Freehold','Lakewood Township'];
+var addrSeq=0;
+function lookupAddress(q,outId,onPick,quiet){
+  var out=document.getElementById(outId);if(!out)return;
+  q=q.trim();
+  if(!q){if(!quiet)out.innerHTML='<div class="warn">Type part of the address first, like 5 Collingswood.</div>';return}
+  if(!connOK()){if(!quiet)out.innerHTML='<div class="warn">Address lookup needs the Google connection. Open the gear to connect it.</div>';return}
+  var my=++addrSeq;
+  out.innerHTML='<div class="mt">Looking up addresses...</div>';
+  var qs=[q];if(q.indexOf(',')<0)ADDRTOWNS.forEach(function(t){qs.push(q+', '+t+', NJ')});
+  var num=(q.match(/^\s*(\d+)/)||[])[1]||'';
+  var words=q.toLowerCase().replace(/^\s*\d+\s*/,'').split(/[\s,]+/).filter(function(w){return w.length>=3&&!/^(st|street|ave|avenue|rd|road|dr|drive|ct|court|ln|lane|blvd|pl|place|way|ter|nj)$/.test(w)});
+  Promise.all(qs.map(function(x){return bridge('geocode',{q:x}).then(function(d){return d.places||[]},function(){return []})})).then(function(lists){
+    if(my!==addrSeq)return;
+    var seen={},ps=[];
+    lists.forEach(function(l){l.forEach(function(p){var k=p.address.toLowerCase();if(seen[k])return;seen[k]=1;
+      var low=k;if(words.length&&low.indexOf(words[0])<0)return;
+      if(!/\d/.test(p.address.split(',')[0])&&num)p.partial=true;
+      p.exact=!!(num&&new RegExp('^'+num+'\\b').test(p.address));ps.push(p)})});
+    ps.sort(function(a,b){return (b.exact?1:0)-(a.exact?1:0)||(a.partial?1:0)-(b.partial?1:0)});
+    ps=ps.slice(0,8);
     if(!ps.length){out.innerHTML='<div class="warn">No match found. Check the street name, or add the town.</div>';return}
     out.innerHTML='<div class="mt">Tap the right address:</div>'+ps.map(function(p,i){return '<button type="button" class="sug" data-i="'+i+'"><b>'+esc(p.address)+'</b>'+(p.partial?'<small>Close match, check it</small>':'')+'</button>'}).join('');
     [].forEach.call(out.querySelectorAll('.sug'),function(b){b.onclick=function(){var p=ps[+b.getAttribute('data-i')];out.innerHTML='';onPick(p.address)}});
-  },function(e){out.innerHTML='<div class="warn">'+esc(bridgeErr(e))+'</div>'});
+  });
 }
-
-/* Google Contacts lookup with confirm */
 function lookupContact(q,outId,onPick){
   var out=document.getElementById(outId);
   if(!q.trim()){out.innerHTML='<div class="warn">Type the foreman\'s name first.</div>';return}
@@ -1948,6 +1960,7 @@ function openEdit(id,pre){
   var ea=document.getElementById('fEqAdd');if(ea)ea.onchange=function(){var v=ea.value;if(!v)return;var box=document.getElementById('fTools');var n=box.querySelectorAll('input').length;var lb=document.createElement('label');lb.className='tchk';lb.innerHTML='<input type="checkbox" name="fTool" id="fTool'+n+'" checked value="'+esc(v)+'">'+esc(v);box.appendChild(lb);ea.value=''};
   function setMap(){var a=val('fAddr').trim(),m=document.getElementById('fMap');m.hidden=!a;m.href=a?mapUrl(a):'#'}
   document.getElementById('fAddr').addEventListener('input',setMap);
+  var addrT=null;document.getElementById('fAddr').addEventListener('input',function(){clearTimeout(addrT);var v=val('fAddr').trim();if(v.length<6||!/[a-z]/i.test(v)){return}addrT=setTimeout(function(){if(findSite(v))return;lookupAddress(v,'fAddrOut',function(a){document.getElementById('fAddr').value=a;setMap();var sg=document.getElementById('fAddrS');if(sg)sg.innerHTML=''},true)},1100)});
   suggestBox('fAddr','fAddrS',function(){return allSites().map(function(a){var st=findSite(a);return {label:a,sub:st&&st.contractor?st.contractor+(st.foreman?', '+st.foreman:''):''}})},function(it){var st=findSite(it.label);if(st){if(st.contractor&&!val('fCon'))document.getElementById('fCon').value=st.contractor;if(st.foreman&&!val('fFor')){document.getElementById('fFor').value=st.foreman;var f=findForeman(st.contractor,st.foreman);if(f&&f.phone&&!val('fPh'))document.getElementById('fPh').value=f.phone}}setMap()});
   bind('fAddrL',function(){lookupAddress(val('fAddr'),'fAddrOut',function(a){document.getElementById('fAddr').value=a;setMap()})});
   suggestBox('fCon','fConS',function(){var l=MASTER.contractors.map(function(x){return {label:x.name,sub:x.phone}});S.cards.forEach(function(k){if(k.contractor&&!l.some(function(y){return norm(y.label)===norm(k.contractor)}))l.push({label:k.contractor})});var q=val('fCon').trim();if(q&&!l.some(function(y){return norm(y.label)===norm(q)}))l.push({label:q,sub:'+ New contractor'});return l},function(){});
