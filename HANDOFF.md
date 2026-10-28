@@ -4,7 +4,7 @@ If a chat runs out of room, start a new chat and paste this:
 
 > I'm Shmuel. I have an app called Workday. Everything is in my GitHub repo **Shmuel-pixel/workday**. Read `HANDOFF.md` in that repo first, then keep working on the app the same way.
 
-Download everything any time: **https://github.com/Shmuel-pixel/workday/archive/refs/heads/main.zip**
+Download everything any time (signed in to GitHub, the repo is private): **https://github.com/Shmuel-pixel/workday/archive/refs/heads/main.zip**
 
 ---
 
@@ -24,7 +24,7 @@ A home-screen web app (iPhone and iPad) for Shmuel, a scheduler at Five Star Ser
 - Set up another device with a 6-digit code.
 
 ## Live addresses
-- App: https://shmuel-pixel.github.io/workday/
+- App: https://workday.shmuel-4f0.workers.dev/ (Cloudflare Worker "workday", static files, deployed by `.github/workflows/deploy-app.yml`). The old GitHub Pages address shows a "moved" note.
 - Messages service (Cloudflare Worker): https://workday-messages.shmuel-4f0.workers.dev
 - Workday Connect (Google Apps Script web app): the address is saved only on Shmuel's devices and in his Apps Script. Do not put it in this repo (its page shows the connection code).
 
@@ -42,7 +42,7 @@ A home-screen web app (iPhone and iPad) for Shmuel, a scheduler at Five Star Ser
 1. Edit `src/workday.html` (keep it ONE file).
 2. Rules: ASCII only in the file (use \uXXXX escapes for other characters), no template literals, string concatenation, plain functions. Bump `APPVER`.
 3. Build: put `workday.html` and `build.py` side by side with a `workday/` clone of this repo and run `python3 build.py`. Or apply the same changes to `index.html` directly.
-4. Commit and push. GitHub Pages updates in about a minute. In the app: gear, Update app now.
+4. Commit and push. Cloudflare updates in about a minute (Deploy app workflow). In the app: gear, Update app now.
 5. Test with a phone-size browser before pushing (Playwright, iPhone 13).
 
 ## Google Sheets (Shmuel's account)
