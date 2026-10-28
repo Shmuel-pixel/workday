@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Connect WhatsApp</title>
+<style>
+:root{--bg:#F2F2F7;--card:#fff;--fg:#1C1C1E;--muted:#6E6E73;--blue:#007AFF;--green:#34C759;--red:#FF3B30}
+@media (prefers-color-scheme:dark){:root{--bg:#000;--card:#1C1C1E;--fg:#F2F2F7;--muted:#98989F;--blue:#0A84FF;--green:#30D158;--red:#FF453A}}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.45 -apple-system,system-ui,sans-serif}
+main{max-width:560px;margin:0 auto;padding:24px 16px 60px;display:grid;gap:16px}
+h1{font-size:26px;margin:0}
+.card{background:var(--card);border-radius:16px;padding:16px;display:grid;gap:10px}
+ol{margin:0;padding-left:22px;display:grid;gap:8px}
+button{font:inherit;font-weight:700;border:0;border-radius:14px;padding:15px 18px;background:var(--blue);color:#fff;cursor:pointer}
+button:disabled{opacity:.5}
+.muted{color:var(--muted);font-size:15px}
+.ok{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:700}
+</style>
+</head>
+<body>
+<main>
+<h1>Connect WhatsApp Business</h1>
+<div class="card">
+<b>Before you start</b>
+<ol>
+<li>Do this on the <b>iPad</b>. Keep your <b>iPhone</b> next to you with WhatsApp Business open.</li>
+<li>When Meta asks, choose to connect your <b>existing WhatsApp Business app</b> number.</li>
+<li>Meta shows a <b>QR code</b> here. On the iPhone, in WhatsApp Business, scan it when it tells you to.</li>
+<li>Keep using WhatsApp Business on your phone like normal after this.</li>
+</ol>
+</div>
+<div class="card">
+<div id="status" class="muted">Getting ready...</div>
+<button id="go" disabled>Connect with Facebook</button>
+<div id="out"></div>
+</div>
+<p class="muted">This page talks only to Meta and to your own Workday messages service.</p>
+</main>
+<script>
+(function(){
+var P={};location.hash.replace(/^#/,'').split('&').forEach(function(kv){var i=kv.indexOf('=');if(i>0)P[kv.slice(0,i)]=decodeURIComponent(kv.slice(i+1))});
+var URL_=P.u||'https://workday-messages.shmuel-4f0.workers.dev',KEY=P.k||'';
+try{if(!KEY){var m=JSON.parse(localStorage.getItem('workday.msg')||'{}');KEY=m.key||'';URL_=m.url||URL_}}catch(e){}
+try{history.replaceState(null,'',location.pathname)}catch(e){}
+var st=document.getElementById('status'),go=document.getElementById('go'),out=document.getElementById('out');
+var session={};
+function api(path,body){return fetch(URL_+path,{method:body?'POST':'GET',headers:{'X-Key':KEY,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined}).then(function(r){return r.json()})}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+if(!KEY){st.innerHTML='<span class="bad">Open this page from Workday</span> (gear, Messages and notifications, Connect WhatsApp).';return}
+window.addEventListener('message',function(e){
+  if(!/facebook\.com$/.test(new URL(e.origin).hostname))return;
+  try{var d=typeof e.data==='string'?JSON.parse(e.data):e.data;if(d&&d.type==='WA_EMBEDDED_SIGNUP'){if(d.data){if(d.data.waba_id)session.waba_id=d.data.waba_id;if(d.data.phone_number_id)session.phone_number_id=d.data.phone_number_id}session.event=d.event}}catch(x){}
+});
+api('/status').then(function(s){
+  if(s.error){st.innerHTML='<span class="bad">'+esc(s.error)+'</span>';return}
+  if(!s.appId||!s.configId){st.innerHTML='<span class="bad">First save the Meta App ID and Configuration ID in Workday</span> (gear, Messages and notifications).';return}
+  if(!s.hasSecret){st.innerHTML='<span class="bad">First save the Meta App secret in Workday.</span>';return}
+  window.fbAsyncInit=function(){FB.init({appId:s.appId,autoLogAppEvents:true,xfbml:false,version:'v23.0'});st.textContent='Ready. Tap Connect with Facebook.';go.disabled=false};
+  var sc=document.createElement('script');sc.async=true;sc.defer=true;sc.crossOrigin='anonymous';sc.src='https://connect.facebook.net/en_US/sdk.js';
+  sc.onerror=function(){st.innerHTML='<span class="bad">Could not load Facebook sign-in. Check the internet and reload.</span>'};document.body.appendChild(sc);
+  go.onclick=function(){
+    go.disabled=true;out.textContent='';st.textContent='Follow the steps in the Facebook window...';
+    FB.login(function(res){
+      var code=res&&res.authResponse&&res.authResponse.code;
+      if(!code){go.disabled=false;st.innerHTML='<span class="bad">Not finished.</span> Tap Connect with Facebook to try again.';return}
+      st.textContent='Finishing the connection...';
+      setTimeout(function(){
+        api('/wa/onboard',{code:code,waba_id:session.waba_id||'',phone_number_id:session.phone_number_id||''}).then(function(r){
+          if(!r.ok){go.disabled=false;st.innerHTML='<span class="bad">'+esc(r.error||'Something went wrong')+'</span>';return}
+          st.innerHTML='<span class="ok">WhatsApp is connected'+(r.number?' ('+esc(r.number)+')':'')+'.</span>';
+          out.innerHTML='<ul class="muted">'+(r.steps||[]).map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul><p class="muted">Go back to Workday. New messages show in the Messages tab. Old chats can take a few minutes to copy.</p>';
+        },function(){go.disabled=false;st.innerHTML='<span class="bad">No connection to your Workday service. Try again.</span>'});
+      },1200);
+    },{config_id:s.configId,response_type:'code',override_default_response_type:true,extras:{setup:{},featureType:'whatsapp_business_app_onboarding',sessionInfoVersion:'3'}});
+  };
+},function(){st.innerHTML='<span class="bad">Could not reach your Workday service.</span>'});
+})();
+</script>
+</body>
+</html>

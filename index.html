@@ -511,7 +511,7 @@ nav.tabs{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20p
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 28, 2026 (40)';
+var KEY='workday.v1',APPVER='Oct 28, 2026 (41)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -2947,15 +2947,18 @@ function openMsgSetup(){
   h+='<div id="msSt" class="mt">Checking...</div>';
   h+='<div class="field"><label>Notifications</label><div class="mt">Get a notification on this phone when a message comes in. Works when Workday is on the Home Screen.</div><div class="row"><button class="btn primary" id="msPush">Turn on notifications</button><button class="btn" id="msPT">Test</button></div><div id="msPO"></div></div>';
   h+='<div class="field"><label>Try it</label><div class="row"><button class="btn" id="msTI">Send me a test message</button></div></div>';
-  h+='<div class="field"><label>WhatsApp Business connection</label><div class="mt">Filled in once Meta gives you these (the WhatsApp setup step). Leave empty for now.</div>';
-  h+='<input id="msPh" inputmode="numeric" placeholder="Phone number ID" style="margin-top:6px"><input id="msTok" autocapitalize="off" spellcheck="false" placeholder="Access token (stays empty here after saving)" style="margin-top:6px"><input id="msSec" autocapitalize="off" spellcheck="false" placeholder="App secret (stays empty here after saving)" style="margin-top:6px">';
-  h+='<div class="row"><button class="btn" id="msWa">Save and check</button></div><div id="msWO"></div><div id="msHook"></div></div>';
+  h+='<div class="field"><label>WhatsApp Business connection</label><div class="mt">From your Meta app (developers.facebook.com). Paste these three, tap Save, then Connect WhatsApp.</div>';
+  h+='<input id="msApp" inputmode="numeric" placeholder="App ID" style="margin-top:6px"><input id="msSec" autocapitalize="off" spellcheck="false" placeholder="App secret (stays empty here after saving)" style="margin-top:6px"><input id="msCfg" inputmode="numeric" placeholder="Configuration ID (Facebook Login for Business)" style="margin-top:6px">';
+  h+='<div class="row"><button class="btn" id="msWa">Save</button><button class="btn primary" id="msConnWa">Connect WhatsApp</button><button class="btn" id="msSync">Copy old chats again</button></div><div id="msWO"></div><div id="msHook"></div>';
+  h+='<details style="margin-top:6px"><summary class="mt">Manual setup (only if told to)</summary><input id="msPh" inputmode="numeric" placeholder="Phone number ID" style="margin-top:6px"><input id="msTok" autocapitalize="off" spellcheck="false" placeholder="Access token" style="margin-top:6px"></details></div>';
   h+='<div class="field"><label>Other devices</label><div class="row"><button class="btn" id="msKey">Copy app key</button><button class="btn" id="msOff">Disconnect this phone</button></div><div class="mt">The app key lets your iPad open the same messages. Keep it private.</div></div>';
   h+='<button class="btn primary" id="msDone">Done</button>';
   openSheet(h);
   bind('msDone',function(){closeSheet();render()});
   function showSt(st){
     MSG.wa=st.whatsapp;msgSave();
+    var ai=document.getElementById('msApp');if(ai&&st.appId&&!ai.value)ai.value=st.appId;var ci=document.getElementById('msCfg');if(ci&&st.configId&&!ci.value)ci.value=st.configId;
+    var sc=document.getElementById('msSec');if(sc&&st.hasSecret)sc.placeholder='App secret saved';
     document.getElementById('msSt').innerHTML='<b>Service connected.</b> WhatsApp: '+(st.whatsapp?'connected':'not connected yet (test mode)')+'. Notifications on '+st.subs+(st.subs===1?' device':' devices')+'.'+(st.lastWebhook?' Last message from WhatsApp '+esc(clockAt(st.lastWebhook))+'.':'')+
       '<br>This phone: notifications '+(window.Notification?(Notification.permission==='granted'?'allowed':Notification.permission==='denied'?'<b>blocked</b> (turn on in iPhone Settings, Notifications, Workday)':'not turned on yet'):'not available (open Workday from the Home Screen icon)')+'.'+
       '<br>Reminders waiting: '+(st.rems||0)+(st.nextRem?' (next: '+esc(st.nextRem.title)+', '+esc(clockAt(st.nextRem.t))+')':'')+'.'+
@@ -2968,9 +2971,11 @@ function openMsgSetup(){
   bind('msPush',function(){var o=document.getElementById('msPO');o.innerHTML='<div class="mt">Turning on...</div>';msgPushOn().then(function(){o.innerHTML='<div class="mt">Notifications are on for this phone.</div>'},function(e){o.innerHTML='<div class="warn">'+esc(e.message)+'</div>'})});
   bind('msPT',function(){var o=document.getElementById('msPO');msgApi('/push-test',{}).then(function(r){o.innerHTML='<div class="mt">'+(r.sent?'Sent. A notification should show in a few seconds.':(r.subs?'Could not send: '+esc((r.errors||[]).join('; ')):'Turn on notifications first.'))+'</div>'},function(e){o.innerHTML='<div class="warn">'+esc(e.message)+'</div>'})});
   bind('msTI',function(){msgApi('/test/incoming',{from:'17325550100',name:'Test',text:'This is a test message from Workday Messages.'}).then(function(){toast('Test message sent. Check the Messages tab.');msgPollChats()},function(e){toast(e.message)})});
+  bind('msConnWa',function(){window.open(APP_URL+'connect-whatsapp.html#k='+encodeURIComponent(MSG.key)+'&u='+encodeURIComponent(MSG.url),'_blank')});
+  bind('msSync',function(){var o=document.getElementById('msWO');o.innerHTML='<div class="mt">Asking WhatsApp...</div>';msgApi('/wa/sync',{}).then(function(r){o.innerHTML='<div class="mt">'+(r.steps||[]).map(esc).join('<br>')+'</div>'},function(e){o.innerHTML='<div class="warn">'+esc(e.message)+'</div>'})});
   bind('msWa',function(){
-    var b={phoneId:val('msPh').trim(),check:true},t=val('msTok').trim(),s=val('msSec').trim(),o=document.getElementById('msWO');
-    if(t)b.waToken=t;if(s)b.appSecret=s;
+    var b={check:true},t=val('msTok').trim(),s=val('msSec').trim(),ph=val('msPh').trim(),ap=val('msApp').trim(),cf=val('msCfg').trim(),o=document.getElementById('msWO');
+    if(t)b.waToken=t;if(s)b.appSecret=s;if(ph)b.phoneId=ph;if(ap)b.appId=ap;if(cf)b.configId=cf;
     o.innerHTML='<div class="mt">Checking with WhatsApp...</div>';
     msgApi('/config',b).then(function(st){document.getElementById('msTok').value='';document.getElementById('msSec').value='';showSt(st);
       o.innerHTML=st.check?(st.check.ok?'<div class="mt">WhatsApp connected: '+esc(st.check.name||'')+' '+esc(st.check.number||'')+'</div>':'<div class="warn">WhatsApp said: '+esc(st.check.error)+'</div>'):'<div class="mt">Saved.</div>'},function(e){o.innerHTML='<div class="warn">'+esc(e.message)+'</div>'});

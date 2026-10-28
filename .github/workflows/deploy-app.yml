@@ -2,7 +2,7 @@ name: Deploy app
 on:
   push:
     branches: [main]
-    paths: ['index.html', 'sw.js', 'manifest.webmanifest', 'icons/**', 'app/**', '.github/workflows/deploy-app.yml']
+    paths: ['index.html', 'connect-whatsapp.html', 'sw.js', 'manifest.webmanifest', 'icons/**', 'app/**', '.github/workflows/deploy-app.yml']
   workflow_dispatch:
 jobs:
   deploy:
@@ -12,7 +12,7 @@ jobs:
       - name: Collect the app files
         run: |
           mkdir -p dist
-          cp index.html sw.js manifest.webmanifest dist/
+          cp index.html sw.js manifest.webmanifest connect-whatsapp.html dist/
           cp -r icons dist/icons
           printf '/sw.js\n  Cache-Control: no-cache\n/index.html\n  Cache-Control: no-cache\n/\n  Cache-Control: no-cache\n' > dist/_headers
       - name: Deploy to Cloudflare

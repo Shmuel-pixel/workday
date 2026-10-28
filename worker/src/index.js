@@ -103,6 +103,7 @@ export class Box extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS rems (key TEXT PRIMARY KEY, t INTEGER, title TEXT)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS inbox (id TEXT PRIMARY KEY, item TEXT, ts INTEGER, done INTEGER DEFAULT 0)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS drops (id TEXT PRIMARY KEY, ts INTEGER)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS contacts (phone TEXT PRIMARY KEY, name TEXT)');
   }
 
   get(k) { var r = this.sql.exec('SELECT v FROM kv WHERE k=?', k).toArray(); return r.length ? r[0].v : null; }
@@ -129,6 +130,8 @@ export class Box extends DurableObject {
       if (!this.get('app_key') || key !== this.get('app_key')) return err('Wrong or missing app key', 401);
 
       if (p === '/status') return json(this.status(url));
+      if (p === '/wa/onboard' && req.method === 'POST') return json(await this.onboard(await req.json()));
+      if (p === '/wa/sync' && req.method === 'POST') return json(await this.requestSync());
       if (p === '/config' && req.method === 'POST') return json(await this.config(await req.json(), url));
       if (p === '/chats') return json({ chats: this.chats(), now: Date.now(), whatsapp: this.waReady() });
       if (p === '/messages') return json(this.messages(url.searchParams.get('chat'), +(url.searchParams.get('after') || 0)));
@@ -172,6 +175,11 @@ export class Box extends DurableObject {
       graph: this.get('graph') || GRAPH_DEFAULT,
       webhookUrl: url.origin + '/webhook',
       verifyToken: this.get('verify_token') || '',
+      appId: this.get('app_id') || '',
+      configId: this.get('config_id') || '',
+      wabaId: this.get('waba_id') || '',
+      number: this.get('wa_number') || '',
+      historyAt: +(this.get('history_at') || 0),
       lastWebhook: +(this.get('last_webhook') || 0),
       subs: this.sql.exec('SELECT COUNT(*) AS n FROM subs').toArray()[0].n,
       rems: this.sql.exec('SELECT COUNT(*) AS n FROM rems').toArray()[0].n,
@@ -181,6 +189,8 @@ export class Box extends DurableObject {
   }
   async config(b, url) {
     if ('waToken' in b) this.put('wa_token', String(b.waToken || '').trim());
+    if ('appId' in b) this.put('app_id', digits(b.appId));
+    if ('configId' in b) this.put('config_id', digits(b.configId));
     if ('phoneId' in b) this.put('phone_id', digits(b.phoneId));
     if ('appSecret' in b) this.put('app_secret', String(b.appSecret || '').trim());
     if ('graph' in b) this.put('graph', String(b.graph || '').trim());
@@ -191,6 +201,46 @@ export class Box extends DurableObject {
       out.check = r.ok ? { ok: true, number: j.display_phone_number, name: j.verified_name } : { ok: false, error: (j.error && j.error.message) || ('HTTP ' + r.status) };
     }
     return out;
+  }
+
+  /* ---------- connect the WhatsApp Business app number (Embedded Signup, coexistence) ---------- */
+  async onboard(b) {
+    var appId = this.get('app_id'), secret = this.get('app_secret');
+    if (!appId || !secret) return { ok: false, error: 'Save the Meta App ID and App secret in Workday first.' };
+    if (!b || !b.code) return { ok: false, error: 'Meta did not send a sign-in code. Try again.' };
+    var g = this.graph();
+    var r = await fetch(g + 'oauth/access_token?client_id=' + appId + '&client_secret=' + encodeURIComponent(secret) + '&code=' + encodeURIComponent(b.code));
+    var j = await r.json().catch(function () { return {}; });
+    if (!r.ok || !j.access_token) return { ok: false, error: 'Meta would not finish the sign-in: ' + ((j.error && j.error.message) || r.status) };
+    var token = j.access_token;
+    this.put('wa_token', token);
+    if (b.waba_id) this.put('waba_id', digits(b.waba_id));
+    if (b.phone_number_id) this.put('phone_id', digits(b.phone_number_id));
+    var H = { Authorization: 'Bearer ' + token }, out = { ok: true, steps: [] };
+    if (this.get('waba_id')) {
+      var s = await fetch(g + this.get('waba_id') + '/subscribed_apps', { method: 'POST', headers: H });
+      var sj = await s.json().catch(function () { return {}; });
+      out.steps.push(s.ok ? 'Messages will come to Workday.' : 'Could not turn on incoming messages: ' + ((sj.error && sj.error.message) || s.status));
+    }
+    if (this.get('phone_id')) {
+      var pr = await fetch(g + this.get('phone_id') + '?fields=display_phone_number,verified_name', { headers: H });
+      var pj = await pr.json().catch(function () { return {}; });
+      if (pr.ok) { this.put('wa_number', pj.display_phone_number || ''); out.number = pj.display_phone_number; out.name = pj.verified_name; }
+      var sy = await this.requestSync();
+      out.steps = out.steps.concat(sy.steps);
+    }
+    return out;
+  }
+  async requestSync() {
+    if (!this.waReady()) return { steps: ['WhatsApp is not connected yet.'] };
+    var g = this.graph(), H = { Authorization: 'Bearer ' + this.get('wa_token'), 'Content-Type': 'application/json' }, steps = [];
+    var types = [['smb_app_state_sync', 'contacts'], ['history', 'old chats']];
+    for (var i = 0; i < types.length; i++) {
+      var r = await fetch(g + this.get('phone_id') + '/smb_app_data', { method: 'POST', headers: H, body: JSON.stringify({ messaging_product: 'whatsapp', sync_type: types[i][0] }) });
+      var j = await r.json().catch(function () { return {}; });
+      steps.push(r.ok ? 'Copying your ' + types[i][1] + ' from the phone.' : 'Could not copy ' + types[i][1] + ': ' + ((j.error && j.error.message) || r.status));
+    }
+    return { steps: steps };
   }
 
   /* ---------- Meta webhook ---------- */
@@ -227,6 +277,25 @@ export class Box extends DurableObject {
         (v.message_echoes || []).forEach(function (m) {
           self.store({ id: m.id, chat: digits(m.to), dir: 'out', type: m.type, text: msgText(m), media: msgMedia(m), ts: (+m.timestamp || Date.now() / 1000) * 1000, status: 'sent', via: 'phone' });
         });
+        /* old chats copied from the phone (coexistence history), up to 6 months */
+        var biz = digits(v.metadata && v.metadata.display_phone_number);
+        (v.history || []).forEach(function (hc) {
+          (hc.threads || []).forEach(function (th) {
+            var who = digits(th.id);
+            (th.messages || []).forEach(function (m) {
+              var mine = biz && digits(m.from) === biz;
+              self.store({ id: m.id, chat: who, dir: mine ? 'out' : 'in', type: m.type, text: msgText(m), media: msgMedia(m), ts: (+m.timestamp || 0) * 1000, status: mine ? 'sent' : 'received', via: 'history', noUnread: true });
+            });
+          });
+          self.put('history_at', Date.now());
+        });
+        /* contact names from the phone */
+        (v.state_sync || []).forEach(function (st) {
+          var c = st.contact || {}, ph = digits(c.phone_number);
+          if (!ph) return;
+          if (st.action === 'remove') self.sql.exec('DELETE FROM contacts WHERE phone=?', ph);
+          else self.sql.exec('INSERT INTO contacts (phone,name) VALUES (?,?) ON CONFLICT(phone) DO UPDATE SET name=excluded.name', ph, c.full_name || c.first_name || '');
+        });
         (v.statuses || []).forEach(function (s) {
           var e = (s.errors && s.errors[0]) ? (s.errors[0].title || s.errors[0].message || '') : null;
           self.sql.exec('UPDATE msgs SET status=?, err=COALESCE(?,err), upd=? WHERE id=?', s.status, e, Date.now(), s.id);
@@ -248,13 +317,13 @@ export class Box extends DurableObject {
       'last_text=CASE WHEN excluded.last_ts>=chats.last_ts THEN excluded.last_text ELSE chats.last_text END, ' +
       'last_dir=CASE WHEN excluded.last_ts>=chats.last_ts THEN excluded.last_dir ELSE chats.last_dir END, ' +
       'unread=chats.unread+excluded.unread, last_in=MAX(chats.last_in,excluded.last_in)',
-      m.chat, m.name || '', Math.round(m.ts), preview, m.dir, m.dir === 'in' ? 1 : 0, m.dir === 'in' ? Math.round(m.ts) : 0);
+      m.chat, m.name || '', Math.round(m.ts), preview, m.dir, (m.dir === 'in' && !m.noUnread) ? 1 : 0, m.dir === 'in' ? Math.round(m.ts) : 0);
     return true;
   }
 
   /* ---------- app reads ---------- */
   chats() {
-    return this.sql.exec('SELECT chat,name,last_ts,last_text,last_dir,unread,last_in FROM chats ORDER BY last_ts DESC LIMIT 300').toArray();
+    return this.sql.exec('SELECT c.chat AS chat, COALESCE(NULLIF(k.name,\'\'), c.name) AS name, c.last_ts AS last_ts, c.last_text AS last_text, c.last_dir AS last_dir, c.unread AS unread, c.last_in AS last_in FROM chats c LEFT JOIN contacts k ON k.phone=c.chat ORDER BY c.last_ts DESC LIMIT 300').toArray();
   }
   messages(chat, after) {
     chat = phone(chat);
