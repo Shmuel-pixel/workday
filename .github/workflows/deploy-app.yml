@@ -21,3 +21,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: app
           wranglerVersion: "4"
+      - name: Check it is live
+        run: |
+          sleep 5
+          echo "::notice title=app-check::$(curl -s -o /dev/null -w '%{http_code} %{size_download}' https://workday.shmuel-4f0.workers.dev/) sw:$(curl -s -o /dev/null -w '%{http_code}' https://workday.shmuel-4f0.workers.dev/sw.js) icon:$(curl -s -o /dev/null -w '%{http_code}' https://workday.shmuel-4f0.workers.dev/icons/icon-192.png) ver:$(curl -s https://workday.shmuel-4f0.workers.dev/ | grep -o "APPVER='[^']*'")"
