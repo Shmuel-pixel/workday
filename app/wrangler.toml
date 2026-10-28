@@ -1,0 +1,8 @@
+# Workday app itself (the page, icons, offline file), served from Cloudflare.
+name = "workday"
+compatibility_date = "2025-09-01"
+workers_dev = true
+account_id = "4f048b40095ea1dab2bb401d6f2a59f4"
+
+[assets]
+directory = "../dist"

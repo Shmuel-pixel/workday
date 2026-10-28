@@ -1,0 +1,23 @@
+name: Deploy app
+on:
+  push:
+    branches: [main]
+    paths: ['index.html', 'sw.js', 'manifest.webmanifest', 'icons/**', 'app/**', '.github/workflows/deploy-app.yml']
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect the app files
+        run: |
+          mkdir -p dist
+          cp index.html sw.js manifest.webmanifest dist/
+          cp -r icons dist/icons
+          printf '/sw.js\n  Cache-Control: no-cache\n/index.html\n  Cache-Control: no-cache\n/\n  Cache-Control: no-cache\n' > dist/_headers
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: app
+          wranglerVersion: "4"

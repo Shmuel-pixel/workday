@@ -1,6 +1,6 @@
 // Workday widget for Scriptable. Shows today's jobs and the next reminder.
 // Made by the Workday app. Add a Scriptable widget (medium or large) and pick this script.
-const APP = "https://shmuel-pixel.github.io/workday/";
+const APP = "https://workday.shmuel-4f0.workers.dev/";
 const isDark = Device.isUsingDarkAppearance();
 const C = {
   bg: Color.dynamic(new Color("#FFFFFF"), new Color("#1C1C1E")),

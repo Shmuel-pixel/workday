@@ -9,7 +9,7 @@
 import { DurableObject } from 'cloudflare:workers';
 
 var GRAPH_DEFAULT = 'v23.0';
-var PUSH_SUB = 'https://shmuel-pixel.github.io/workday/';
+var PUSH_SUB = 'https://workday.shmuel-4f0.workers.dev/';
 /* Public keys allowed to drop items into the Workday inbox (Claude, from the build chat). Public, not secret. */
 var AUTHOR_KEYS = ['MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE9ttkUVPeky+c+4pb5BCCsvRNrpMW13mVBfVXSXzIS5R/srHUEuyDXojNT6veALdfAWoyDL+JpwpGwrJWKlKkLw=='];
 
