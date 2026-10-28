@@ -511,7 +511,7 @@ nav.tabs{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20p
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 28, 2026 (39)';
+var KEY='workday.v1',APPVER='Oct 28, 2026 (40)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -1142,7 +1142,6 @@ function locDesc(n){for(var i=0;i<EQ.locs.length;i++)if(EQ.locs[i].name===n)retu
 function clockAt(ms){var d=new Date(ms);return engShort(ymd(d))+', '+fmtTime(pad(d.getHours())+':'+pad(d.getMinutes()))}
 function renderTools(){
   if(TOOLSEG==='keys'){renderKeys();return}
-  if(TOOLSEG==='tow'){renderTows();return}
   renderEquip();
   var m=document.getElementById('mainIn');if(m)m.insertAdjacentHTML('afterbegin',toolSeg());
 }
@@ -1291,6 +1290,11 @@ function daysOn(r){if(!r.del)return null;var end=r.pick||todayStr();var n=diff(e
 function dmSiteList(){var o=DM.sites.slice();(typeof MASTER!=='undefined'?MASTER.sites:[]).forEach(function(s){if(o.indexOf(s.address)<0)o.push(s.address)});DM.rows.forEach(function(r){if(r.site&&o.indexOf(r.site)<0)o.push(r.site)});return o}
 function dshort(d){if(!d||!/^\d{4}-\d\d-\d\d$/.test(d))return d||'';return engShort(d)}
 function renderDump(){
+  if(DUMPSEG==='tow'){renderTows();return}
+  renderDumpList();
+  var m=document.getElementById('mainIn');if(m&&!m.querySelector('[data-dumpseg]'))m.insertAdjacentHTML('afterbegin',dumpSeg());
+}
+function renderDumpList(){
   dmStart();
   var h='',st=DM.state;
   h+='<div class="eqbar"><div><b>Dumpster Log</b><span>'+(st==='loading'?'Loading...':DM.at?'Updated '+esc(clockAt(DM.at)):'')+'</span></div><span class="row"><button class="btn" data-sheetview="'+DSID+'">View sheet</button><button class="btn" id="dmRef">Refresh</button></span></div>';
@@ -1468,7 +1472,7 @@ function aiApply(actions){
       if(a.note)n.comments.push({t:Date.now(),text:a.note});
       S.cards.push(n);if(typeof rememberJob==='function')rememberJob(n);done.push('Added: '+cardLabel(n));return;
     }
-    if(a['do']==='tow'){if(!connOK()){skipped.push('Tow not saved: Google is not connected.');return}var tv={date:a.date||T,time:a.time||'',status:a.status==='Done'?'Done':'Scheduled',equip:a.equipment||'',from:a.from||'',to:a.to||'',forr:a['for']||'',company:a.company||'',contact:a.contact||'',truck:a.truck||'',driver:a.driver||'',notes:a.notes||''};towAdd(tv).then(function(){if(TOOLSEG==='tow'&&S.view==='tool')render()},function(){toast('Could not save the tow to the sheet')});done.push('Tow '+(tv.status==='Done'?'logged':'scheduled')+': '+tv.equip+' from '+tv.from+' to '+tv.to+' ('+engShort(tv.date)+')');return}
+    if(a['do']==='tow'){if(!connOK()){skipped.push('Tow not saved: Google is not connected.');return}var tv={date:a.date||T,time:a.time||'',status:a.status==='Done'?'Done':'Scheduled',equip:a.equipment||'',from:a.from||'',to:a.to||'',forr:a['for']||'',company:a.company||'',contact:a.contact||'',truck:a.truck||'',driver:a.driver||'',notes:a.notes||''};towAdd(tv).then(function(){if(DUMPSEG==='tow'&&S.view==='dump')render()},function(){toast('Could not save the tow to the sheet')});done.push('Tow '+(tv.status==='Done'?'logged':'scheduled')+': '+tv.equip+' from '+tv.from+' to '+tv.to+' ('+engShort(tv.date)+')');return}
     if(!c){skipped.push('Could not find one of the jobs it meant.');return}
     if(a['do']==='done'){c.status='done';done.push('Done: '+cardLabel(c))}
     else if(a['do']==='todo'){c.status='todo';done.push('Back to To-Do: '+cardLabel(c))}
@@ -1631,7 +1635,8 @@ function waveDraw(){
   }
 }
 function voiceToggle(){if(VOICE.busy){if(VOICE.mode==='rec')recStop(true);else if(VOICE.rec){VOICE.stopReq=true;try{VOICE.rec.stop()}catch(e){}}return}voiceStart()}
-function vocabWords(){try{return (localStorage.getItem('workday.words')||'').split(/\n+/).map(function(x){return x.trim()}).filter(function(x){return x})}catch(e){return []}}
+var DEFWORDS=['Ashpa','Kubota','Bobcat','Certified Towing','Five Star'];
+function vocabWords(){var w=[];try{w=(localStorage.getItem('workday.words')||'').split(/\n+/).map(function(x){return x.trim()}).filter(function(x){return x})}catch(e){}DEFWORDS.forEach(function(d){if(w.indexOf(d)<0)w.push(d)});return w}
 function vocabPrompt(){var w=[].concat(vocabWords(),S.crew,(MASTER.contractors||[]).map(function(x){return x.name}),(MASTER.foremen||[]).map(function(x){return x.name}),S.tools,S.types,S.vehicles);var seen={},out=[];w.forEach(function(x){x=String(x||'').trim();if(x&&!seen[x.toLowerCase()]){seen[x.toLowerCase()]=1;out.push(x)}});return ('Five Star Services, Lakewood NJ. '+out.join(', ')).slice(0,700)}
 function voiceStart(){
   if(AIBUSY)return;
@@ -2323,7 +2328,7 @@ function printSupply(){
   });
 }
 /* ---------- tabs ---------- */
-var TABS=[['day','Today',IC.day],['msg','Messages',IC.msg],['tr','Translate',IC.tr],['log','Log',IC.log],['ord','Orders',IC.ord],['dump','Dumpsters',IC.dump],['tool','Tools',IC.tool]];
+var TABS=[['day','Today',IC.day],['msg','Messages',IC.msg],['tr','Translate',IC.tr],['log','Log',IC.log],['ord','Orders',IC.ord],['dump','Hauling',IC.dump],['tool','Tools',IC.tool]];
 function render(){
   document.body.classList.toggle('inchat',S.view==='msg'&&!!MSG.cur);
   document.body.classList.toggle('msgmode',S.view==='msg'&&msgOK());
@@ -2561,7 +2566,7 @@ function openSettings(page){
     h+=head('Assistant and voice');
     h+='<div class="field"><label>Claude API key</label><div class="rem"><div><span>'+(getKey()?'Saved on this phone only':'No key yet. Tap the Assistant button to add one.')+'</span><b>'+(getKey()?'Saved':'')+'</b></div></div>'+(getKey()?'<div class="row"><button class="btn" id="kDel">Remove key</button></div>':'')+'</div>';
     h+='<div class="field"><label>Voice</label><label class="tchk"><input type="checkbox" id="vAuto"'+(autoTalk()?' checked':'')+'>Start listening when I open the Assistant</label><label class="tchk"><input type="checkbox" id="vSpk"'+(speakOn()?' checked':'')+'>Speak the answers out loud</label></div>';
-    h+='<div class="field"><label for="vWords">Words it should know</label><div class="mt">Brands, names and places it gets wrong. One per line. Crew, contractors, tools and trucks are already included.</div><textarea id="vWords" rows="4" placeholder="Ashba&#10;Kubota&#10;Certified Towing">'+esc(vocabWords().join('\n'))+'</textarea><div class="row"><button class="btn" id="vWordsSave">Save words</button></div></div>';
+    h+='<div class="field"><label for="vWords">Words it should know</label><div class="mt">Brands, names and places it gets wrong. One per line. Crew, contractors, tools and trucks are already included.</div><textarea id="vWords" rows="4" placeholder="Ashpa&#10;Kubota&#10;Certified Towing">'+esc(vocabWords().filter(function(x){return DEFWORDS.indexOf(x)<0}).join('\n'))+'</textarea><div class="row"><button class="btn" id="vWordsSave">Save words</button></div></div>';
     h+='<div class="field"><label>Translation</label><label class="tchk"><input type="checkbox" id="vTl"'+(trOn()?' checked':'')+'>Show how to say it (transliteration)</label></div>';
     h+='<div class="field"><label for="projIn">Claude Project link (optional)</label><div class="mt">Only if you made a Workday project on claude.ai. When there is no API key, the Assistant button opens that project instead. Paste its link and tap Save. Leave empty if you use the key.</div><div class="addrow"><input id="projIn" autocapitalize="off" spellcheck="false" placeholder="https://claude.ai/project/..." value="'+esc(projLink())+'"><button class="btn" id="projSave">Save</button></div></div>';
   }
@@ -2588,7 +2593,7 @@ document.addEventListener('click',function(e){
     WRS.text=t;WRS.style=tm.dataset.wstyle;var res=document.getElementById('wrRes');res.innerHTML='<div class="mt">Writing...</div>';
     writeMsg(t,WRS.style).then(function(o){WRS.out=o;showWrite()},function(er){res.innerHTML='<div class="warn">'+esc(er.message||String(er))+'</div>'});return}
   var lg=e.target.closest('[data-lgo],[data-lcopy]');if(lg){e.preventDefault();if(lg.dataset.lgo)window.location.href=lg.dataset.lgo;else copyText(decodeURIComponent(lg.dataset.lcopy));return}
-  var ks=e.target.closest('[data-toolseg],[data-key],[data-tow]');if(ks){if(ks.dataset.toolseg){TOOLSEG=ks.dataset.toolseg;try{localStorage.setItem('workday.toolseg',TOOLSEG)}catch(x){}render();mainTop();if(TOOLSEG==='keys')keysLoad();if(TOOLSEG==='tow')towsLoad()}else if(ks.dataset.tow)openTow(ks.dataset.tow);else openKey(ks.dataset.key);return}
+  var ks=e.target.closest('[data-toolseg],[data-dumpseg],[data-key],[data-tow]');if(ks){if(ks.dataset.dumpseg){DUMPSEG=ks.dataset.dumpseg;try{localStorage.setItem('workday.dumpseg',DUMPSEG)}catch(x){}render();mainTop();if(DUMPSEG==='tow')towsLoad()}else if(ks.dataset.toolseg){TOOLSEG=ks.dataset.toolseg;try{localStorage.setItem('workday.toolseg',TOOLSEG)}catch(x){}render();mainTop();if(TOOLSEG==='keys')keysLoad()}else if(ks.dataset.tow)openTow(ks.dataset.tow);else openKey(ks.dataset.key);return}
   var cdx=e.target.closest('.card');if(cdx&&cdx.dataset.id&&!e.target.closest('button,a,input,label,[data-grip]')){openEdit(cdx.dataset.id);return}
   var t=e.target.closest('[data-fivestar],[data-sheetview],[data-zmanim],[data-send],[data-crewedit],[data-printsheet],[data-printday],[data-aiundo],[data-dm],[data-dmf],[data-eq],[data-eqloc],[data-copysum],[data-notes],[data-markdone],[data-more],[data-movetoday],[data-chat],[data-tab],[data-open],[data-rm],[data-addto]');if(!t)return;
   if(t.dataset.fivestar)openFiveStar(t.dataset.fivestar);
@@ -2995,7 +3000,7 @@ var KEYS={rows:[],at:0,busy:false,err:'',q:'',retired:false};
 function keysSave(){try{localStorage.setItem('workday.keys',JSON.stringify({rows:KEYS.rows,at:KEYS.at}))}catch(e){}}
 var KEYCOLS=['serial','opens','address','contractor','kept','status','notes','added','retiredOn','why'];
 function keysLoad(){
-  if(!connOK()){KEYS.err='Keys need the Google connection (gear, Google).';if(TOOLSEG==='keys'&&S.view==='tool')render();return Promise.resolve()}
+  if(!connOK()){KEYS.err='Keys need the Google connection (gear, Google).';KEYS.at=KEYS.at||1;if(TOOLSEG==='keys'&&S.view==='tool')render();return Promise.resolve()}
   KEYS.busy=true;
   return bridge('getValues',{book:'workday',range:'Keys!A1:J3000'}).then(function(d){
     var v=d.values||[];KEYS.rows=v.slice(1).filter(function(r){return r[0]}).map(function(r){var o={};KEYCOLS.forEach(function(k,i){o[k]=r[i]||''});return o});
@@ -3003,7 +3008,9 @@ function keysLoad(){
   },function(e){KEYS.busy=false;KEYS.err=bridgeErr(e);if(TOOLSEG==='keys'&&S.view==='tool')render()});
 }
 function keyFind(n){n=String(n).replace(/\D/g,'');for(var i=0;i<KEYS.rows.length;i++)if(KEYS.rows[i].serial===n)return KEYS.rows[i];return null}
-function toolSeg(){return '<div class="seg seg3"><button class="'+(TOOLSEG==='eq'?'on':'')+'" data-toolseg="eq">Equipment</button><button class="'+(TOOLSEG==='keys'?'on':'')+'" data-toolseg="keys">Keys</button><button class="'+(TOOLSEG==='tow'?'on':'')+'" data-toolseg="tow">Towing</button></div>'}
+function toolSeg(){return '<div class="seg"><button class="'+(TOOLSEG!=='keys'?'on':'')+'" data-toolseg="eq">Equipment</button><button class="'+(TOOLSEG==='keys'?'on':'')+'" data-toolseg="keys">Keys</button></div>'}
+var DUMPSEG='dump';try{DUMPSEG=localStorage.getItem('workday.dumpseg')||'dump'}catch(e){}
+function dumpSeg(){return '<div class="seg"><button class="'+(DUMPSEG!=='tow'?'on':'')+'" data-dumpseg="dump">Dumpsters</button><button class="'+(DUMPSEG==='tow'?'on':'')+'" data-dumpseg="tow">Towing</button></div>'}
 function renderKeys(){
   if(!KEYS.at&&!KEYS.busy)keysLoad();
   var q=KEYS.q.trim(),ql=q.toLowerCase(),num=q.replace(/^#/,'');
@@ -3113,18 +3120,18 @@ var TOWS={rows:[],at:0,busy:false,err:'',q:''};
 var TOWCOLS=['id','date','time','status','equip','from','to','forr','truck','driver','notes','created','updated','deleted','company','contact'];
 function towsSave(){try{localStorage.setItem('workday.tows',JSON.stringify({rows:TOWS.rows,at:TOWS.at}))}catch(e){}}
 function towsLoad(){
-  if(!connOK()){TOWS.err='Towing needs the Google connection (gear, Google).';if(TOOLSEG==='tow'&&S.view==='tool')render();return Promise.resolve()}
+  if(!connOK()){TOWS.err='Towing needs the Google connection (gear, Google).';TOWS.at=TOWS.at||1;if(DUMPSEG==='tow'&&S.view==='dump')render();return Promise.resolve()}
   TOWS.busy=true;
   return bridge('getValues',{book:'workday',range:'Tows!A1:P3000'}).then(function(d){
     var v=d.values||[];TOWS.rows=v.slice(1).filter(function(r){return r[0]&&!r[13]}).map(function(r){var o={};TOWCOLS.forEach(function(k,i){o[k]=r[i]||''});return o});
-    TOWS.at=Date.now();TOWS.err='';TOWS.busy=false;towsSave();if(TOOLSEG==='tow'&&S.view==='tool')render();
-  },function(e){TOWS.busy=false;TOWS.err=bridgeErr(e);if(TOOLSEG==='tow'&&S.view==='tool')render()});
+    TOWS.at=Date.now();TOWS.err='';TOWS.busy=false;towsSave();if(DUMPSEG==='tow'&&S.view==='dump')render();
+  },function(e){TOWS.busy=false;TOWS.err=bridgeErr(e);if(DUMPSEG==='tow'&&S.view==='dump')render()});
 }
 function towFind(id){for(var i=0;i<TOWS.rows.length;i++)if(TOWS.rows[i].id===id)return TOWS.rows[i];return null}
 function renderTows(){
   if(!TOWS.at&&!TOWS.busy)towsLoad();
   var T=todayStr(),q=TOWS.q.trim().toLowerCase();
-  var h=toolSeg();
+  var h=dumpSeg();
   h+='<div class="row" style="justify-content:space-between;align-items:center"><b style="font-size:18px">Towing</b><span class="row"><button class="btn primary" id="twNew">New tow</button><button class="btn" id="twRef">'+(TOWS.busy?'Loading...':'Refresh')+'</button></span></div>';
   if(TOWS.err)h+='<div class="warn">'+esc(TOWS.err)+'</div>';
   h+='<input class="search" id="twQ" type="search" placeholder="Search equipment, place, contractor" value="'+esc(TOWS.q)+'">';
