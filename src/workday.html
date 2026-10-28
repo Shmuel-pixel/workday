@@ -490,7 +490,7 @@ nav.tabs{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20p
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 28, 2026 (37)';
+var KEY='workday.v1',APPVER='Oct 28, 2026 (38)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -1425,7 +1425,7 @@ function aiContext(){
   cs.forEach(function(c){L.push([c.id,c.date,c.time||'-',c.status==='done'?'done':(diff(c.date,T)<0?'missed':'to-do'),c.type,c.address||'-',c.contractor||'-',c.crew||'-',c.vehicle||'-'].join(' | '))});
   if(!cs.length)L.push('(no cards yet)');
   L.push('Places: when he names a place without a full street address (a store, business, supply house, landmark, or something like the UPS store on Route 9), look it up with find_place, and with web_search if find_place has no good match. If there is one clear match, give the full address in your reply with its Google Maps link and Waze link, and ask if that is the right place before using it in a job (unless he already confirmed it). If several places match, list up to 3 with their addresses and links and ask which one. If he only asks for an address or directions, just answer with the address and links. Never invent an address.');
-  L.push('Answer with only a JSON object and nothing else (after any tool use): {"reply":"...","actions":[...]}. A card can be a plain to-do with only a title. Action forms: {"do":"add","date":"","time":"","title":"","type":"","address":"","contractor":"","foreman":"","phone":"","crew":"","vehicle":"","materials":[],"tools":[],"note":""}; {"do":"update","id":"","fields":{...only the fields to change}}; {"do":"done","id":""}; {"do":"todo","id":""}; {"do":"move","id":"","date":"","time":""}; {"do":"note","id":"","text":""}; {"do":"tow","date":"","time":"","status":"Scheduled or Done","equipment":"","from":"","to":"","for":"","truck":"","driver":"","notes":""} (a towing log entry: what was towed, from where, to where; confirm full addresses first); {"do":"delete","id":""}. Use an empty actions list when you only answer a question or need more details first.');
+  L.push('Answer with only a JSON object and nothing else (after any tool use): {"reply":"...","actions":[...]}. A card can be a plain to-do with only a title. Action forms: {"do":"add","date":"","time":"","title":"","type":"","address":"","contractor":"","foreman":"","phone":"","crew":"","vehicle":"","materials":[],"tools":[],"note":""}; {"do":"update","id":"","fields":{...only the fields to change}}; {"do":"done","id":""}; {"do":"todo","id":""}; {"do":"move","id":"","date":"","time":""}; {"do":"note","id":"","text":""}; {"do":"tow","date":"","time":"","status":"Scheduled or Done","equipment":"","from":"","to":"","for":"","company":"towing company if not us","contact":"","truck":"","driver":"","notes":""} (a towing log entry: what was towed, from where, to where; confirm full addresses first); {"do":"delete","id":""}. Use an empty actions list when you only answer a question or need more details first.');
   return L.join('\n');
 }
 function aiParse(txt){
@@ -1446,7 +1446,7 @@ function aiApply(actions){
       if(a.note)n.comments.push({t:Date.now(),text:a.note});
       S.cards.push(n);if(typeof rememberJob==='function')rememberJob(n);done.push('Added: '+cardLabel(n));return;
     }
-    if(a['do']==='tow'){if(!connOK()){skipped.push('Tow not saved: Google is not connected.');return}var tv={date:a.date||T,time:a.time||'',status:a.status==='Done'?'Done':'Scheduled',equip:a.equipment||'',from:a.from||'',to:a.to||'',forr:a['for']||'',truck:a.truck||'',driver:a.driver||'',notes:a.notes||''};towAdd(tv).then(function(){if(TOOLSEG==='tow'&&S.view==='tool')render()},function(){toast('Could not save the tow to the sheet')});done.push('Tow '+(tv.status==='Done'?'logged':'scheduled')+': '+tv.equip+' from '+tv.from+' to '+tv.to+' ('+engShort(tv.date)+')');return}
+    if(a['do']==='tow'){if(!connOK()){skipped.push('Tow not saved: Google is not connected.');return}var tv={date:a.date||T,time:a.time||'',status:a.status==='Done'?'Done':'Scheduled',equip:a.equipment||'',from:a.from||'',to:a.to||'',forr:a['for']||'',company:a.company||'',contact:a.contact||'',truck:a.truck||'',driver:a.driver||'',notes:a.notes||''};towAdd(tv).then(function(){if(TOOLSEG==='tow'&&S.view==='tool')render()},function(){toast('Could not save the tow to the sheet')});done.push('Tow '+(tv.status==='Done'?'logged':'scheduled')+': '+tv.equip+' from '+tv.from+' to '+tv.to+' ('+engShort(tv.date)+')');return}
     if(!c){skipped.push('Could not find one of the jobs it meant.');return}
     if(a['do']==='done'){c.status='done';done.push('Done: '+cardLabel(c))}
     else if(a['do']==='todo'){c.status='todo';done.push('Back to To-Do: '+cardLabel(c))}
@@ -3076,12 +3076,12 @@ function keyUpdate(serial,ch){
 /* ---------- towing log ---------- */
 var TOWS={rows:[],at:0,busy:false,err:'',q:''};
 (function(){try{var o=JSON.parse(localStorage.getItem('workday.tows')||'null');if(o){TOWS.rows=o.rows||[];TOWS.at=o.at||0}}catch(e){}})();
-var TOWCOLS=['id','date','time','status','equip','from','to','forr','truck','driver','notes','created','updated','deleted'];
+var TOWCOLS=['id','date','time','status','equip','from','to','forr','truck','driver','notes','created','updated','deleted','company','contact'];
 function towsSave(){try{localStorage.setItem('workday.tows',JSON.stringify({rows:TOWS.rows,at:TOWS.at}))}catch(e){}}
 function towsLoad(){
   if(!connOK()){TOWS.err='Towing needs the Google connection (gear, Google).';if(TOOLSEG==='tow'&&S.view==='tool')render();return Promise.resolve()}
   TOWS.busy=true;
-  return bridge('getValues',{book:'workday',range:'Tows!A1:N3000'}).then(function(d){
+  return bridge('getValues',{book:'workday',range:'Tows!A1:P3000'}).then(function(d){
     var v=d.values||[];TOWS.rows=v.slice(1).filter(function(r){return r[0]&&!r[13]}).map(function(r){var o={};TOWCOLS.forEach(function(k,i){o[k]=r[i]||''});return o});
     TOWS.at=Date.now();TOWS.err='';TOWS.busy=false;towsSave();if(TOOLSEG==='tow'&&S.view==='tool')render();
   },function(e){TOWS.busy=false;TOWS.err=bridgeErr(e);if(TOOLSEG==='tow'&&S.view==='tool')render()});
@@ -3094,7 +3094,7 @@ function renderTows(){
   h+='<div class="row" style="justify-content:space-between;align-items:center"><b style="font-size:18px">Towing</b><span class="row"><button class="btn primary" id="twNew">New tow</button><button class="btn" id="twRef">'+(TOWS.busy?'Loading...':'Refresh')+'</button></span></div>';
   if(TOWS.err)h+='<div class="warn">'+esc(TOWS.err)+'</div>';
   h+='<input class="search" id="twQ" type="search" placeholder="Search equipment, place, contractor" value="'+esc(TOWS.q)+'">';
-  var rows=TOWS.rows.filter(function(t){return !q||(t.equip+' '+t.from+' '+t.to+' '+t.forr+' '+t.truck+' '+t.driver+' '+t.notes).toLowerCase().indexOf(q)>=0});
+  var rows=TOWS.rows.filter(function(t){return !q||(t.equip+' '+t.from+' '+t.to+' '+t.forr+' '+(t.company||'')+' '+(t.contact||'')+' '+t.truck+' '+t.driver+' '+t.notes).toLowerCase().indexOf(q)>=0});
   var up=rows.filter(function(t){return t.status!=='Done'}).sort(function(a,b){return (a.date+a.time).localeCompare(b.date+b.time)});
   var dn=rows.filter(function(t){return t.status==='Done'}).sort(function(a,b){return (b.date+b.time).localeCompare(a.date+a.time)});
   h+='<div class="zlab">Coming up ('+up.length+')</div>';
@@ -3108,11 +3108,11 @@ function renderTows(){
 }
 function towRow(t){
   var late=t.status!=='Done'&&t.date&&t.date<todayStr();
-  return '<button class="keyrow towrow" data-tow="'+esc(t.id)+'"><span class="twdate"><b>'+esc(t.date?engShort(t.date):'No date')+'</b><small>'+esc(t.time?fmtTime(t.time):'')+'</small></span><span class="kmain"><b>'+esc(t.equip||'(equipment)')+'</b><small>'+esc((t.from||'?')+'  \u2192  '+(t.to||'?'))+'</small>'+(t.forr||t.truck||t.driver?'<small>'+esc([t.forr,t.truck,t.driver].filter(function(x){return x}).join(' '+MID+' '))+'</small>':'')+'</span><span class="pill '+(t.status==='Done'?'p-done':late?'p-late':'p-up')+'">'+(t.status==='Done'?'Done':late?'Not done':'Scheduled')+'</span></button>';
+  return '<button class="keyrow towrow" data-tow="'+esc(t.id)+'"><span class="twdate"><b>'+esc(t.date?engShort(t.date):'No date')+'</b><small>'+esc(t.time?fmtTime(t.time):'')+'</small></span><span class="kmain"><b>'+esc(t.equip||'(equipment)')+'</b><small>'+esc((t.from||'?')+'  \u2192  '+(t.to||'?'))+'</small>'+(t.forr||t.company||t.truck||t.driver?'<small>'+esc([t.company?t.company+(t.contact?' ('+t.contact+')':''):'',t.forr,t.truck,t.driver].filter(function(x){return x}).join(' '+MID+' '))+'</small>':'')+'</span><span class="pill '+(t.status==='Done'?'p-done':late?'p-late':'p-up')+'">'+(t.status==='Done'?'Done':late?'Not done':'Scheduled')+'</span></button>';
 }
 function towEquipList(){var l=[];TOWS.rows.forEach(function(t){if(t.equip&&l.indexOf(t.equip)<0)l.push(t.equip)});return l}
 function openTow(id,pre){
-  var t=id?towFind(id):null,isNew=!t;t=t||{id:'',date:todayStr(),time:'',status:'Scheduled',equip:'',from:'',to:'',forr:'',truck:'',driver:'',notes:''};
+  var t=id?towFind(id):null,isNew=!t;t=t||{id:'',date:todayStr(),time:'',status:'Scheduled',equip:'',from:'',to:'',forr:'',truck:'',driver:'',notes:'',company:'',contact:''};
   if(isNew&&pre)for(var k in pre)t[k]=pre[k];
   var h='<h3>'+(isNew?'New tow':'Tow')+'</h3>';
   h+='<div class="two"><div class="field"><label for="twDate">Date</label><input id="twDate" type="date" value="'+esc(t.date)+'"></div><div class="field"><label for="twTime">Time</label><input id="twTime" type="time" value="'+esc(t.time)+'"></div></div>';
@@ -3121,7 +3121,8 @@ function openTow(id,pre){
   h+='<div class="field"><label for="twFrom">From</label><input id="twFrom" value="'+esc(t.from)+'" autocomplete="off" placeholder="Start typing an address or place"><div id="twFromOut"></div></div>';
   h+='<div class="field"><label for="twTo">To</label><input id="twTo" value="'+esc(t.to)+'" autocomplete="off" placeholder="Start typing an address or place"><div id="twToOut"></div></div>';
   h+='<div class="field"><label for="twFor">For (contractor or job)</label><input id="twFor" value="'+esc(t.forr)+'" autocomplete="off"><div class="sugs" id="twForS"></div></div>';
-  h+='<div class="two"><div class="field"><label for="twTruck">Truck</label><select id="twTruck">'+opts(S.vehicles,t.truck,'Not set')+'</select></div><div class="field"><label for="twDrv">Driver</label><select id="twDrv">'+opts(S.crew.concat(['Me']),t.driver,'Not set')+'</select></div></div>';
+  h+='<div class="two"><div class="field"><label for="twCo">Towing company</label><input id="twCo" value="'+esc(t.company||'')+'" autocomplete="off" placeholder="If someone else towed it"><div class="sugs" id="twCoS"></div></div><div class="field"><label for="twCt">Contact</label><input id="twCt" value="'+esc(t.contact||'')+'" placeholder="Name or phone"></div></div>';
+  h+='<div class="two"><div class="field"><label for="twTruck">Our truck</label><select id="twTruck">'+opts(S.vehicles,t.truck,'Not set')+'</select></div><div class="field"><label for="twDrv">Driver</label><select id="twDrv">'+opts(S.crew.concat(['Me']),t.driver,'Not set')+'</select></div></div>';
   h+='<div class="field"><label for="twNotes">Notes</label><textarea id="twNotes" rows="2">'+esc(t.notes)+'</textarea></div>';
   if(t.from&&t.to)h+='<div class="row" style="gap:14px"><a class="minilink" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(t.from)+'&destination='+encodeURIComponent(t.to)+'">Route in Google Maps</a><a class="minilink" target="_blank" rel="noopener" href="https://waze.com/ul?q='+encodeURIComponent(t.to)+'&navigate=yes">Waze to drop-off</a></div>';
   h+='<div id="twWarn"></div><div class="row"><button class="btn primary" id="twSave">Save</button><button class="btn" id="twX">Cancel</button></div>';
@@ -3133,24 +3134,25 @@ function openTow(id,pre){
   ['twFrom','twTo'].forEach(function(f){var tm=null;document.getElementById(f).addEventListener('input',function(){clearTimeout(tm);var v=val(f).trim();if(v.length<5||!/[a-z]/i.test(v))return;tm=setTimeout(function(){lookupAddress(v,f+'Out',function(a){document.getElementById(f).value=a},true)},1100)})});
   if(typeof suggestBox==='function'){
     suggestBox('twEq','twEqS',function(){var l=towEquipList();(EQ.rows||[]).forEach(function(r){var n=r.item+(r.brand&&r.brand!=='Not specified'?' '+r.brand:'')+(r.model&&r.model!=='Not specified'?' '+r.model:'');if(l.indexOf(n)<0)l.push(n)});return l.map(function(x){return {label:x}})},function(){});
+    suggestBox('twCo','twCoS',function(){var l=[];TOWS.rows.forEach(function(x){if(x.company&&l.indexOf(x.company)<0)l.push(x.company)});return l.map(function(x){return {label:x}})},function(it){var c=null;TOWS.rows.forEach(function(x){if(x.company===it.label&&x.contact)c=x.contact});if(c&&!val('twCt'))document.getElementById('twCt').value=c});
     suggestBox('twFor','twForS',function(){return MASTER.contractors.map(function(x){return {label:x.name}})},function(){});
   }
   function warn(x){document.getElementById('twWarn').innerHTML='<div class="warn">'+esc(x)+'</div>'}
   bind('twSave',function(){
-    var v={date:val('twDate'),time:val('twTime'),status:st,equip:val('twEq').trim(),from:val('twFrom').trim(),to:val('twTo').trim(),forr:val('twFor').trim(),truck:val('twTruck'),driver:val('twDrv'),notes:val('twNotes').trim()};
+    var v={date:val('twDate'),time:val('twTime'),status:st,equip:val('twEq').trim(),from:val('twFrom').trim(),to:val('twTo').trim(),forr:val('twFor').trim(),company:val('twCo').trim(),contact:val('twCt').trim(),truck:val('twTruck'),driver:val('twDrv'),notes:val('twNotes').trim()};
     if(!v.equip&&!v.from&&!v.to){warn('Write what was towed, or where from and to.');return}
     if(!v.date){warn('Pick a date.');return}
     if(!connOK()){warn('Saving tows needs the Google connection (gear, Google).');return}
     var b=document.getElementById('twSave');b.disabled=true;b.textContent='Saving...';
     (isNew?towAdd(v):towUpdate(t.id,v)).then(function(){closeSheet();render();toast(isNew?'Tow saved':'Tow updated')},function(e){b.disabled=false;b.textContent='Save';warn(e.message||String(e))});
   });
-  bind('twAgain',function(){openTow(null,{date:todayStr(),time:'',status:'Scheduled',equip:t.equip,from:t.from,to:t.to,forr:t.forr,truck:t.truck,driver:t.driver,notes:''})});
+  bind('twAgain',function(){openTow(null,{date:todayStr(),time:'',status:'Scheduled',equip:t.equip,from:t.from,to:t.to,forr:t.forr,company:t.company,contact:t.contact,truck:t.truck,driver:t.driver,notes:''})});
   bind('twDel',function(){confirmSheet('Delete this tow?',(t.equip||'Tow')+' on '+(t.date?engShort(t.date):''),'Delete',function(){towUpdate(t.id,{deleted:stampNow()}).then(function(){TOWS.rows=TOWS.rows.filter(function(x){return x.id!==t.id});towsSave();closeSheet();render();toast('Tow deleted')},function(e){toast(e.message||String(e))})})});
 }
 function towAdd(v){
   var o={id:'t'+Date.now().toString(36)+Math.floor(Math.random()*10),created:stampNow(),updated:stampNow(),deleted:''};for(var k in v)o[k]=v[k];
   var row=TOWCOLS.map(function(k){return o[k]||''});
-  return bridge('appendValues',{book:'workday',range:'Tows!A:N',values:[row]}).then(function(){o.deleted='';TOWS.rows.push(o);towsSave();return o});
+  return bridge('appendValues',{book:'workday',range:'Tows!A:P',values:[row]}).then(function(){o.deleted='';TOWS.rows.push(o);towsSave();return o});
 }
 function towUpdate(id,ch){
   return bridge('getValues',{book:'workday',range:'Tows!A1:A3000'}).then(function(d){
@@ -3158,7 +3160,7 @@ function towUpdate(id,ch){
     if(i>=v.length)throw new Error('That tow is not in the sheet anymore.');
     var cur=towFind(id)||{id:id};for(var k in ch)cur[k]=ch[k];cur.updated=stampNow();
     var row=TOWCOLS.slice(1).map(function(k){return cur[k]||''});
-    return bridge('updateValues',{book:'workday',range:'Tows!B'+(i+1)+':N'+(i+1),values:[row]}).then(function(){towsSave();return cur});
+    return bridge('updateValues',{book:'workday',range:'Tows!B'+(i+1)+':P'+(i+1),values:[row]}).then(function(){towsSave();return cur});
   });
 }
 
