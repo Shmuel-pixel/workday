@@ -404,7 +404,9 @@ export class Box extends DurableObject {
     if (!this.env.AI) return { error: 'Voice is not turned on in the service yet.' };
     var audio = String((b && b.audio) || '');
     if (!audio) return { error: 'No audio came through.' };
-    var r = await this.env.AI.run('@cf/openai/whisper-large-v3-turbo', { audio: audio, language: 'en', vad_filter: true });
+    var opts = { audio: audio, language: 'en', vad_filter: true };
+    if (b.prompt) opts.initial_prompt = String(b.prompt).slice(0, 800);
+    var r = await this.env.AI.run('@cf/openai/whisper-large-v3-turbo', opts);
     return { text: ((r && r.text) || '').trim() };
   }
 

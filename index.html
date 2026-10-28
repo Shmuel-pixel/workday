@@ -511,7 +511,7 @@ nav.tabs{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20p
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 28, 2026 (38)';
+var KEY='workday.v1',APPVER='Oct 28, 2026 (39)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -1432,6 +1432,7 @@ function aiContext(){
   L.push('You are the scheduling assistant inside Shmuel\'s Workday app. Shmuel works for Five Star Services in the Lakewood, NJ area and schedules crews for jobs. Turn what he tells you into changes to his job cards.');
   L.push('Today is '+engLong(T)+' ('+T+'), '+hebEn(T)+'. The time now is '+fmtTime(nowHM())+'.');
   L.push('Rules: dates are YYYY-MM-DD and times are HH:MM in 24-hour time. Work out words like tomorrow, Monday or next week from today. Never put a job on a no-work day (listed below); if he asks for one, ask which day instead. Use crew, vehicle, work type and tool names from the lists when they match; otherwise use his words. If a new job is missing the address, date or crew, still add it with what you have and ask for the missing parts in your reply. When he talks about an existing job, use its id from the card list. If more than one card could match, ask which one instead of guessing. Keep the reply short and plain, like a text message.');
+  L.push('His messages usually come from voice dictation, so words can be misheard (for example a brand, a name or a street that came out as a different word). Match a misheard word to the closest real name he uses (crew, contractors, foremen, job sites, vehicles, tools, work types'+(vocabWords().length?', and these words he uses: '+vocabWords().join(', '):'')+'). When you change a word, say it briefly in your reply, like: (heard APA, took it as Ashba). If you are not sure, ask.');
   L.push('Crew: '+S.crew.join(', ')+', Me');
   L.push('Vehicles: '+S.vehicles.join(', '));
   L.push('Work types: '+S.types.join(', '));
@@ -1522,7 +1523,7 @@ function openAI(talk){
   openSheet(h);
   var thr=document.getElementById('aiThr');thr.scrollTop=thr.scrollHeight;
   var ta=document.getElementById('aiTxt');
-  bind('aiClose',function(){if(VOICE.busy){if(VOICE.mode==='rec')recStop(false);else try{VOICE.rec.stop()}catch(e){}}try{speechSynthesis.cancel()}catch(e){}closeSheet();render()});
+  bind('aiClose',function(){if(VOICE.busy){if(VOICE.mode==='rec')recStop(false);else{VOICE.stopReq=true;VOICE.busy=false;VOICE.mode='';try{VOICE.rec.abort()}catch(e){}}}try{speechSynthesis.cancel()}catch(e){}closeSheet();render()});
   bind('aiClear',function(){AIH=[];openAI()});
   bind('aiSend',function(){var t=ta.value.trim();if(!t||AIBUSY)return;VOICE.last=false;aiSend(t)});
   bind('aiMic',voiceToggle);
@@ -1601,7 +1602,7 @@ function voiceUI(state,text){
   b.className='mic'+(state==='listen'?' on':state==='work'?' work':'');
   if(b.parentNode)b.parentNode.classList.toggle('listening',state==='listen');
   if(state==='listen')waveStart();else waveStop();
-  t.textContent=text||(state==='listen'?'Listening... tap when you are done':state==='work'?'Got it...':'Tap to talk');
+  t.textContent=text||(state==='listen'?'Listening... tap the mic when you are done':state==='work'?'Got it...':'Tap to talk');
 }
 /* listening waveform: real mic level when we have it, a gentle idle wave otherwise */
 var WAVE={an:null,buf:null,raf:0,hist:[],t:0};
@@ -1629,7 +1630,9 @@ function waveDraw(){
     g.beginPath();if(g.roundRect)g.roundRect(x,y,bw,bh,1.5);else g.rect(x,y,bw,bh);g.fill();
   }
 }
-function voiceToggle(){if(VOICE.busy){if(VOICE.mode==='rec')recStop(true);else if(VOICE.rec)try{VOICE.rec.stop()}catch(e){}return}voiceStart()}
+function voiceToggle(){if(VOICE.busy){if(VOICE.mode==='rec')recStop(true);else if(VOICE.rec){VOICE.stopReq=true;try{VOICE.rec.stop()}catch(e){}}return}voiceStart()}
+function vocabWords(){try{return (localStorage.getItem('workday.words')||'').split(/\n+/).map(function(x){return x.trim()}).filter(function(x){return x})}catch(e){return []}}
+function vocabPrompt(){var w=[].concat(vocabWords(),S.crew,(MASTER.contractors||[]).map(function(x){return x.name}),(MASTER.foremen||[]).map(function(x){return x.name}),S.tools,S.types,S.vehicles);var seen={},out=[];w.forEach(function(x){x=String(x||'').trim();if(x&&!seen[x.toLowerCase()]){seen[x.toLowerCase()]=1;out.push(x)}});return ('Five Star Services, Lakewood NJ. '+out.join(', ')).slice(0,700)}
 function voiceStart(){
   if(AIBUSY)return;
   try{window.speechSynthesis&&speechSynthesis.cancel();if(window.speechSynthesis){var u=new SpeechSynthesisUtterance('');speechSynthesis.speak(u)}}catch(e){}
@@ -1659,14 +1662,12 @@ function recStart(){
       if(now-VOICE.start<350){VOICE.floor=Math.max(VOICE.floor,rms);return}
       var loud=rms>Math.max(0.012,VOICE.floor*2.5);
       if(loud){VOICE.heard=true;VOICE.quiet=now}
-      else if(VOICE.heard&&now-VOICE.quiet>1600){recStop(true);return}
-      if(!VOICE.heard&&now-VOICE.start>9000){recStop(false);voiceUI('','I did not hear anything. Tap to talk.');return}
-      if(now-VOICE.start>60000){recStop(true);return}
+      if(now-VOICE.start>180000){recStop(true);return}
       /* live words while you talk: write down what we have so far every couple of seconds */
-      if(VOICE.heard&&!VOICE.partBusy&&now-VOICE.partAt>1700){
+      if(VOICE.heard&&!VOICE.partBusy&&now-VOICE.partAt>Math.max(1700,(now-VOICE.start)/6)){
         VOICE.partAt=now;VOICE.partBusy=true;
         var part=wavB64(VOICE.chunks.slice(),VOICE.rate);
-        msgApi('/transcribe',{audio:part}).then(function(j){VOICE.partBusy=false;if(VOICE.busy&&VOICE.mode==='rec'&&j&&j.text)voiceUI('listen',j.text)},function(){VOICE.partBusy=false});
+        msgApi('/transcribe',{audio:part,prompt:vocabPrompt()}).then(function(j){VOICE.partBusy=false;if(VOICE.busy&&VOICE.mode==='rec'&&j&&j.text)voiceUI('listen',j.text)},function(){VOICE.partBusy=false});
       }
     };
     try{var an=ctx.createAnalyser();an.fftSize=1024;an.smoothingTimeConstant=0.2;src.connect(an);WAVE.an=an;WAVE.buf=new Uint8Array(an.fftSize)}catch(x){}
@@ -1683,7 +1684,7 @@ function recStop(send){
   if(!VOICE.heard){voiceUI('','I did not hear anything. Tap to talk.');return}
   voiceUI('work','Writing it down...');
   var b64=wavB64(VOICE.chunks,VOICE.rate);VOICE.chunks=[];
-  msgApi('/transcribe',{audio:b64}).then(function(j){
+  msgApi('/transcribe',{audio:b64,prompt:vocabPrompt()}).then(function(j){
     if(j.error){voiceUI('',j.error);return}
     var t=(j.text||'').trim();if(!t){voiceUI('','I did not catch that. Tap to try again.');return}
     voiceUI('',t);VOICE.last=true;aiSend(t);
@@ -1703,24 +1704,34 @@ function wavB64(chunks,rate){
   return btoa(bin);
 }
 function nativeStart(SR){
-  var r;try{r=new SR()}catch(e){try{localStorage.setItem('workday.nonative','1')}catch(x){}if(msgOK())return recStart();voiceUI('','Voice is not available here. Type below.');return}
-  VOICE.rec=r;VOICE.busy=true;VOICE.mode='native';var fin='',live='',got=false,timer=null,started=Date.now();
-  function hush(){clearTimeout(timer);timer=setTimeout(function(){try{r.stop()}catch(e){}},1800)}
-  r.lang='en-US';r.interimResults=true;r.continuous=true;
-  r.onresult=function(e){var t='',f='';for(var i=0;i<e.results.length;i++){t+=e.results[i][0].transcript;if(e.results[i].isFinal)f+=e.results[i][0].transcript}live=t;fin=f;got=true;voiceUI('listen',t);hush()};
-  r.onerror=function(e){
-    clearTimeout(timer);VOICE.busy=false;
-    if(e.error==='not-allowed'||e.error==='service-not-allowed'||e.error==='audio-capture'||e.error==='network'||e.error==='language-not-supported'){
-      try{localStorage.setItem('workday.nonative','1')}catch(x){}
-      if(msgOK()){VOICE.fell=true;recStart();return}
-      voiceUI('',e.error==='not-allowed'?'Microphone or speech is blocked. Turn on Microphone and Speech Recognition for Workday (or Safari) in iPhone Settings.':'Voice is not available here. Type below.');return;
-    }
-    if(e.error!=='no-speech'&&e.error!=='aborted')voiceUI('','I did not catch that. Tap to try again.');
-  };
-  r.onend=function(){clearTimeout(timer);if(VOICE.fell){VOICE.fell=false;return}if(VOICE.mode!=='native')return;VOICE.busy=false;if(!got){VOICE.nmiss=(VOICE.nmiss||0)+1;if(VOICE.nmiss>=2)try{localStorage.setItem('workday.nonative','1')}catch(x){}}else VOICE.nmiss=0;var t=(fin||live||'').trim();if(t){voiceUI('',t);VOICE.last=true;aiSend(t)}else voiceUI('',got?'':'I did not hear anything. Tap to talk.')};
-  voiceUI('listen');
-  setTimeout(function(){if(VOICE.busy&&VOICE.mode==='native'&&!got){try{r.stop()}catch(e){}}},9000);
-  try{r.start()}catch(e){VOICE.busy=false;try{localStorage.setItem('workday.nonative','1')}catch(x){}if(msgOK())return recStart();voiceUI('','Voice could not start. Type below.')}
+  var acc='',live='',got=false,started=Date.now();
+  VOICE.busy=true;VOICE.mode='native';VOICE.stopReq=false;
+  function begin(){
+    var r;try{r=new SR()}catch(e){try{localStorage.setItem('workday.nonative','1')}catch(x){}if(msgOK())return recStart();VOICE.busy=false;voiceUI('','Voice is not available here. Type below.');return}
+    VOICE.rec=r;var sess='';
+    r.lang='en-US';r.interimResults=true;r.continuous=true;
+    r.onresult=function(e){var t='';for(var i=0;i<e.results.length;i++)t+=e.results[i][0].transcript;sess=t;live=(acc?acc+' ':'')+t;got=got||!!t.trim();voiceUI('listen',live)};
+    r.onerror=function(e){
+      if(e.error==='not-allowed'||e.error==='service-not-allowed'||e.error==='audio-capture'||e.error==='network'||e.error==='language-not-supported'){
+        try{localStorage.setItem('workday.nonative','1')}catch(x){}
+        VOICE.busy=false;
+        if(msgOK()){VOICE.fell=true;recStart();return}
+        voiceUI('',e.error==='not-allowed'?'Microphone or speech is blocked. Turn on Microphone and Speech Recognition for Workday (or Safari) in iPhone Settings.':'Voice is not available here. Type below.');
+      }
+    };
+    r.onend=function(){
+      if(VOICE.fell){VOICE.fell=false;return}
+      if(VOICE.mode!=='native')return;
+      if(sess.trim())acc=(acc?acc+' ':'')+sess.trim();
+      /* the iPhone stops by itself after a pause: keep listening until the mic is tapped (up to 3 minutes) */
+      if(!VOICE.stopReq&&VOICE.busy&&Date.now()-started<180000){try{begin()}catch(x){}return}
+      VOICE.busy=false;
+      if(!got){VOICE.nmiss=(VOICE.nmiss||0)+1;if(VOICE.nmiss>=2)try{localStorage.setItem('workday.nonative','1')}catch(x){}}else VOICE.nmiss=0;
+      var t=acc.trim();if(t){voiceUI('',t);VOICE.last=true;aiSend(t)}else voiceUI('',got?'':'I did not hear anything. Tap to talk.');
+    };
+    try{r.start()}catch(e){VOICE.busy=false;try{localStorage.setItem('workday.nonative','1')}catch(x){}if(msgOK())return recStart();voiceUI('','Voice could not start. Type below.')}
+  }
+  voiceUI('listen');begin();
 }
 function aiSpeak(text){
   if(!speakOn()||!window.speechSynthesis||!text)return;
@@ -2550,6 +2561,7 @@ function openSettings(page){
     h+=head('Assistant and voice');
     h+='<div class="field"><label>Claude API key</label><div class="rem"><div><span>'+(getKey()?'Saved on this phone only':'No key yet. Tap the Assistant button to add one.')+'</span><b>'+(getKey()?'Saved':'')+'</b></div></div>'+(getKey()?'<div class="row"><button class="btn" id="kDel">Remove key</button></div>':'')+'</div>';
     h+='<div class="field"><label>Voice</label><label class="tchk"><input type="checkbox" id="vAuto"'+(autoTalk()?' checked':'')+'>Start listening when I open the Assistant</label><label class="tchk"><input type="checkbox" id="vSpk"'+(speakOn()?' checked':'')+'>Speak the answers out loud</label></div>';
+    h+='<div class="field"><label for="vWords">Words it should know</label><div class="mt">Brands, names and places it gets wrong. One per line. Crew, contractors, tools and trucks are already included.</div><textarea id="vWords" rows="4" placeholder="Ashba&#10;Kubota&#10;Certified Towing">'+esc(vocabWords().join('\n'))+'</textarea><div class="row"><button class="btn" id="vWordsSave">Save words</button></div></div>';
     h+='<div class="field"><label>Translation</label><label class="tchk"><input type="checkbox" id="vTl"'+(trOn()?' checked':'')+'>Show how to say it (transliteration)</label></div>';
     h+='<div class="field"><label for="projIn">Claude Project link (optional)</label><div class="mt">Only if you made a Workday project on claude.ai. When there is no API key, the Assistant button opens that project instead. Paste its link and tap Save. Leave empty if you use the key.</div><div class="addrow"><input id="projIn" autocapitalize="off" spellcheck="false" placeholder="https://claude.ai/project/..." value="'+esc(projLink())+'"><button class="btn" id="projSave">Save</button></div></div>';
   }
@@ -2563,6 +2575,7 @@ function openSettings(page){
   var va=document.getElementById('vAuto');if(va)va.onchange=function(e){try{localStorage.setItem('workday.autotalk',e.target.checked?'1':'0')}catch(x){}};
   var vs=document.getElementById('vSpk');if(vs)vs.onchange=function(e){try{localStorage.setItem('workday.speak',e.target.checked?'1':'0')}catch(x){}};
   var vt=document.getElementById('vTl');if(vt)vt.onchange=function(e){trSet(e.target.checked)};
+  bind('vWordsSave',function(){try{localStorage.setItem('workday.words',val('vWords'))}catch(e){}toast('Words saved')});
 }
 
 /* ---------- events ---------- */
@@ -3201,7 +3214,7 @@ function openHandoffMake(){
   bind('hoMake',function(){
     var out=document.getElementById('hoOut');out.innerHTML='<div class="mt">Making a code...</div>';
     var blob={conn:CONN||null,msg:{url:MSG.url,key:MSG.key},api:document.getElementById('hoKey').checked?getKey():'',proj:projLink(),
-      prefs:{'workday.speak':lsGet('workday.speak'),'workday.autotalk':lsGet('workday.autotalk'),'workday.translit':lsGet('workday.translit'),'workday.loc':lsGet('workday.loc'),'workday.rem':lsGet('workday.rem'),'workday.toolseg':lsGet('workday.toolseg')}};
+      prefs:{'workday.speak':lsGet('workday.speak'),'workday.autotalk':lsGet('workday.autotalk'),'workday.translit':lsGet('workday.translit'),'workday.loc':lsGet('workday.loc'),'workday.rem':lsGet('workday.rem'),'workday.toolseg':lsGet('workday.toolseg'),'workday.words':lsGet('workday.words')}};
     msgApi('/handoff',{blob:blob}).then(function(j){
       out.innerHTML='<div class="hocode">'+esc(j.code.slice(0,3)+' '+j.code.slice(3))+'</div><div class="mt" style="text-align:center">Type this on the iPad. Good for 15 minutes, one time.</div>';
     },function(e){out.innerHTML='<div class="warn">'+esc(e.message)+'</div>'});
