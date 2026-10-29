@@ -604,7 +604,7 @@ html.lg .bub{box-shadow:0 2px 8px rgba(0,0,0,.08)}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 29, 2026 (52)';
+var KEY='workday.v1',APPVER='Oct 29, 2026 (53)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -3519,7 +3519,7 @@ function makeXlsx(sheets){
 }
 /* ---------- backups: weekly copy of every sheet + Google Contacts, kept in the Workday service (not at Google). Save a copy to Files. ---------- */
 var BK_PLAN=(function(){var p=[];function add(book,file,tabs){tabs.forEach(function(t){p.push({book:book,file:file,tab:t})})}
-  add('workday','Workday',['Cards','Contractors','Foremen','Job Sites','Crew','Keys','Tows','Contacts','Notes','Suggestions','Lists','Settings']);
+  add('workday','Workday',['Cards','Contractors','Foremen','Job Sites','Crew','Keys','Tows','Contacts','Contact Items','Notes','Suggestions','Lists','Settings']);
   add('dumpsters','Dumpsters',['Dumpsters','Job Sites','Companies','Sizes']);
   add('equipment','Equipment',['Equipment','Locations','Tasks','History']);
   add('supply','Supply',['Stock','Log','Orders','Audits','Sections','Sizes','Locations','People','Deleted Entries']);
