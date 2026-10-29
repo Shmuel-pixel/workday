@@ -486,6 +486,56 @@ nav.tabs{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20p
 .addr a{text-decoration:none;color:var(--fg)}
 .ask{box-shadow:var(--shadow)}
 .ask .who{color:var(--missed)}
+/* ===== Liquid Glass layer ===== */
+:root{
+  --lg-fill:rgba(255,255,255,.56); --lg-fill-strong:rgba(255,255,255,.74); --lg-card:rgba(255,255,255,.80);
+  --lg-edge:rgba(255,255,255,.75); --lg-edge-dim:rgba(255,255,255,.35); --lg-line:rgba(15,23,42,.08);
+  --lg-shadow:0 10px 30px rgba(17,24,39,.10),0 2px 6px rgba(17,24,39,.06);
+  --lg-hi:inset 0 1px 0 rgba(255,255,255,.9),inset 0 -1px 0 rgba(255,255,255,.25);
+  --lg-bg:radial-gradient(900px 520px at -10% -10%,rgba(120,170,255,.30),transparent 60%),radial-gradient(800px 520px at 110% 10%,rgba(190,140,255,.22),transparent 58%),radial-gradient(900px 700px at 50% 120%,rgba(90,210,200,.18),transparent 60%),linear-gradient(180deg,#F5F7FB,#EEF1F7);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --lg-fill:rgba(30,30,34,.50); --lg-fill-strong:rgba(28,28,32,.72); --lg-card:rgba(38,38,44,.66);
+  --lg-edge:rgba(255,255,255,.16); --lg-edge-dim:rgba(255,255,255,.08); --lg-line:rgba(255,255,255,.08);
+  --lg-shadow:0 10px 30px rgba(0,0,0,.45);
+  --lg-hi:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(255,255,255,.04);
+  --lg-bg:radial-gradient(900px 520px at -10% -10%,rgba(40,90,200,.35),transparent 60%),radial-gradient(800px 520px at 110% 10%,rgba(120,60,200,.28),transparent 58%),radial-gradient(900px 700px at 50% 120%,rgba(20,140,130,.22),transparent 60%),linear-gradient(180deg,#05070C,#000);
+}}
+body{background:var(--lg-bg)!important;background-attachment:fixed}
+main,main.tint-past,main.tint-future{background:transparent!important}
+/* floating glass header over the content */
+header{position:absolute!important;top:0;left:0;right:0;background:var(--lg-fill)!important;-webkit-backdrop-filter:saturate(190%) blur(26px);backdrop-filter:saturate(190%) blur(26px);border-bottom:1px solid var(--lg-edge-dim)!important;box-shadow:0 1px 0 var(--lg-line)}
+main{padding-top:calc(var(--hdrH,150px) + 4px)!important}
+/* floating pill tab bar */
+nav.tabs{left:10px!important;right:10px!important;bottom:calc(8px + env(safe-area-inset-bottom,0px))!important;padding-bottom:0!important;border-radius:30px;background:var(--lg-fill)!important;-webkit-backdrop-filter:saturate(190%) blur(26px);backdrop-filter:saturate(190%) blur(26px);border:1px solid var(--lg-edge)!important;box-shadow:var(--lg-shadow),var(--lg-hi)}
+.tab{border-radius:24px;margin:5px 2px;padding:6px 1px 7px!important;transition:background .2s}
+.tab.on{background:rgba(0,122,255,.12)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tab.on{background:rgba(10,132,255,.22)}}
+/* glass sheets */
+.scrim{background:rgba(10,14,25,.28)!important;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.sheet{background:var(--lg-fill-strong)!important;-webkit-backdrop-filter:saturate(190%) blur(34px);backdrop-filter:saturate(190%) blur(34px);border:1px solid var(--lg-edge);border-bottom:0;box-shadow:0 -12px 40px rgba(0,0,0,.18),var(--lg-hi);border-radius:28px 28px 0 0!important}
+/* cards and panels */
+.card,.keyrow,.chatrow,.setbox,.eqbar,.keybig,.trout,.newdev,.lbox .lrow,.ph{background:var(--lg-card)!important;border:1px solid var(--lg-edge-dim);box-shadow:var(--lg-shadow),var(--lg-hi)}
+.card{border-radius:20px!important}
+.keyrow,.chatrow{border-radius:18px}
+.setbox{border-radius:18px}
+.trout{border-radius:20px}
+/* buttons */
+.btn{background:var(--lg-fill)!important;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border:1px solid var(--lg-edge)!important;box-shadow:var(--lg-hi);border-radius:16px!important}
+.btn.primary,.btn.good{background:linear-gradient(180deg,#3D9BFF,#0A72F5)!important;color:#fff!important;border:1px solid rgba(255,255,255,.35)!important;box-shadow:0 6px 18px rgba(0,122,255,.30),inset 0 1px 0 rgba(255,255,255,.45)}
+.btn.good{background:linear-gradient(180deg,#42D46A,#22A84A)!important;box-shadow:0 6px 18px rgba(40,170,80,.28),inset 0 1px 0 rgba(255,255,255,.45)}
+.btn.danger{border-color:rgba(255,59,48,.35)!important}
+.iconbtn{background:var(--lg-fill)!important;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border:1px solid var(--lg-edge)!important;box-shadow:var(--lg-shadow),var(--lg-hi)}
+.fab,.mic{background:radial-gradient(120% 120% at 30% 20%,#5AAEFF 0%,#0A72F5 55%,#0657C9 100%)!important;border:1px solid rgba(255,255,255,.45)!important;box-shadow:0 10px 28px rgba(0,110,255,.38),inset 0 1px 0 rgba(255,255,255,.55),inset 0 -6px 14px rgba(0,40,120,.25)!important}
+.mic.on{background:radial-gradient(120% 120% at 30% 20%,#FF7A70 0%,#F0372B 60%,#C4231A 100%)!important}
+.seg{background:var(--lg-fill)!important;border:1px solid var(--lg-edge-dim);border-radius:16px!important;padding:4px!important}
+.seg button{border-radius:12px!important}
+.seg button.on{background:var(--lg-card)!important;box-shadow:0 2px 8px rgba(0,0,0,.10),var(--lg-hi)!important}
+.chip,.pill,.tag,.lchip{-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+input,select,textarea{border-radius:14px!important}
+.search,.msgq,.keyfind input,.compose textarea{background:var(--lg-fill)!important;border:1px solid var(--lg-edge-dim)!important;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.thread{background:rgba(127,127,140,.08)!important;border-radius:18px!important}
+.bub{box-shadow:0 2px 8px rgba(0,0,0,.08)}
 </style>
 
 <header id="hdr"><div class="wrap" id="hdrIn"></div></header>
@@ -500,7 +550,7 @@ nav.tabs{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20p
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 28, 2026 (43)';
+var KEY='workday.v1',APPVER='Oct 28, 2026 (44)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -787,6 +837,8 @@ function chipsFor(s){
   var z=zmanim(s);for(var j=0;j<z.length;j++)h+='<button class="chip" data-zmanim="'+s+'">'+esc(z[j])+'</button>';
   return h?'<div class="chips">'+h+'</div>':'';
 }
+function setHdrH(){var h=document.getElementById('hdr');if(h)document.documentElement.style.setProperty('--hdrH',h.offsetHeight+'px')}
+try{if(window.ResizeObserver)new ResizeObserver(setHdrH).observe(document.getElementById('hdr'));window.addEventListener('resize',setHdrH)}catch(e){}
 function renderHeader(){
   var el=document.getElementById('hdrIn'),T=todayStr();
   var s=S.view==='day'?S.cur:T;
@@ -854,7 +906,7 @@ function renderDay(){
   if(r==='today'&&!S.askHidden){
     var m=missedRecent();
     if(m.length){
-      var names=m.slice(0,3).map(function(c){return c.type+' at '+c.address.split(',')[0]+' ('+engShort(c.date)+')'}).join('; ');
+      var names=m.slice(0,3).map(function(c){return jobTitle(c)+(c.address?' at '+c.address.split(',')[0]:'')+' ('+engShort(c.date)+')'}).join('; ');
       h+='<div class="ask"><div class="who">Assistant</div><p>You have '+m.length+' missed job'+(m.length>1?'s':'')+' from this week: '+esc(names)+'. Move '+(m.length>1?'them':'it')+' to today?</p><div class="row"><button class="btn primary" id="askYes">Move to today</button><button class="btn" id="askNo">Not now</button></div></div>';
     }
   }
@@ -893,7 +945,7 @@ function summarize(s){
   else{head=plural(list.length,'job')+' scheduled.';if(open[0]&&open[0].time)lines.push(['First start',fmtTime(open[0].time)+' at '+open[0].address.split(',')[0]]);}
   var crews={};list.forEach(function(c){var k=c.crew||'No crew';(crews[k]=crews[k]||[]).push(c)});
   Object.keys(crews).forEach(function(k){
-    lines.push([k,crews[k].map(function(c){return c.type+' at '+c.address.split(',')[0]+(c.status==='todo'&&r==='past'?' (missed)':c.status==='done'&&r==='today'?' (done)':'')}).join('; ')]);
+    lines.push([k,crews[k].map(function(c){return jobTitle(c)+(c.address?' at '+c.address.split(',')[0]:'')+(c.status==='todo'&&r==='past'?' (missed)':c.status==='done'&&r==='today'?' (done)':'')}).join('; ')]);
   });
   var who={};list.forEach(function(c){if(c.contractor)who[c.contractor]=1});var wl=Object.keys(who);
   if(wl.length)lines.push(['Contractors',wl.join(', ')]);
@@ -2320,6 +2372,7 @@ function render(){
   else if(S.view==='dump')renderDump();
   else if(S.view==='msg'){renderMsg();msgFit()}
   else renderTools();
+  setHdrH();
   if(MOVED&&S.view==='day'){var mv=document.getElementById('mainIn');if(mv)mv.insertAdjacentHTML('afterbegin','<div class="newdev"><b>Workday moved to a private home</b><span>Move this device once. Takes about 2 minutes.</span><button class="btn primary" data-moved="1">Show me how</button></div>')}
   else if(S.view==='day'&&!connOK()&&!msgOK()){var mi=document.getElementById('mainIn');if(mi)mi.insertAdjacentHTML('afterbegin','<div class="newdev"><b>New device?</b><span>Copy your jobs, connections and settings from your iPhone.</span><button class="btn primary" data-handoff="1">Set up from my iPhone</button></div>')}
 }
@@ -2847,7 +2900,7 @@ function msgFit(){
   if(!document.body.classList.contains('msgmode'))return;
   var vv=window.visualViewport,vh=vv?vv.height:window.innerHeight;
   var kb=window.innerHeight-vh>120;
-  var hh=document.getElementById('hdr').offsetHeight,th=kb?0:document.getElementById('tabs').offsetHeight;
+  var hh=document.getElementById('hdr').offsetHeight,th=kb?0:document.getElementById('tabs').offsetHeight+10;
   document.documentElement.style.setProperty('--msgH',Math.max(200,vh-hh-th)+'px');
   if(window.scrollY)window.scroll(0,0);
   var t=document.getElementById('mThr');if(t&&kb)t.scrollTop=t.scrollHeight;
