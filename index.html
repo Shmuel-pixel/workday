@@ -569,11 +569,11 @@ html.lg .tab.on{background:rgba(0,122,255,.12)}
 html.lg .scrim{background:rgba(10,14,25,.28)!important;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
 html.lg .sheet{background:var(--lg-fill-strong)!important;-webkit-backdrop-filter:saturate(190%) blur(34px);backdrop-filter:saturate(190%) blur(34px);border:1px solid var(--lg-edge);border-bottom:0;box-shadow:0 -12px 40px rgba(0,0,0,.18),var(--lg-hi);border-radius:28px 28px 0 0!important}
 /* cards and panels */
-html.lg .card,html.lg .keyrow,html.lg .chatrow,html.lg .setbox,html.lg .eqbar,html.lg .keybig,html.lg .trout,html.lg .newdev,html.lg .lbox .lrow,html.lg .ph{background:var(--lg-card)!important;border:1px solid var(--lg-edge-dim);box-shadow:var(--lg-shadow),var(--lg-hi)}
+html.lg .card,html.lg .keyrow,html.lg .chatrow,html.lg .setbox,html.lg .eqbar,html.lg .keybig,html.lg .newdev,html.lg .lbox .lrow,html.lg .ph{background:var(--lg-card)!important;border:1px solid var(--lg-edge-dim);box-shadow:var(--lg-shadow),var(--lg-hi)}
 html.lg .card{border-radius:20px!important}
 html.lg .keyrow,html.lg .chatrow{border-radius:18px}
 html.lg .setbox{border-radius:18px}
-html.lg .trout{border-radius:20px}
+html.lg .trout{border-radius:20px;background:linear-gradient(180deg,#3D9BFF,#0A72F5)!important;border:1px solid rgba(255,255,255,.35);box-shadow:var(--lg-shadow),var(--lg-hi)}
 /* buttons */
 html.lg .btn{background:var(--lg-fill)!important;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border:1px solid var(--lg-edge)!important;box-shadow:var(--lg-hi);border-radius:16px!important}
 html.lg .btn.primary,html.lg .btn.good{background:linear-gradient(180deg,#3D9BFF,#0A72F5)!important;color:#fff!important;border:1px solid rgba(255,255,255,.35)!important;box-shadow:0 6px 18px rgba(0,122,255,.30),inset 0 1px 0 rgba(255,255,255,.45)}
@@ -604,7 +604,7 @@ html.lg .bub{box-shadow:0 2px 8px rgba(0,0,0,.08)}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 29, 2026 (53)';
+var KEY='workday.v1',APPVER='Oct 29, 2026 (54)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -1569,7 +1569,22 @@ function openBill(){
 }
 
 /* ---------- assistant (Claude API from the phone) ---------- */
-var AKEY='workday.apikey',AIH=[],AIBUSY=false,AIMODEL='claude-sonnet-5-5';
+var AKEY='workday.apikey',AIH=[],AIBUSY=false,AIMODEL=(function(){try{return localStorage.getItem('workday.model')||'claude-sonnet-5-5'}catch(e){return 'claude-sonnet-5-5'}})();
+/* if a model name stops working (404), try the next one and remember the one that works */
+var AIMODELS=['claude-sonnet-5-5','claude-opus-5-5','claude-sonnet-5','claude-haiku-5-5'];
+function claudeFetch(key,body,tried){
+  tried=tried||[];body.model=body.model||AIMODEL;
+  return fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)})
+  .then(function(r){return r.json().catch(function(){return {}}).then(function(j){return {ok:r.ok,status:r.status,j:j}})})
+  .then(function(res){
+    var em=(res.j&&res.j.error&&res.j.error.message)||'';
+    if(!res.ok&&(res.status===404||(res.status===400&&/model/i.test(em)))){
+      tried=tried.concat([body.model]);var nx=AIMODELS.filter(function(m){return tried.indexOf(m)<0})[0];
+      if(nx){body.model=nx;return claudeFetch(key,body,tried).then(function(r2){if(r2.ok){AIMODEL=nx;try{localStorage.setItem('workday.model',nx)}catch(e){}}return r2})}
+    }
+    return res;
+  });
+}
 function getKey(){try{return localStorage.getItem(AKEY)||''}catch(e){return ''}}
 function setKey(k){try{if(k)localStorage.setItem(AKEY,k);else localStorage.removeItem(AKEY);return true}catch(e){return false}}
 function nowHM(){var d=new Date();return pad(d.getHours())+':'+pad(d.getMinutes())}
@@ -1693,8 +1708,7 @@ function aiTools(){
   return t;
 }
 function aiCall(key,msgs,round){
-  return fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:AIMODEL,max_tokens:2000,system:aiContext(),tools:aiTools(),messages:msgs})})
-  .then(function(r){return r.json().then(function(j){return {ok:r.ok,status:r.status,j:j}})})
+  return claudeFetch(key,{model:AIMODEL,max_tokens:2000,system:aiContext(),tools:aiTools(),messages:msgs})
   .then(function(res){
     if(!res.ok&&res.status===400&&AIWEB&&/web.?search/i.test(JSON.stringify(res.j||''))){AIWEB=false;return aiCall(key,msgs,round)}
     if(!res.ok||res.j.stop_reason!=='tool_use'||round>=4)return res;
@@ -1721,7 +1735,7 @@ function aiSend(text){
   .then(function(res){
     AIBUSY=false;
     if(!res.ok){
-      var msg=res.status===401?'The key was not accepted. Open Settings, remove the key, and paste it again.':res.status===402||(res.j&&res.j.error&&/credit/i.test(res.j.error.message||''))?'Your Claude API account is out of credit. Add credit at console.anthropic.com under Billing.':(res.status===429||res.status===529)?'The assistant is busy. Wait a minute and send it again.':'The assistant could not answer (error '+res.status+'). Send it again in a minute.';
+      var msg=res.status===401?'The key was not accepted. Open Settings, remove the key, and paste it again.':res.status===402||(res.j&&res.j.error&&/credit/i.test(res.j.error.message||''))?'Your Claude API account is out of credit. Add credit at console.anthropic.com under Billing.':(res.status===429||res.status===529)?'The assistant is busy. Wait a minute and send it again.':'The assistant could not answer (error '+res.status+((res.j&&res.j.error&&res.j.error.message)?': '+String(res.j.error.message).slice(0,160):'')+'). Send it again in a minute.';
       AIH.push({role:'assistant',reply:msg,raw:msg,fail:true});AIH.splice(AIH.length-2,1);
       if(ta)ta.value=text;aiRedraw();voiceUI('');return;
     }
@@ -2339,8 +2353,8 @@ function writePrompt(text,style){
 }
 function writeMsg(text,style){
   var key=getKey();if(!key)return Promise.reject(new Error('Writing help needs the Claude key. Tap the Assistant button to add it.'));
-  return fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:AIMODEL,max_tokens:1200,messages:[{role:'user',content:writePrompt(text,style)}]})})
-    .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error((j.error&&j.error.message)||('error '+r.status));return j})})
+  return claudeFetch(key,{model:AIMODEL,max_tokens:1200,messages:[{role:'user',content:writePrompt(text,style)}]})
+    .then(function(res){if(!res.ok)throw new Error((res.j.error&&res.j.error.message)||('error '+res.status));return res.j})
     .then(function(j){var t=(j.content||[]).map(function(b){return b.text||''}).join('');var o=aiParse(t);return o.text||t.trim()});
 }
 function renderWrite(){
@@ -2399,6 +2413,7 @@ function showTr(){
   h+='<div class="row" style="gap:18px"><button id="trCopy">Copy</button>'+(TRS.rev?'':'<button id="trWa">WhatsApp</button><button id="trSms">Text message</button>')+'<button id="trSay">Listen</button></div></div>';
   if(!TRS.rev)h+='<div class="mt">Copy and Send include both: '+esc(NATIVE[TRS.lang]||TRS.lang)+' on top, English under it.</div>';
   res.innerHTML=h;
+  try{var tb=document.getElementById('trBig');if(tb)setTimeout(function(){tb.closest('.trout').scrollIntoView({behavior:'smooth',block:'center'})},60)}catch(e){}
   bind('trCopy',function(){copyText(both)});
   bind('trWa',function(){window.location.href='https://wa.me/?text='+encodeURIComponent(both)});
   bind('trSms',function(){window.location.href='sms:&body='+encodeURIComponent(both)});
