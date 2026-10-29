@@ -542,7 +542,7 @@ export class Box extends DurableObject {
     await this.nextAlarm();
   }
 
-  /* ---------- backups: a full copy of the sheets and Google Contacts, kept here (not at Google). Last 3 kept. ---------- */
+  /* ---------- backups: a full copy of the sheets and Google Contacts, kept here (not at Google). All kept (oldest dropped only past 300 MB). ---------- */
   weeklyNext(from) {
     /* Sunday morning: 11:00 UTC = 6 AM New York in winter, 7 AM in summer */
     var d = new Date(from), t = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 11, 0, 0);
@@ -586,8 +586,12 @@ export class Box extends DurableObject {
     var summary = JSON.stringify({ tabs: out.sheets.length, rows: rows, contacts: out.contacts.length, errors: out.errors });
     this.sql.exec('INSERT INTO backups (id,ts,kind,size,summary) VALUES (?,?,?,?,?)', id, out.at, kind, raw.length, summary);
     for (var n = 0, off = 0; off < gz.length; n++, off += 1500000) this.sql.exec('INSERT INTO bparts (id,n,data) VALUES (?,?,?)', id, n, gz.slice(off, off + 1500000));
-    var old = this.sql.exec('SELECT id FROM backups ORDER BY ts DESC LIMIT -1 OFFSET 3').toArray();
-    old.forEach(function (o) { self.sql.exec('DELETE FROM bparts WHERE id=?', o.id); self.sql.exec('DELETE FROM backups WHERE id=?', o.id); });
+    /* keep every backup; only if they ever pass 300 MB, drop the oldest (never the newest 3) */
+    var total = function () { return self.sql.exec('SELECT COALESCE(SUM(length(data)),0) AS n FROM bparts').toArray()[0].n; };
+    while (total() > 300 * 1024 * 1024 && this.sql.exec('SELECT COUNT(*) AS n FROM backups').toArray()[0].n > 3) {
+      var o = this.sql.exec('SELECT id FROM backups ORDER BY ts LIMIT 1').toArray()[0];
+      self.sql.exec('DELETE FROM bparts WHERE id=?', o.id); self.sql.exec('DELETE FROM backups WHERE id=?', o.id);
+    }
     this.put('bk_err', '');
     return { ok: true, id: id, at: out.at, summary: JSON.parse(summary) };
   }

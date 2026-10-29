@@ -583,7 +583,7 @@ html.lg .bub{box-shadow:0 2px 8px rgba(0,0,0,.08)}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 29, 2026 (51)';
+var KEY='workday.v1',APPVER='Oct 29, 2026 (52)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -3539,8 +3539,10 @@ function bkFiles(id){
     BK.ready[id]=files;return files;
   });
 }
+function bkIOS(){return /iP(hone|ad|od)/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1)}
+function bkSaveWord(){return bkIOS()?'Save to Files':'Download'}
 function bkShare(files){
-  try{if(navigator.canShare&&navigator.canShare({files:files}))return navigator.share({files:files}).then(function(){try{localStorage.setItem('workday.bksaved',String(Date.now()))}catch(e){}return true},function(){return false})}catch(e){}
+  try{if(bkIOS()&&navigator.canShare&&navigator.canShare({files:files}))return navigator.share({files:files}).then(function(){try{localStorage.setItem('workday.bksaved',String(Date.now()))}catch(e){}return true},function(){return false})}catch(e){}
   files.forEach(function(f){var a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();setTimeout(function(){a.remove()},1000)});
   try{localStorage.setItem('workday.bksaved',String(Date.now()))}catch(e){}
   return Promise.resolve(true);
@@ -3548,10 +3550,10 @@ function bkShare(files){
 function openBackups(){
   var h='<div class="sethead"><button class="minilink" id="bkBack">&lsaquo; Settings</button></div><h3>Backups</h3>';
   if(!msgOK()||!connOK()){h+='<div class="warn">Backups need Google and Messages connected on this device.</div><button class="btn" id="bkDone">Done</button>';openSheet(h);bind('bkBack',function(){openSettings('main')});bind('bkDone',closeSheet);return}
-  h+='<div class="mt">Every Sunday morning Workday copies all your sheets (jobs, keys, towing, dumpsters, equipment, supply) and your Google Contacts. The copy is kept in your Workday service, not at Google. The last 3 are kept.</div>';
+  h+='<div class="mt">Every Sunday morning Workday copies all your sheets (jobs, keys, towing, dumpsters, equipment, supply) and your Google Contacts. The copy is kept in your Workday service, not at Google, and only you can open it. Every backup is kept.</div>';
   h+='<div id="bkOut" class="mt">Loading...</div>';
   h+='<div class="row"><button class="btn primary" id="bkNow">Back up now</button><button class="btn" id="bkDone">Done</button></div>';
-  h+='<div class="mt"><b>Save to Files</b> puts an Excel file (every sheet as a tab, plus your contacts) and a contacts file on your phone. On the iPhone pick <b>Save to Files</b>, then a folder like <b>Workday Backups</b>. Keep the last 3 there and delete older ones.</div>';
+  h+='<div class="mt"><b>Save to Files</b> puts an Excel file (every sheet as a tab, plus your contacts) and a contacts file on your phone. On the iPhone pick <b>Save to Files</b>, then a folder like <b>Workday Backups</b>. On a computer, open Workday in Chrome and tap <b>Download</b>.</div>';
   openSheet(h);
   bind('bkBack',function(){openSettings('main')});bind('bkDone',closeSheet);
   bind('bkNow',function(){var b=document.getElementById('bkNow');b.disabled=true;b.textContent='Backing up... (about a minute)';
@@ -3561,14 +3563,15 @@ function openBackups(){
       var o=document.getElementById('bkOut');if(!o)return;
       var x=(BK.on?'<div><b>Weekly backup is on.</b> Next: '+esc(bkWhen(BK.next))+'</div>':'<div class="warn">Weekly backup is not on yet. Tap Back up now once.</div>')+(BK.err?'<div class="warn">Last try: '+esc(BK.err)+'</div>':'');
       if(!BK.list.length)x+='<div class="empty">No backups yet.</div>';
-      else{x+='<div class="keylist">';BK.list.forEach(function(b){var s=b.summary||{};x+='<div class="prow" style="padding:10px 12px;align-items:center"><span class="kmain" style="flex:1;min-width:0"><b>'+esc(bkWhen(b.ts))+'</b><small style="white-space:normal">'+(b.kind==='weekly'?'Weekly':'By you')+' '+MID+' '+(s.tabs||0)+' tabs, '+(s.rows||0)+' rows, '+(s.contacts||0)+' contacts'+((s.errors||[]).length?' '+MID+' '+s.errors.length+' could not be read':'')+'</small></span><button class="btn" data-bks="'+esc(b.id)+'">'+(BK.ready[b.id]?'Save to Files':'Get ready')+'</button></div>'});x+='</div>'}
-      o.className='';o.innerHTML=x;
+      else{x+='<div class="keylist">';BK.list.slice(0,BK.all?9999:6).forEach(function(b){var s=b.summary||{};x+='<div class="prow" style="padding:10px 12px;align-items:center"><span class="kmain" style="flex:1;min-width:0"><b>'+esc(bkWhen(b.ts))+'</b><small style="white-space:normal">'+(b.kind==='weekly'?'Weekly':'By you')+' '+MID+' '+(s.tabs||0)+' tabs, '+(s.rows||0)+' rows, '+(s.contacts||0)+' contacts'+((s.errors||[]).length?' '+MID+' '+s.errors.length+' could not be read':'')+'</small></span><button class="btn" data-bks="'+esc(b.id)+'">'+(BK.ready[b.id]?bkSaveWord():'Get ready')+'</button></div>'});x+='</div>'}
+      if(BK.list.length>6&&!BK.all)x+='<button class="minilink" id="bkAll">Show all '+BK.list.length+' backups</button>';
+      o.className='';o.innerHTML=x;bind('bkAll',function(){BK.all=true;draw()});
       [].forEach.call(o.querySelectorAll('[data-bks]'),function(btn){btn.onclick=function(){var id=btn.dataset.bks;
         if(BK.ready[id]){bkShare(BK.ready[id]);return}
         btn.disabled=true;btn.textContent='Getting ready...';
-        bkFiles(id).then(function(){btn.disabled=false;btn.textContent='Save to Files'},function(e){btn.disabled=false;btn.textContent='Get ready';toast(e.message||String(e))})}});
+        bkFiles(id).then(function(){btn.disabled=false;btn.textContent=bkSaveWord()},function(e){btn.disabled=false;btn.textContent='Get ready';toast(e.message||String(e))})}});
       var first=prep||(BK.list[0]&&BK.list[0].id);
-      if(first&&!BK.ready[first])bkFiles(first).then(function(){var bb=document.querySelector('[data-bks="'+first+'"]');if(bb)bb.textContent='Save to Files'},function(){});
+      if(first&&!BK.ready[first])bkFiles(first).then(function(){var bb=document.querySelector('[data-bks="'+first+'"]');if(bb)bb.textContent=bkSaveWord()},function(){});
     },function(e){var o=document.getElementById('bkOut');if(o)o.innerHTML='<div class="warn">'+esc(e.message||String(e))+'</div>'});
   }
   draw();
@@ -3582,7 +3585,7 @@ function bkNudge(){
     return bkFiles(b.id).then(function(files){
       if(document.getElementById('bkBar'))return;
       var bar=document.createElement('div');bar.id='bkBar';bar.className='tonsbar';
-      bar.innerHTML='<span>Backup from '+esc(engShort(bkDate(b.ts)))+' is ready.</span><button id="bkbSave">Save to Files</button><button id="bkbX">Later</button>';
+      bar.innerHTML='<span>Backup from '+esc(engShort(bkDate(b.ts)))+' is ready.</span><button id="bkbSave">'+bkSaveWord()+'</button><button id="bkbX">Later</button>';
       document.body.appendChild(bar);
       function gone(){try{localStorage.setItem('workday.bkseen',b.id)}catch(e){}bar.remove()}
       document.getElementById('bkbSave').onclick=function(){bkShare(files).then(function(ok){if(ok)gone()})};

@@ -23,7 +23,7 @@ A home-screen web app (iPhone and iPad) for Shmuel, a scheduler at Five Star Ser
 - Home Screen widget through the Scriptable app.
 - Set up another device with a 6-digit code.
 - Contacts tab = Google Contacts directly (People API in Workday Connect v3). Edits save to Google; contacts with 2+ numbers/emails are edited in Google only.
-- Backups (gear, Backups): every Sunday ~6 AM the messages service reads all sheets (BK_PLAN in the app) + Google Contacts through Workday Connect and keeps the last 3 in its own storage (not at Google). Save to Files makes an .xlsx (own tiny writer, no CDN) and a .vcf.
+- Backups (gear, Backups): every Sunday ~6 AM the messages service reads all sheets (BK_PLAN in the app) + Google Contacts through Workday Connect and keeps every backup in its own storage (not at Google; oldest dropped only past 300 MB). Save to Files makes an .xlsx (own tiny writer, no CDN) and a .vcf.
 
 ## Live addresses
 - App: https://workday.shmuel-4f0.workers.dev/ (Cloudflare Worker "workday", static files, deployed by `.github/workflows/deploy-app.yml`). The old GitHub Pages address shows a "moved" note.
