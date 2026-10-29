@@ -384,7 +384,10 @@ body::before{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur
 /* header: frosted, hairline */
 header{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom:.5px solid var(--line)}
 header .wrap{padding-block:8px 12px;gap:10px}
-.eng{font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.eng{font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.15}
+.dates{flex:1;min-width:0}
+.hebeng{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.shk{white-space:nowrap;color:var(--muted);font-weight:600}
 .heb{font-size:20px;font-weight:700;color:var(--fg);opacity:.85}
 .hebeng{font-size:14px}
 .iconbtn{border:0;border-radius:50%;width:36px;height:36px;background:var(--sunk);color:var(--todo)}
@@ -497,7 +500,7 @@ nav.tabs{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20p
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 28, 2026 (42)';
+var KEY='workday.v1',APPVER='Oct 28, 2026 (43)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -781,7 +784,7 @@ var IC={
 function chipsFor(s){
   var a=special(s),h='';
   for(var i=0;i<a.length;i++)h+='<span class="chip k-'+a[i].k+'">'+esc(a[i].n)+'</span>';
-  var z=zmanim(s);if(!noWork(s))h+='<button class="chip" data-zmanim="'+s+'">Mincha '+clock(minchaMs(s))+'</button>';h+='<button class="chip" data-zmanim="'+s+'">Shkia '+clock(sunsetMs(s))+'</button>';for(var j=0;j<z.length;j++)h+='<button class="chip" data-zmanim="'+s+'">'+esc(z[j])+'</button>';
+  var z=zmanim(s);for(var j=0;j<z.length;j++)h+='<button class="chip" data-zmanim="'+s+'">'+esc(z[j])+'</button>';
   return h?'<div class="chips">'+h+'</div>':'';
 }
 function renderHeader(){
@@ -800,7 +803,7 @@ function renderHeader(){
     bind('mNew',openMsgNew);
     return;
   }
-  var h='<div class="toprow"><div class="dates" id="openCal" role="button" tabindex="0" aria-label="Open the calendar"><div class="heb" lang="he">'+hebHe(s,true)+'</div><div class="eng">'+esc(engLong(s))+'</div><div class="hebeng">'+esc(hebEn(s))+' <span class="calhint">'+IC.cal+(S.view==='cal'?'Close calendar':'Calendar')+'</span></div></div><button class="iconbtn" id="gear" aria-label="Settings">'+IC.gear+'</button></div>';
+  var h='<div class="toprow"><div class="dates" id="openCal" role="button" tabindex="0" aria-label="Open the calendar"><div class="eng">'+esc(engLong(s))+'</div><div class="hebeng"><span>'+esc(hebEn(s))+' <span class="calhint">'+IC.cal+(S.view==='cal'?'Close calendar':'Calendar')+'</span></span><span class="shk">Shkia '+clock(sunsetMs(s))+'</span></div></div><button class="iconbtn" id="gear" aria-label="Settings">'+IC.gear+'</button></div>';
   h+=chipsFor(s);
   if(S.view==='day'){
     var r=rel(s),n=diff(s,T),lab;
