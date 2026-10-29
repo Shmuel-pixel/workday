@@ -104,6 +104,8 @@ export class Box extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS inbox (id TEXT PRIMARY KEY, item TEXT, ts INTEGER, done INTEGER DEFAULT 0)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS drops (id TEXT PRIMARY KEY, ts INTEGER)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS contacts (phone TEXT PRIMARY KEY, name TEXT)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS backups (id TEXT PRIMARY KEY, ts INTEGER, kind TEXT, size INTEGER, summary TEXT)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS bparts (id TEXT, n INTEGER, data BLOB, PRIMARY KEY (id, n))');
   }
 
   get(k) { var r = this.sql.exec('SELECT v FROM kv WHERE k=?', k).toArray(); return r.length ? r[0].v : null; }
@@ -153,6 +155,10 @@ export class Box extends DurableObject {
         var pb = fromB64(mm[2]); if (pb.length > 1900000) return err('That photo is too big.');
         var pid = 'ph-' + rand(16); this.saveMedia(pid, mm[1], pb); return json({ id: pid });
       }
+      if (p === '/backup/config' && req.method === 'POST') return json(await this.backupConfig(await req.json()));
+      if (p === '/backup/now' && req.method === 'POST') return json(await this.runBackup('manual'));
+      if (p === '/backups') return json(this.backupList());
+      if (p === '/backup/get') return await this.backupGet(url.searchParams.get('id'));
       if (p === '/transcribe' && req.method === 'POST') return json(await this.transcribe(await req.json()));
       if (p === '/reminders' && req.method === 'POST') return json(await this.setReminders(await req.json()));
       if (p === '/test/incoming' && req.method === 'POST') return json(await this.testIncoming(await req.json()));
@@ -515,6 +521,8 @@ export class Box extends DurableObject {
   }
   async nextAlarm() {
     var n = this.sql.exec('SELECT MIN(t) AS t FROM rems').toArray()[0].t;
+    var b = +(this.get('bk_next') || 0);
+    if (b && (!n || b < n)) n = b;
     if (n) await this.ctx.storage.setAlarm(n); else await this.ctx.storage.deleteAlarm();
   }
   async alarm() {
@@ -526,7 +534,73 @@ export class Box extends DurableObject {
       this.put('notice', JSON.stringify({ title: due[i].title, ts: now }));
       await this.pushAll();
     }
+    var bn = +(this.get('bk_next') || 0);
+    if (bn && bn <= now + 30000) {
+      this.put('bk_next', String(this.weeklyNext(now + 60000)));
+      try { await this.runBackup('weekly'); } catch (e) { this.put('bk_err', String(e && e.message || e)); }
+    }
     await this.nextAlarm();
+  }
+
+  /* ---------- backups: a full copy of the sheets and Google Contacts, kept here (not at Google). Last 3 kept. ---------- */
+  weeklyNext(from) {
+    /* Sunday morning: 11:00 UTC = 6 AM New York in winter, 7 AM in summer */
+    var d = new Date(from), t = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 11, 0, 0);
+    while (new Date(t).getUTCDay() !== 0 || t <= from) t += 86400000;
+    return t;
+  }
+  async backupConfig(b) {
+    if (!b || !b.url || !b.token || !Array.isArray(b.plan)) return { error: 'Missing Google connection' };
+    this.put('bk_cfg', JSON.stringify({ url: String(b.url), token: String(b.token), plan: b.plan.slice(0, 45) }));
+    if (!this.get('bk_next')) this.put('bk_next', String(this.weeklyNext(Date.now())));
+    await this.nextAlarm();
+    return { ok: true, next: +this.get('bk_next') };
+  }
+  async bridgeCall(cfg, action, args) {
+    var r = await fetch(cfg.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ token: cfg.token, action: action, args: args || {} }), redirect: 'follow' });
+    var t = await r.text(), j;
+    try { j = JSON.parse(t); } catch (e) { throw new Error('Google did not answer'); }
+    if (!j.ok) throw new Error(j.error || 'Google error');
+    return j.data;
+  }
+  async runBackup(kind) {
+    var cfg = this.get('bk_cfg') ? JSON.parse(this.get('bk_cfg')) : null;
+    if (!cfg) return { error: 'Backups are not set up yet. Open Workday once with Google connected.' };
+    var self = this, out = { at: Date.now(), kind: kind, sheets: [], contacts: [], errors: [] }, plan = cfg.plan;
+    for (var i = 0; i < plan.length; i += 6) {
+      await Promise.all(plan.slice(i, i + 6).map(function (it) {
+        return self.bridgeCall(cfg, 'getValues', { book: it.book, range: "'" + it.tab + "'!A1:AZ5000" }).then(function (d) {
+          out.sheets.push({ book: it.book, file: it.file || it.book, tab: it.tab, values: d.values || [] });
+        }, function (e) { out.errors.push(it.file + ' / ' + it.tab + ': ' + e.message); });
+      }));
+    }
+    try { var c = await this.bridgeCall(cfg, 'allContacts', {}); out.contacts = (c && c.people) || []; if (c && c.needsSetup) out.errors.push('Google Contacts: People API is off'); }
+    catch (e) { out.errors.push('Google Contacts: ' + e.message); }
+    var order = {}; plan.forEach(function (it, n) { order[it.book + '|' + it.tab] = n; });
+    out.sheets.sort(function (a, b) { return order[a.book + '|' + a.tab] - order[b.book + '|' + b.tab]; });
+    if (!out.sheets.length && !out.contacts.length) { this.put('bk_err', out.errors[0] || 'Nothing came back'); return { error: 'Could not read anything from Google: ' + (out.errors[0] || '') }; }
+    var raw = new TextEncoder().encode(JSON.stringify(out));
+    var gz = new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer());
+    var id = 'bk-' + new Date(out.at).toISOString().slice(0, 10) + '-' + rand(6);
+    var rows = 0; out.sheets.forEach(function (s) { rows += Math.max(0, s.values.length - 1); });
+    var summary = JSON.stringify({ tabs: out.sheets.length, rows: rows, contacts: out.contacts.length, errors: out.errors });
+    this.sql.exec('INSERT INTO backups (id,ts,kind,size,summary) VALUES (?,?,?,?,?)', id, out.at, kind, raw.length, summary);
+    for (var n = 0, off = 0; off < gz.length; n++, off += 1500000) this.sql.exec('INSERT INTO bparts (id,n,data) VALUES (?,?,?)', id, n, gz.slice(off, off + 1500000));
+    var old = this.sql.exec('SELECT id FROM backups ORDER BY ts DESC LIMIT -1 OFFSET 3').toArray();
+    old.forEach(function (o) { self.sql.exec('DELETE FROM bparts WHERE id=?', o.id); self.sql.exec('DELETE FROM backups WHERE id=?', o.id); });
+    this.put('bk_err', '');
+    return { ok: true, id: id, at: out.at, summary: JSON.parse(summary) };
+  }
+  backupList() {
+    var list = this.sql.exec('SELECT id,ts,kind,size,summary FROM backups ORDER BY ts DESC').toArray().map(function (r) { return { id: r.id, ts: r.ts, kind: r.kind, size: r.size, summary: JSON.parse(r.summary || '{}') }; });
+    return { backups: list, on: !!this.get('bk_cfg'), next: +(this.get('bk_next') || 0), err: this.get('bk_err') || '' };
+  }
+  async backupGet(id) {
+    var parts = this.sql.exec('SELECT data FROM bparts WHERE id=? ORDER BY n', String(id || '')).toArray();
+    if (!parts.length) return err('That backup is gone', 404);
+    var blob = new Blob(parts.map(function (p) { return p.data; }));
+    var plain = await new Response(blob.stream().pipeThrough(new DecompressionStream('gzip'))).text();
+    return new Response(plain, { headers: cors({ 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }) });
   }
 
   /* ---------- inbox: sealed, signed items from Claude ---------- */
