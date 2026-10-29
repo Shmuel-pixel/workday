@@ -225,6 +225,8 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 .twdate{display:grid;min-width:64px}.twdate b{font-size:14px}.twdate small{color:var(--muted);font-size:12px}
 .towrow .kmain small{white-space:normal}
 .p-done{background:var(--done-soft);color:var(--done)}.p-up{background:var(--todo-soft);color:var(--todo)}.p-late{background:var(--missed-soft);color:var(--missed)}
+.lookrow{display:flex;justify-content:flex-end;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:-4px}
+.lookrow button{font-size:12px;font-weight:600;color:var(--muted);padding:3px 10px;border-radius:999px;border:1px solid var(--line)}
 .setgrp{display:grid;gap:6px}
 .setlab{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding-left:4px}
 .setbox{background:var(--bg);border-radius:12px;overflow:hidden}
@@ -522,41 +524,41 @@ nav.tabs{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20p
   --lg-hi:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(255,255,255,.04);
   --lg-bg:radial-gradient(900px 520px at -10% -10%,rgba(40,90,200,.35),transparent 60%),radial-gradient(800px 520px at 110% 10%,rgba(120,60,200,.28),transparent 58%),radial-gradient(900px 700px at 50% 120%,rgba(20,140,130,.22),transparent 60%),linear-gradient(180deg,#05070C,#000);
 }}
-body{background:var(--lg-bg)!important;background-attachment:fixed}
-main,main.tint-past,main.tint-future{background:transparent!important}
+html.lg body{background:var(--lg-bg)!important;background-attachment:fixed}
+html.lg main,html.lg main.tint-past,html.lg main.tint-future{background:transparent!important}
 /* floating glass header over the content */
-header{position:absolute!important;top:0;left:0;right:0;background:var(--lg-fill)!important;-webkit-backdrop-filter:saturate(190%) blur(26px);backdrop-filter:saturate(190%) blur(26px);border-bottom:1px solid var(--lg-edge-dim)!important;box-shadow:0 1px 0 var(--lg-line)}
-main{padding-top:calc(var(--hdrH,150px) + 4px)!important}
+html.lg header{position:absolute!important;top:0;left:0;right:0;background:var(--lg-fill)!important;-webkit-backdrop-filter:saturate(190%) blur(26px);backdrop-filter:saturate(190%) blur(26px);border-bottom:1px solid var(--lg-edge-dim)!important;box-shadow:0 1px 0 var(--lg-line)}
+html.lg main{padding-top:calc(var(--hdrH,150px) + 4px)!important}
 /* floating pill tab bar */
-nav.tabs{left:10px!important;right:10px!important;bottom:calc(8px + env(safe-area-inset-bottom,0px))!important;padding-bottom:0!important;border-radius:30px;background:var(--lg-fill)!important;-webkit-backdrop-filter:saturate(190%) blur(26px);backdrop-filter:saturate(190%) blur(26px);border:1px solid var(--lg-edge)!important;box-shadow:var(--lg-shadow),var(--lg-hi)}
-.tab{border-radius:24px;margin:5px 2px;padding:6px 1px 7px!important;transition:background .2s}
-.tab.on{background:rgba(0,122,255,.12)}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tab.on{background:rgba(10,132,255,.22)}}
+html.lg nav.tabs{left:10px!important;right:10px!important;bottom:calc(8px + env(safe-area-inset-bottom,0px))!important;padding-bottom:0!important;border-radius:30px;background:var(--lg-fill)!important;-webkit-backdrop-filter:saturate(190%) blur(26px);backdrop-filter:saturate(190%) blur(26px);border:1px solid var(--lg-edge)!important;box-shadow:var(--lg-shadow),var(--lg-hi)}
+html.lg .tab{border-radius:24px;margin:5px 2px;padding:6px 1px 7px!important;transition:background .2s}
+html.lg .tab.on{background:rgba(0,122,255,.12)}
+@media (prefers-color-scheme: dark){html.lg:not([data-theme="light"]) .tab.on{background:rgba(10,132,255,.22)}}
 /* glass sheets */
-.scrim{background:rgba(10,14,25,.28)!important;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
-.sheet{background:var(--lg-fill-strong)!important;-webkit-backdrop-filter:saturate(190%) blur(34px);backdrop-filter:saturate(190%) blur(34px);border:1px solid var(--lg-edge);border-bottom:0;box-shadow:0 -12px 40px rgba(0,0,0,.18),var(--lg-hi);border-radius:28px 28px 0 0!important}
+html.lg .scrim{background:rgba(10,14,25,.28)!important;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+html.lg .sheet{background:var(--lg-fill-strong)!important;-webkit-backdrop-filter:saturate(190%) blur(34px);backdrop-filter:saturate(190%) blur(34px);border:1px solid var(--lg-edge);border-bottom:0;box-shadow:0 -12px 40px rgba(0,0,0,.18),var(--lg-hi);border-radius:28px 28px 0 0!important}
 /* cards and panels */
-.card,.keyrow,.chatrow,.setbox,.eqbar,.keybig,.trout,.newdev,.lbox .lrow,.ph{background:var(--lg-card)!important;border:1px solid var(--lg-edge-dim);box-shadow:var(--lg-shadow),var(--lg-hi)}
-.card{border-radius:20px!important}
-.keyrow,.chatrow{border-radius:18px}
-.setbox{border-radius:18px}
-.trout{border-radius:20px}
+html.lg .card,html.lg .keyrow,html.lg .chatrow,html.lg .setbox,html.lg .eqbar,html.lg .keybig,html.lg .trout,html.lg .newdev,html.lg .lbox .lrow,html.lg .ph{background:var(--lg-card)!important;border:1px solid var(--lg-edge-dim);box-shadow:var(--lg-shadow),var(--lg-hi)}
+html.lg .card{border-radius:20px!important}
+html.lg .keyrow,html.lg .chatrow{border-radius:18px}
+html.lg .setbox{border-radius:18px}
+html.lg .trout{border-radius:20px}
 /* buttons */
-.btn{background:var(--lg-fill)!important;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border:1px solid var(--lg-edge)!important;box-shadow:var(--lg-hi);border-radius:16px!important}
-.btn.primary,.btn.good{background:linear-gradient(180deg,#3D9BFF,#0A72F5)!important;color:#fff!important;border:1px solid rgba(255,255,255,.35)!important;box-shadow:0 6px 18px rgba(0,122,255,.30),inset 0 1px 0 rgba(255,255,255,.45)}
-.btn.good{background:linear-gradient(180deg,#42D46A,#22A84A)!important;box-shadow:0 6px 18px rgba(40,170,80,.28),inset 0 1px 0 rgba(255,255,255,.45)}
-.btn.danger{border-color:rgba(255,59,48,.35)!important}
-.iconbtn{background:var(--lg-fill)!important;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border:1px solid var(--lg-edge)!important;box-shadow:var(--lg-shadow),var(--lg-hi)}
-.fab,.mic{background:radial-gradient(120% 120% at 30% 20%,#5AAEFF 0%,#0A72F5 55%,#0657C9 100%)!important;border:1px solid rgba(255,255,255,.45)!important;box-shadow:0 10px 28px rgba(0,110,255,.38),inset 0 1px 0 rgba(255,255,255,.55),inset 0 -6px 14px rgba(0,40,120,.25)!important}
-.mic.on{background:radial-gradient(120% 120% at 30% 20%,#FF7A70 0%,#F0372B 60%,#C4231A 100%)!important}
-.seg{background:var(--lg-fill)!important;border:1px solid var(--lg-edge-dim);border-radius:16px!important;padding:4px!important}
-.seg button{border-radius:12px!important}
-.seg button.on{background:var(--lg-card)!important;box-shadow:0 2px 8px rgba(0,0,0,.10),var(--lg-hi)!important}
-.chip,.pill,.tag,.lchip{-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-input,select,textarea{border-radius:14px!important}
-.search,.msgq,.keyfind input,.compose textarea{background:var(--lg-fill)!important;border:1px solid var(--lg-edge-dim)!important;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
-.thread{background:rgba(127,127,140,.08)!important;border-radius:18px!important}
-.bub{box-shadow:0 2px 8px rgba(0,0,0,.08)}
+html.lg .btn{background:var(--lg-fill)!important;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border:1px solid var(--lg-edge)!important;box-shadow:var(--lg-hi);border-radius:16px!important}
+html.lg .btn.primary,html.lg .btn.good{background:linear-gradient(180deg,#3D9BFF,#0A72F5)!important;color:#fff!important;border:1px solid rgba(255,255,255,.35)!important;box-shadow:0 6px 18px rgba(0,122,255,.30),inset 0 1px 0 rgba(255,255,255,.45)}
+html.lg .btn.good{background:linear-gradient(180deg,#42D46A,#22A84A)!important;box-shadow:0 6px 18px rgba(40,170,80,.28),inset 0 1px 0 rgba(255,255,255,.45)}
+html.lg .btn.danger{border-color:rgba(255,59,48,.35)!important}
+html.lg .iconbtn{background:var(--lg-fill)!important;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border:1px solid var(--lg-edge)!important;box-shadow:var(--lg-shadow),var(--lg-hi)}
+html.lg .fab,html.lg .mic{background:radial-gradient(120% 120% at 30% 20%,#5AAEFF 0%,#0A72F5 55%,#0657C9 100%)!important;border:1px solid rgba(255,255,255,.45)!important;box-shadow:0 10px 28px rgba(0,110,255,.38),inset 0 1px 0 rgba(255,255,255,.55),inset 0 -6px 14px rgba(0,40,120,.25)!important}
+html.lg .mic.on{background:radial-gradient(120% 120% at 30% 20%,#FF7A70 0%,#F0372B 60%,#C4231A 100%)!important}
+html.lg .seg{background:var(--lg-fill)!important;border:1px solid var(--lg-edge-dim);border-radius:16px!important;padding:4px!important}
+html.lg .seg button{border-radius:12px!important}
+html.lg .seg button.on{background:var(--lg-card)!important;box-shadow:0 2px 8px rgba(0,0,0,.10),var(--lg-hi)!important}
+html.lg .chip,html.lg .pill,html.lg .tag,html.lg .lchip{-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+html.lg input,html.lg select,html.lg textarea{border-radius:14px!important}
+html.lg .search,html.lg .msgq,html.lg .keyfind input,html.lg .compose textarea{background:var(--lg-fill)!important;border:1px solid var(--lg-edge-dim)!important;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+html.lg .thread{background:rgba(127,127,140,.08)!important;border-radius:18px!important}
+html.lg .bub{box-shadow:0 2px 8px rgba(0,0,0,.08)}
 </style>
 
 <header id="hdr"><div class="wrap" id="hdrIn"></div></header>
@@ -571,7 +573,7 @@ input,select,textarea{border-radius:14px!important}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 28, 2026 (44)';
+var KEY='workday.v1',APPVER='Oct 28, 2026 (45)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -858,6 +860,8 @@ function chipsFor(s){
   var z=zmanim(s);for(var j=0;j<z.length;j++)h+='<button class="chip" data-zmanim="'+s+'">'+esc(z[j])+'</button>';
   return h?'<div class="chips">'+h+'</div>':'';
 }
+function lookGlass(){try{return localStorage.getItem('workday.look')!=='classic'}catch(e){return true}}
+document.documentElement.classList.toggle('lg',lookGlass());
 function setHdrH(){var h=document.getElementById('hdr');if(h)document.documentElement.style.setProperty('--hdrH',h.offsetHeight+'px')}
 try{if(window.ResizeObserver)new ResizeObserver(setHdrH).observe(document.getElementById('hdr'));window.addEventListener('resize',setHdrH)}catch(e){}
 function renderHeader(){
@@ -2601,10 +2605,12 @@ function openSettings(page){
     h+=setGroup('Devices',setRow('sHoMake','Set up another device','Copy everything to your iPad with a code','')+setRow('sHoTake','Set up from my iPhone','Type the code from your other device',''));
     h+=setGroup('Home Screen',setRow('sWidget','Widget','Today\'s jobs on your Home Screen',''));
     h+=setGroup('App','<div class="setrow static"><span><b>Version '+esc((APPVER.match(/\((\d+)\)/)||[])[1]||APPVER)+'</b><small>'+esc(APPVER.replace(/\s*\(\d+\)/,''))+'</small></span><span class="setr"></span></div><button class="setrow" id="appUpd"><span><b style="color:var(--todo)">Update app now</b></span><span></span></button>');
+    h+='<div class="lookrow"><span>Look</span><button id="lookSw" class="'+(lookGlass()?'on':'')+'">'+(lookGlass()?'Glass':'Classic')+'</button></div>';
     h+='<button class="btn primary" id="sClose">Done</button>';
     openSheet(h);
     bind('sClose',function(){closeSheet();render()});
     bind('appUpd',updateApp);
+    bind('lookSw',function(){var g=!lookGlass();try{localStorage.setItem('workday.look',g?'glass':'classic')}catch(e){}document.documentElement.classList.toggle('lg',g);setHdrH();openSettings('main');toast(g?'Glass look on':'Classic look on')});
     bind('sConn',openConn);bind('sMsg',openMsgSetup);
     bind('sLoc',function(){openLocation(openSettings)});
     bind('sRem',function(){openSettings('rem')});bind('sCrew',function(){openSettings('crew')});
