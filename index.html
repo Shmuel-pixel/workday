@@ -605,6 +605,10 @@ html.tv .swhint{display:none}
   html.tv .tab{margin:3px 2px!important;padding:3px 1px 4px!important}
   html.tv .tab svg{width:20px;height:20px}
 }
+.addround{width:44px;height:44px;border-radius:22px;flex:none;background:linear-gradient(180deg,#3D9BFF,#0A72F5);color:#fff;font-size:30px;font-weight:400;line-height:1;display:grid;place-items:center;box-shadow:0 4px 12px rgba(0,122,255,.3)}
+.dmlinks{display:flex;gap:18px;justify-content:flex-end;font-size:14px}
+.dmpill{font-weight:700;font-size:13px;padding:7px 12px;cursor:pointer}
+.dmnext{font-size:11px;color:var(--muted)}
 </style>
 
 <header id="hdr"><div class="wrap" id="hdrIn"></div></header>
@@ -619,7 +623,7 @@ html.tv .swhint{display:none}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 29, 2026 (55)';
+var KEY='workday.v1',APPVER='Oct 29, 2026 (56)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -1418,7 +1422,7 @@ function renderDump(){
 function renderDumpList(){
   dmStart();
   var h='',st=DM.state;
-  h+='<div class="eqbar"><div><b>Dumpster Log</b><span>'+(st==='loading'?'Loading...':DM.at?'Updated '+esc(clockAt(DM.at)):'')+'</span></div><span class="row"><button class="btn" data-sheetview="'+DSID+'">View sheet</button><button class="btn" id="dmRef">Refresh</button></span></div>';
+  h+='<div class="eqbar"><div><b>Dumpster Log</b><span>'+(st==='loading'?'Loading...':DM.at?'Updated '+esc(clockAt(DM.at)):'')+'</span></div><button class="addround" id="dmNew" aria-label="Add a dumpster">+</button></div>';
   if(st==='nomcp')h+='<div class="warn">'+(window.claude?'Open this page inside the Claude app to load the dumpster log.':'This tab connects to your Dumpster Log in the next setup step (Google sign-in).')+'</div>';
   else if(st==='approve')h+='<div class="ask"><p>'+esc(dmErrText(DM.err))+'</p><div class="row"><button class="btn primary" id="dmOk">Allow and load</button></div></div>';
   else if(DM.err&&(st==='denied'||st==='err'||st==='cached'))h+='<div class="warn">'+esc(dmErrText(DM.err))+'</div>';
@@ -1426,11 +1430,11 @@ function renderDumpList(){
   var nOrd=0,nOn=0,nReq=0;DM.rows.forEach(function(r){if(r.status==='Ordered')nOrd++;else if(r.status==='Delivered')nOn++;else if(r.status==='Pickup Requested')nReq++});
   h+='<div class="eqstats"><button class="'+(DM.filter==='Ordered'?'on':'')+'" data-dmf="Ordered"><b>'+nOrd+'</b><span>ordered, not here yet</span></button><button class="'+(DM.filter==='Delivered'?'on':'')+'" data-dmf="Delivered"><b>'+nOn+'</b><span>on site</span></button><button class="'+(DM.filter==='Pickup Requested'?'on':'')+'" data-dmf="Pickup Requested"><b>'+nReq+'</b><span>waiting for pickup</span></button></div>';
   h+='<div class="eqchips"><button class="ttab'+(DM.filter==='active'?' on':'')+'" data-dmf="active">Not picked up</button><button class="ttab'+(DM.filter==='all'?' on':'')+'" data-dmf="all">All</button><button class="ttab'+(DM.filter==='Picked Up'?' on':'')+'" data-dmf="Picked Up">Picked up</button></div>';
-  h+='<div class="row"><button class="btn primary" id="dmNew">Order a dumpster</button><button class="btn" id="dmBill">Billing report</button></div>';
+  h+='<div class="dmlinks"><button class="minilink" id="dmBill">Billing report</button><button class="minilink" data-sheetview="'+DSID+'">View sheet</button><button class="minilink" id="dmRef">Refresh</button></div>';
   var list=DM.rows.filter(function(r){return DM.filter==='all'||(DM.filter==='active'?isActive(r):r.status===DM.filter)});
   var bySite={};list.forEach(function(r){(bySite[r.site]=bySite[r.site]||[]).push(r)});
   var sites=Object.keys(bySite).sort();
-  if(!DM.rows.length&&st!=='nomcp'&&st!=='denied'&&st!=='approve')h+='<div class="ph"><h2>No dumpsters yet</h2><p>Tap Order a dumpster to log the first one.</p></div>';
+  if(!DM.rows.length&&st!=='nomcp'&&st!=='denied'&&st!=='approve')h+='<div class="ph"><h2>No dumpsters yet</h2><p>Tap + to log the first one.</p></div>';
   else if(!sites.length&&DM.rows.length)h+='<div class="empty">No dumpsters in this view.</div>';
   sites.forEach(function(s){
     var rs=bySite[s].sort(function(a,b){return String(b.ord).localeCompare(String(a.ord))});
@@ -1439,7 +1443,7 @@ function renderDumpList(){
       var d=daysOn(r),line=[];
       if(r.ord)line.push('Ordered '+dshort(r.ord));if(r.del)line.push('Delivered '+dshort(r.del));if(r.req)line.push('Pickup asked '+dshort(r.req));if(r.pick)line.push('Picked up '+dshort(r.pick));
       var nxq=dmNextOf(r),ph1=dmPhotos(r)[0];
-      h+='<div class="eqrow dmrow" role="button" tabindex="0" data-dm="'+esc(r.id)+'">'+(ph1?'<img class="dmthumb" src="'+esc(dmPhotoUrl(ph1))+'" alt="">':'')+'<div class="eqmain"><b>'+esc(r.size)+' '+MID+' '+esc(r.co)+(r.num?' <small>#'+esc(r.num)+'</small>':'')+'</b><span>'+esc(line.join(' '+MID+' '))+'</span>'+(r.notes?'<span>'+esc(r.notes)+'</span>':'')+'</div><div class="eqside"><span class="pill '+dsCls(r.status)+'">'+esc(r.status||'No status')+'</span>'+(d!=null?'<span class="qty">'+d+(d===1?' day':' days')+'</span>':'')+(nxq?'<button class="dmq" data-dmq="'+esc(r.id)+'">'+nxq[2]+'</button>':'')+'</div></div>';
+      h+='<div class="eqrow dmrow" role="button" tabindex="0" data-dm="'+esc(r.id)+'">'+(ph1?'<img class="dmthumb" src="'+esc(dmPhotoUrl(ph1))+'" alt="">':'')+'<div class="eqmain"><b>'+esc(r.size)+' '+MID+' '+esc(r.co)+(r.num?' <small>#'+esc(r.num)+'</small>':'')+'</b><span>'+esc(line.join(' '+MID+' '))+'</span>'+(r.notes?'<span>'+esc(r.notes)+'</span>':'')+'</div><div class="eqside">'+(nxq?'<button class="pill dmpill '+dsCls(r.status)+'" data-dmq="'+esc(r.id)+'" aria-label="'+esc(r.status||'Ordered')+'. Tap to change to '+esc(nxq[0])+'">'+esc(r.status||'Ordered')+' &rsaquo;</button><span class="dmnext">tap: '+esc(nxq[2].toLowerCase())+'</span>':'<span class="pill '+dsCls(r.status)+'">'+esc(r.status||'No status')+'</span>')+(d!=null?'<span class="qty">'+d+(d===1?' day':' days')+'</span>':'')+'</div></div>';
     });
     h+='</section>';
   });
@@ -1468,7 +1472,9 @@ function dmQuick(id){
   var r=findDm(id),nx=r&&dmNextOf(r);if(!nx)return;
   var ch={status:nx[0]};ch[nx[1]]=todayStr();
   var old={status:r.status};old[nx[1]]=r[nx[1]];
-  dmPatch(r,ch).then(function(){render();if(nx[0]==='Picked Up')tonsBar(r);else toast(r.size+' at '+r.site.split(',')[0]+': '+nx[0])},function(e){toast(e.message||String(e))});
+  for(var k in ch)r[k]=ch[k];dmSave();render();
+  if(nx[0]==='Picked Up')tonsBar(r);
+  dmPatch(r,ch).then(function(){},function(e){for(var k2 in old)r[k2]=old[k2];dmSave();render();toast('Not saved: '+(e.message||String(e)))});
 }
 function tonsBar(r){
   var b=document.getElementById('tonsBar');if(b)b.remove();
