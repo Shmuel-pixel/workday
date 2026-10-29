@@ -395,6 +395,13 @@ header .wrap{padding-block:8px 12px;gap:10px}
 .st-today{background:var(--todo)}
 .st-past{background:var(--sunk);border:0;color:var(--muted)}
 .st-future{background:var(--todo-soft);border:0;color:var(--todo)}
+.status{background:transparent!important;border:0!important;padding:2px 4px;font-size:14px;font-weight:600}
+.st-today{color:var(--todo)}
+.st-past{color:var(--muted)}
+.st-future{color:var(--todo)}
+.status u{text-decoration:none;opacity:.75}
+.who{font-size:14px;font-weight:600;color:var(--todo);margin-top:2px}
+.cfoot:empty{display:none}
 /* board */
 main .wrap{padding-block:16px;gap:18px}
 .zone{background:transparent!important;padding:0;border-width:0;gap:8px}
@@ -490,7 +497,7 @@ nav.tabs{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20p
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 28, 2026 (41)';
+var KEY='workday.v1',APPVER='Oct 28, 2026 (42)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -797,9 +804,9 @@ function renderHeader(){
   h+=chipsFor(s);
   if(S.view==='day'){
     var r=rel(s),n=diff(s,T),lab;
-    if(r==='today')lab='Today';else if(r==='past')lab='Past day - '+(n===-1?'yesterday':(-n)+' days ago');else lab='Upcoming - '+(n===1?'tomorrow':'in '+n+' days');
+    if(r==='today')lab='Today';else if(r==='past')lab=(n===-1?'Yesterday':(-n)+' days ago');else lab=(n===1?'Tomorrow':'In '+n+' days');
     h+='<div class="daynav"><button class="navbtn" id="prev" aria-label="Previous day" '+(n<=-7?'disabled':'')+'>&lsaquo;</button>';
-    h+=r==='today'?'<div class="status st-today">'+lab+'</div>':'<button class="status st-'+r+'" id="goToday">'+lab+' &middot; tap for today</button>';
+    h+=r==='today'?'<div class="status st-today">'+lab+'</div>':'<button class="status st-'+r+'" id="goToday">'+lab+' &middot; <u>Today &rarr;</u></button>';
     h+='<button class="navbtn" id="next" aria-label="Next day">&rsaquo;</button></div>';
   }
   el.innerHTML=h;
@@ -820,20 +827,12 @@ function cardHtml(c,mode){
   h+='<div class="grip" data-grip="'+c.id+'" aria-label="Drag to move">'+IC.grip+'</div>';
   h+='<div class="cbody"><div class="line1"><span class="time">'+esc(fmtTime(c.time))+'</span><span class="ttl">'+esc(jobTitle(c))+'</span>'+(c.title&&c.type?'<span class="ttype">'+esc(c.type)+'</span>':'')+'</div>';
   if(c.address)h+='<div class="addr"><a href="'+mapUrl(c.address)+'" target="_blank" rel="noopener">'+esc(c.address)+'</a></div>';
-  var meta='';if(c.contractor)meta+='<span>'+esc(c.contractor)+'</span>';if(c.foreman)meta+='<span>'+esc(c.foreman)+'</span>';if(c.phone)meta+='<span>'+esc(c.phone)+'</span>';
-  if(meta)h+='<div class="meta">'+meta+'</div>';
-  var mats=c.materials||[],tls=c.tools||[];
-  if(mats.length)h+='<div class="mt"><b>Materials:</b> '+esc(mats.join(', '))+'</div>';
-  if(tls.length)h+='<div class="mt"><b>Tools:</b> '+esc(tls.join(', '))+'</div>';
-  var tg='';if(c.crew)tg+='<span class="tag crew">'+esc(c.crew)+'</span>';if(c.vehicle)tg+='<span class="tag">'+esc(c.vehicle)+'</span>';
-  tg+='<span class="tag">'+(c.source==='whatsapp'?'From WhatsApp':c.source==='calendar'?'Google Calendar':c.source==='claude'?'Added by Claude':'Added by you')+'</span>';
-  if(c.sample)tg+='<span class="tag ex">Example</span>';
-  h+='<div class="tags">'+tg+'</div></div>';
+  var who=c.crew||'';if(c.crew&&c.crewSize>1)who+=' +'+(c.crewSize-1);
+  var tg='';if(c.sample)tg+='<span class="tag ex">Example</span>';
+  if(who||tg)h+='<div class="who">'+esc(who)+(tg?' '+tg:'')+'</div>';
+  h+='</div>';
   h+='<button class="more" data-more="'+c.id+'" aria-label="Options">'+IC.more+'</button>';
-  var cm=c.comments||[],lks=findLinks(c.notes);cm.forEach(function(x){lks=lks.concat(findLinks(x.text))});
-  if(lks.length){var ls={},lh='';lks.forEach(function(u){u=u.replace(/[).,;!?]+$/,'');if(ls[u])return;ls[u]=1;lh+='<a class="lchip" href="'+esc(u)+'" target="_blank" rel="noopener">'+IC.link+esc(linkHost(u))+'</a>'});h+='<div class="lchips">'+lh+'</div>'}
-  if(cm.length){var lc=cm[cm.length-1];h+='<div class="last">'+(lc.img?'[Photo] ':'')+esc(lc.text||'')+'</div>'}
-  h+='<div class="cfoot"><button class="fbtn" data-notes="'+c.id+'">'+IC.note+'Notes'+(cm.length?' ('+cm.length+')':'')+'</button><button class="fbtn go" data-send="'+c.id+'">Send to crew</button><button class="fbtn go" data-fivestar="'+c.id+'">Five Star card</button>';
+  h+='<div class="cfoot">';
   if(mode==='missed')h+='<button class="fbtn ok" data-markdone="'+c.id+'">'+IC.check+'Mark done</button><button class="fbtn go" data-movetoday="'+c.id+'">Move to today &rarr;</button>';
   h+='</div>';
   return h+'</div>';
@@ -2332,6 +2331,7 @@ function confirmSheet(title,body,yes,fn){
 function openMenu(id){
   var c=find(id);if(!c)return;var T=todayStr(),r=rel(c.date);
   var h='<h3>'+esc(jobTitle(c))+'</h3><div style="color:var(--muted);font-size:14px">'+esc(engShort(c.date))+(c.time?' &middot; '+esc(fmtTime(c.time)):'')+' &middot; '+esc(c.address)+'</div>';
+  h+='<div style="color:var(--muted);font-size:13px;margin-top:2px">'+(c.vehicle?esc(c.vehicle)+' &middot; ':'')+(c.source==='whatsapp'?'From WhatsApp':c.source==='calendar'?'Google Calendar':c.source==='claude'?'Added by Claude':'Added by you')+'</div>';
   if(c.status==='todo')h+='<button class="menuitem" id="mDone">Mark done</button>';else h+='<button class="menuitem" id="mTodo">Move back to To-Do</button>';
   if(r==='future'&&c.status==='todo')h+='<button class="menuitem" id="mDoneToday">Already did it today</button>';
   if(c.date!==T)h+='<button class="menuitem" id="mToday">Move to today</button>';
