@@ -249,6 +249,8 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 .pline{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}.pline span{color:var(--muted)}.pline b{text-align:right;font-weight:600;word-break:break-word}
 .pacts{display:flex;flex-wrap:wrap;gap:8px}.pacts a{text-decoration:none}
 html.lg .prow{background:var(--lg-card)!important;border:1px solid var(--lg-edge-dim);box-shadow:var(--lg-shadow),var(--lg-hi);border-radius:18px}
+.gilist{display:grid;gap:4px;max-height:50vh;overflow:auto}
+.girow{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:12px;background:var(--sunk)}.girow span{display:grid;min-width:0}.girow small{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .setgrp{display:grid;gap:6px}
 .setlab{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding-left:4px}
 .setbox{background:var(--bg);border-radius:12px;overflow:hidden}
@@ -595,7 +597,7 @@ html.lg .bub{box-shadow:0 2px 8px rgba(0,0,0,.08)}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 29, 2026 (47)';
+var KEY='workday.v1',APPVER='Oct 29, 2026 (48)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -2231,7 +2233,7 @@ function saveRem(){
 }
 function atTime(d,hm){var p=String(hm||'00:00').split(':');return parse(d).getTime()+(+p[0])*3600000+(+p[1]||0)*60000}
 function remEvents(days){
-  var T=todayStr(),now=Date.now(),out=[];
+  var T=todayStr(),now=Date.now(),out=bdayReminders(days);
   function add(kind,d,ms,title){if(ms>now)out.push({key:'r-'+kind+'-'+d,sig:String(ms),title:title,start:ms,end:ms+10*60000,alert:0})}
   for(var i=0;i<days;i++){
     var d=addDays(T,i),nw=noWork(d),nwNext=noWork(addDays(d,1)),ss=sunsetMs(d),cl=ss-remMin('candle')*60000;
@@ -3331,28 +3333,41 @@ function towUpdate(id,ch){
 /* ---------- contacts: crew, foremen, contractors and everyone else in one place ---------- */
 var PPL={rows:[],at:0,busy:false,q:'',err:''};
 (function(){try{var o=JSON.parse(localStorage.getItem('workday.ppl')||'null');if(o){PPL.rows=o.rows||[];PPL.at=o.at||0}}catch(e){}})();
-var PCOLS=['id','name','company','role','phone','email','notes','added','deleted'];
+var PCOLS=['id','name','company','role','phone','email','notes','added','deleted','birthday','address','gid'];
 function pplSave(){try{localStorage.setItem('workday.ppl',JSON.stringify({rows:PPL.rows,at:PPL.at}))}catch(e){}}
 function pplLoad(){
   if(!connOK()){PPL.at=PPL.at||1;return Promise.resolve()}
   PPL.busy=true;
-  return bridge('getValues',{book:'workday',range:'Contacts!A1:I3000'}).then(function(d){
+  return bridge('getValues',{book:'workday',range:'Contacts!A1:L3000'}).then(function(d){
     PPL.rows=(d.values||[]).slice(1).filter(function(r){return r[0]&&!r[8]}).map(function(r){var o={};PCOLS.forEach(function(k,i){o[k]=r[i]||''});return o});
     PPL.at=Date.now();PPL.busy=false;PPL.err='';pplSave();if(S.view==='ppl')render();
   },function(e){PPL.busy=false;PPL.at=PPL.at||1;PPL.err=bridgeErr(e);if(S.view==='ppl')render()});
 }
+function pExtra(kind,key){var id='x|'+kind+'|'+key;for(var i=0;i<PPL.rows.length;i++)if(PPL.rows[i].id===id)return PPL.rows[i];return null}
 function allPeople(){
   var out=[];
-  (MASTER.crew.length?MASTER.crew:S.crew.map(function(n){return crewInfo(n)})).forEach(function(c){out.push({kind:'crew',key:c.name,name:c.name,sub:'Crew'+(c.lang?' '+MID+' '+c.lang:''),phone:c.phone||'',email:'',group:'Crew'})});
-  MASTER.foremen.forEach(function(f){out.push({kind:'foreman',key:f.contractor+'|'+f.name,name:f.name,sub:'Foreman'+(f.contractor?' '+MID+' '+f.contractor:''),phone:f.phone||'',email:f.email||'',company:f.contractor||'',group:'Foremen'})});
-  MASTER.contractors.forEach(function(c){out.push({kind:'contractor',key:c.name,name:c.name,sub:'Contractor'+(c.notes?' '+MID+' '+c.notes:''),phone:c.phone||'',email:c.email||'',group:'Contractors'})});
-  PPL.rows.forEach(function(p){out.push({kind:'other',key:p.id,name:p.name,sub:[p.role,p.company].filter(function(x){return x}).join(' '+MID+' ')||'Contact',phone:p.phone,email:p.email,company:p.company,notes:p.notes,group:'Other contacts'})});
+  function withX(o){var x=pExtra(o.kind,o.key);if(x){o.birthday=x.birthday||'';o.address=x.address||'';o.gid=x.gid||'';if(x.notes)o.notes=x.notes;if(!o.email&&x.email)o.email=x.email}return o}
+  (MASTER.crew.length?MASTER.crew:S.crew.map(function(n){return crewInfo(n)})).forEach(function(c){out.push(withX({kind:'crew',key:c.name,name:c.name,sub:'Crew'+(c.lang?' '+MID+' '+c.lang:''),phone:c.phone||'',email:'',group:'Crew',role:'Crew'}))});
+  MASTER.foremen.forEach(function(f){out.push(withX({kind:'foreman',key:f.contractor+'|'+f.name,name:f.name,sub:'Foreman'+(f.contractor?' '+MID+' '+f.contractor:''),phone:f.phone||'',email:f.email||'',company:f.contractor||'',group:'Foremen',role:'Foreman'}))});
+  MASTER.contractors.forEach(function(c){out.push(withX({kind:'contractor',key:c.name,name:c.name,sub:'Contractor'+(c.notes?' '+MID+' '+c.notes:''),phone:c.phone||'',email:c.email||'',notes:c.notes||'',group:'Contractors',role:'Contractor'}))});
+  PPL.rows.forEach(function(p){if(String(p.id).indexOf('x|')===0)return;out.push({kind:'other',key:p.id,name:p.name,sub:[p.role,p.company].filter(function(x){return x}).join(' '+MID+' ')||'Contact',phone:p.phone,email:p.email,company:p.company,role:p.role,notes:p.notes,birthday:p.birthday||'',address:p.address||'',gid:p.gid||'',group:'Other contacts'})});
+  return out;
+}
+function bdayParts(b){var m=/^(\d{4}|-)?-?(\d{2})-(\d{2})$/.exec(String(b||''));if(!m)return null;return {y:m[1]&&m[1]!=='-'?+m[1]:0,m:+m[2],d:+m[3]}}
+function bdayText(b){var q=bdayParts(b);if(!q)return '';var t=MONS[q.m-1].slice(0,3)+' '+q.d;if(q.y){var now=new Date(),age=now.getFullYear()-q.y;var thisYear=new Date(now.getFullYear(),q.m-1,q.d);if(thisYear<new Date(now.getFullYear(),now.getMonth(),now.getDate()))age++;t+=', '+q.y+' (turns '+age+')'}return t}
+function bdayReminders(days){
+  var out=[],T=todayStr(),now=Date.now(),ppl=[];try{ppl=allPeople()}catch(e){}
+  ppl.forEach(function(p,ix){var q=bdayParts(p.birthday);if(!q)return;
+    for(var i=0;i<days;i++){var d=addDays(T,i),dt=parse(d);if(dt.getMonth()+1!==q.m||dt.getDate()!==q.d)continue;
+      var on=d,txt='Today is '+p.name+'\'s birthday';
+      if(noWork(d)){on=addDays(d,-1);var g=0;while(noWork(on)&&g<5){on=addDays(on,-1);g++}txt=p.name+'\'s birthday is '+engShort(d)+' ('+noWork(d)+')'}
+      var ms=atTime(on,REM.brief.v||'07:30');if(ms>now)out.push({key:'r-bday'+ix+'-'+d,sig:String(ms),title:txt,start:ms,end:ms+10*60000,alert:0})}});
   return out;
 }
 function renderPeople(){
   if(!PPL.at&&!PPL.busy)pplLoad();
   var q=PPL.q.trim().toLowerCase(),all=allPeople();
-  var h='<div class="row" style="justify-content:space-between;align-items:center"><b style="font-size:22px">Contacts</b><button class="btn primary" id="pNew">New contact</button></div>';
+  var h='<div class="row" style="justify-content:space-between;align-items:center"><b style="font-size:22px">Contacts</b><span class="row"><button class="btn" id="pImp">From Google</button><button class="btn primary" id="pNew">New</button></span></div>';
   h+='<input class="search" id="pQ" type="search" placeholder="Search name, company or number" value="'+esc(PPL.q)+'">';
   if(PPL.err)h+='<div class="warn">'+esc(PPL.err)+'</div>';
   var list=all.filter(function(p){return !q||(p.name+' '+p.sub+' '+p.phone+' '+(p.email||'')).toLowerCase().indexOf(q)>=0||(digits(q).length>=3&&digits(p.phone).indexOf(digits(q))>=0)});
@@ -3368,8 +3383,8 @@ function renderPeople(){
   if(q.length>=3&&connOK())h+='<div class="row"><button class="btn" id="pG">Search Google Contacts for "'+esc(PPL.q.trim())+'"</button></div><div id="pGOut"></div>';
   document.getElementById('mainIn').innerHTML=h;document.getElementById('main').className='';
   var qi=document.getElementById('pQ');qi.oninput=function(){PPL.q=qi.value;var p=qi.selectionStart;renderPeople();var n=document.getElementById('pQ');n.focus();try{n.setSelectionRange(p,p)}catch(e){}};
-  bind('pNew',function(){openPersonEdit(null)});
-  bind('pG',function(){lookupContact(PPL.q.trim(),'pGOut',function(pc){openPersonEdit(null,{name:pc.name,company:pc.company||'',phone:pc.phones[0]||'',email:(pc.emails||[])[0]||''})})});
+  bind('pNew',function(){openPersonEdit(null)});bind('pImp',openGoogleImport);
+  bind('pG',function(){lookupContact(PPL.q.trim(),'pGOut',function(pc){openPersonEdit(null,{name:pc.name,company:pc.company||'',phone:pc.phones[0]||'',email:(pc.emails||[])[0]||'',birthday:pc.birthday||'',address:pc.address||'',gid:pc.resourceName||''})})});
   window.__ppl=all;
 }
 var PIC={call:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>'};
@@ -3378,7 +3393,10 @@ function openPerson(p){
   var h='<div class="phead"><span class="pav big">'+esc((p.name||'?').charAt(0).toUpperCase())+'</span><div><h3 style="margin:0">'+esc(p.name)+'</h3><div class="mt">'+esc(p.sub)+'</div></div></div>';
   if(p.phone)h+='<div class="pline"><span>Phone</span><b>'+esc(p.phone)+'</b></div>';
   if(p.email)h+='<div class="pline"><span>Email</span><b>'+esc(p.email)+'</b></div>';
+  if(p.birthday)h+='<div class="pline"><span>Birthday</span><b>'+esc(bdayText(p.birthday))+'</b></div>';
+  if(p.address)h+='<div class="pline"><span>Address</span><b>'+esc(p.address)+'<br><a class="minilink" target="_blank" rel="noopener" href="'+mapUrl(p.address)+'">Google Maps</a> &nbsp; <a class="minilink" target="_blank" rel="noopener" href="https://waze.com/ul?q='+encodeURIComponent(p.address)+'&navigate=yes">Waze</a></b></div>';
   if(p.notes)h+='<div class="pline"><span>Notes</span><b>'+esc(p.notes)+'</b></div>';
+  h+='<div class="mt">'+(p.gid?'Saved in Google Contacts.':'Not in Google Contacts yet.')+' <button class="minilink" id="pGsave">'+(p.gid?'Update Google Contacts':'Save to Google Contacts')+'</button></div>';
   if(d){
     h+='<div class="pacts"><a class="btn primary" href="tel:'+d+'">Call</a><a class="btn" href="sms:+'+d+'">Text</a><a class="btn good" href="https://wa.me/'+d+'" target="_blank" rel="noopener">WhatsApp</a>'+(msgOK()?'<button class="btn" id="pMsg">Message in Workday</button>':'')+'<button class="btn" id="pCopy">Copy number</button></div>';
   }else h+='<div class="mt">No phone number saved yet.</div>';
@@ -3388,7 +3406,8 @@ function openPerson(p){
   bind('pX',closeSheet);
   bind('pCopy',function(){copyText(p.phone)});
   bind('pMsg',function(){closeSheet();msgOpen(d,p.name)});
-  bind('pEdit',function(){if(p.kind==='crew')openCrewEdit(p.name,function(){render();closeSheet()});else openPersonEdit(p)});
+  bind('pEdit',function(){openPersonEdit(p)});
+  bind('pGsave',function(){googleSave(p,{}).then(function(ok){if(ok)toast('Saved to Google Contacts');closeSheet();render()})});
 }
 function openPersonEdit(p,pre){
   var isNew=!p;p=p||{kind:'other',name:'',company:'',phone:'',email:'',notes:'',sub:''};if(pre)for(var k in pre)p[k]=pre[k];
@@ -3399,14 +3418,21 @@ function openPersonEdit(p,pre){
   h+='<div class="field"><label for="peCo">Company / contractor</label><input id="peCo" value="'+esc(p.company||'')+'"></div>';
   h+='<div class="field" id="peRoleF"><label for="peRole">Role</label><input id="peRole" value="'+esc(role)+'" placeholder="Supplier, inspector, customer..."></div>';
   h+='<div class="two"><div class="field"><label for="pePh">Phone</label><input id="pePh" type="tel" value="'+esc(p.phone||'')+'"></div><div class="field"><label for="peEm">Email</label><input id="peEm" type="email" value="'+esc(p.email||'')+'"></div></div>';
+  var bq=bdayParts(p.birthday);
+  h+='<div class="two"><div class="field"><label for="peBd">Birthday</label><input id="peBd" type="date" value="'+(bq?(bq.y||2000)+'-'+pad(bq.m)+'-'+pad(bq.d):'')+'"></div><div class="field"><label>&nbsp;</label><label class="tchk"><input type="checkbox" id="peNoY"'+(bq&&!bq.y?' checked':'')+'>Year unknown</label></div></div>';
+  h+='<div class="field"><label for="peAd">Address</label><input id="peAd" value="'+esc(p.address||'')+'" autocomplete="off" placeholder="Start typing"><div id="peAdOut"></div></div>';
   h+='<div class="field"><label for="peNo">Notes</label><textarea id="peNo" rows="2">'+esc(p.notes||'')+'</textarea></div>';
+  h+='<label class="tchk"><input type="checkbox" id="peG"'+(p.gid||isNew?' checked':'')+'>Also save to Google Contacts</label>';
   h+='<div id="peW"></div><div class="row"><button class="btn primary" id="peS">Save</button><button class="btn" id="peX">Cancel</button></div>';
   openSheet(h);
   bind('peX',closeSheet);
+  var adT=null;document.getElementById('peAd').addEventListener('input',function(){clearTimeout(adT);var vv=val('peAd').trim();if(vv.length<6||!/[a-z]/i.test(vv))return;adT=setTimeout(function(){lookupAddress(vv,'peAdOut',function(a){document.getElementById('peAd').value=a},true)},1100)});
+  if(p.kind==='crew'){var kf=document.getElementById('peRoleF');if(kf)kf.style.display='none'}
   bind('peS',function(){
-    var kind=isNew?val('peKind'):p.kind,v={name:val('peName').trim(),company:val('peCo').trim(),role:val('peRole').trim(),phone:val('pePh').trim(),email:val('peEm').trim(),notes:val('peNo').trim()};
+    var kind=isNew?val('peKind'):p.kind,bdv=val('peBd'),v={name:val('peName').trim(),company:val('peCo').trim(),role:val('peRole').trim(),phone:val('pePh').trim(),email:val('peEm').trim(),notes:val('peNo').trim(),address:val('peAd').trim(),birthday:bdv?(document.getElementById('peNoY').checked?'-'+bdv.slice(4):bdv):''},toG=document.getElementById('peG').checked;
     if(!v.name){document.getElementById('peW').innerHTML='<div class="warn">Write a name.</div>';return}
-    if(kind==='foreman'){
+    if(kind==='crew'){var ci=crewInfo(p.name);ci.phone=v.phone;var exc=null;MASTER.crew.forEach(function(x){if(x.name===p.name)exc=x});if(exc)exc.phone=v.phone;syncSave();masterPush('updateRow',{tab:'Crew',key:'Name',value:p.name,row:{'Name':p.name,'Phone':v.phone}})}
+    else if(kind==='foreman'){
       var f=null;MASTER.foremen.forEach(function(x){if(norm(x.name)===norm(v.name)&&norm(x.contractor)===norm(v.company))f=x});
       if(f){f.phone=v.phone;f.email=v.email}else MASTER.foremen.push({contractor:v.company,name:v.name,phone:v.phone,email:v.email});syncSave();
       masterPush(f?'updateRow':'addRow',f?{tab:'Foremen',key:'Foreman',value:v.name,row:{'Contractor':v.company,'Foreman':v.name,'Phone':v.phone,'Email':v.email,'Notes':v.notes}}:{tab:'Foremen',row:{'Contractor':v.company,'Foreman':v.name,'Phone':v.phone,'Email':v.email,'Notes':v.notes,'Added':stampNow()}});
@@ -3416,14 +3442,59 @@ function openPersonEdit(p,pre){
       masterPush(c?'updateRow':'addRow',c?{tab:'Contractors',key:'Contractor',value:v.name,row:{'Contractor':v.name,'Office Phone':v.phone,'Email':v.email,'Notes':v.notes}}:{tab:'Contractors',row:{'Contractor':v.name,'Office Phone':v.phone,'Email':v.email,'Notes':v.notes,'Added':stampNow()}});
     }else{
       if(!connOK()){document.getElementById('peW').innerHTML='<div class="warn">Saving contacts needs the Google connection (gear, Google).</div>';return}
-      if(isNew){var id='p'+Date.now().toString(36);var row=[id,v.name,v.company,v.role,v.phone,v.email,v.notes,stampNow(),''];
+      if(isNew){var id='p'+Date.now().toString(36);var row=[id,v.name,v.company,v.role,v.phone,v.email,v.notes,stampNow(),'',v.birthday,v.address,p.gid||''];
         bridge('appendValues',{book:'workday',range:'Contacts!A:I',values:[row]}).then(function(){pplLoad()},function(e){toast(bridgeErr(e))});
-        PPL.rows.push({id:id,name:v.name,company:v.company,role:v.role,phone:v.phone,email:v.email,notes:v.notes});pplSave();}
-      else{var me=PPL.rows.filter(function(x){return x.id===p.key})[0];if(me){me.company=v.company;me.role=v.role;me.phone=v.phone;me.email=v.email;me.notes=v.notes;pplSave()}
-        bridge('getValues',{book:'workday',range:'Contacts!A1:A3000'}).then(function(d){var vv=d.values||[],i;for(i=1;i<vv.length;i++)if(vv[i][0]===p.key)break;if(i<vv.length)return bridge('updateValues',{book:'workday',range:'Contacts!B'+(i+1)+':G'+(i+1),values:[[v.name,v.company,v.role,v.phone,v.email,v.notes]]})}).catch(function(e){toast(bridgeErr(e))});}
+        PPL.rows.push({id:id,name:v.name,company:v.company,role:v.role,phone:v.phone,email:v.email,notes:v.notes,birthday:v.birthday,address:v.address,gid:p.gid||''});pplSave();p={kind:'other',key:id,name:v.name,gid:p.gid||''};}
+      else{var me=PPL.rows.filter(function(x){return x.id===p.key})[0];if(me){me.company=v.company;me.role=v.role;me.phone=v.phone;me.email=v.email;me.notes=v.notes;me.birthday=v.birthday;me.address=v.address;pplSave()}
+        bridge('getValues',{book:'workday',range:'Contacts!A1:A3000'}).then(function(d){var vv=d.values||[],i;for(i=1;i<vv.length;i++)if(vv[i][0]===p.key)break;if(i<vv.length)return bridge('updateValues',{book:'workday',range:'Contacts!B'+(i+1)+':K'+(i+1),values:[[v.name,v.company,v.role,v.phone,v.email,v.notes,(me&&me.added)||'','',v.birthday,v.address]]})}).catch(function(e){toast(bridgeErr(e))});}
     }
+    if(kind!=='other')pExtraSave(kind,kind==='foreman'?v.company+'|'+v.name:v.name,v);
+    var target={kind:kind,key:kind==='other'?p.key:(kind==='foreman'?v.company+'|'+v.name:v.name),name:v.name,gid:p.gid||''};
     closeSheet();render();toast('Contact saved');
+    if(toG)setTimeout(function(){googleSave(target,v).then(function(ok){if(ok)toast('Saved to Google Contacts too')})},600);
+    remPush&&setTimeout(function(){remPush(true)},1500);
   });
+}
+function pExtraSave(kind,key,v){
+  if(!connOK())return Promise.resolve();
+  var id='x|'+kind+'|'+key,x=pExtra(kind,key);
+  if(!x){x={id:id,name:v.name,company:v.company||'',role:kind,phone:v.phone||'',email:v.email||'',notes:v.notes||'',added:stampNow(),deleted:'',birthday:v.birthday||'',address:v.address||'',gid:''};PPL.rows.push(x);pplSave();
+    return bridge('appendValues',{book:'workday',range:'Contacts!A:L',values:[PCOLS.map(function(k){return x[k]||''})]}).catch(function(e){toast(bridgeErr(e))})}
+  for(var k in v)if(k in x)x[k]=v[k];pplSave();
+  return pplRowUpdate(id,x);
+}
+function pplRowUpdate(id,x){
+  return bridge('getValues',{book:'workday',range:'Contacts!A1:A3000'}).then(function(d){var vv=d.values||[],i;for(i=1;i<vv.length;i++)if(vv[i][0]===id)break;if(i<vv.length)return bridge('updateValues',{book:'workday',range:'Contacts!B'+(i+1)+':L'+(i+1),values:[PCOLS.slice(1).map(function(k){return x[k]||''})]})}).catch(function(e){toast(bridgeErr(e))});
+}
+function googleSave(p,v){
+  if(!connOK()){toast('Needs the Google connection');return Promise.resolve(false)}
+  var all=allPeople(),cur=null;all.forEach(function(x){if(x.kind===p.kind&&x.key===p.key)cur=x});cur=cur||p;
+  var c={resourceName:cur.gid||'',name:v.name||cur.name,phone:v.phone!==undefined?v.phone:cur.phone,email:v.email!==undefined?v.email:cur.email,company:v.company!==undefined?v.company:(cur.company||''),role:v.role||cur.role||'',address:v.address!==undefined?v.address:(cur.address||''),birthday:v.birthday!==undefined?v.birthday:(cur.birthday||''),notes:v.notes!==undefined?v.notes:(cur.notes||'')};
+  return bridge('saveContact',{contact:c}).then(function(r){
+    if(r&&r.needsSetup){toast('Turn on People API in the Workday Connect script first');return false}
+    var gid=r&&r.person&&r.person.resourceName;if(!gid)return false;
+    if(cur.kind==='other'){var me=PPL.rows.filter(function(x){return x.id===cur.key})[0];if(me){me.gid=gid;pplSave();pplRowUpdate(me.id,me)}}
+    else{var x=pExtra(cur.kind,cur.key);if(x){x.gid=gid;pplSave();pplRowUpdate(x.id,x)}else pExtraSave(cur.kind,cur.key,{name:cur.name,phone:cur.phone,email:cur.email,birthday:cur.birthday||'',address:cur.address||''}).then(function(){var y=pExtra(cur.kind,cur.key);if(y){y.gid=gid;pplRowUpdate(y.id,y)}})}
+    return true;
+  },function(e){var m=bridgeErr(e);toast(/unknown|saveContact/i.test(m)?'Update the Workday Connect script first (new version)':m);return false});
+}
+function openGoogleImport(){
+  var h='<h3>Pull from Google Contacts</h3><div id="giOut" class="mt">Loading your Google contacts...</div>';
+  openSheet(h);
+  bridge('allContacts',{}).then(function(r){
+    var out=document.getElementById('giOut');if(!out)return;
+    if(r.needsSetup){out.innerHTML='<div class="warn">Turn on People API in the Workday Connect script first.</div>';return}
+    var have={};allPeople().forEach(function(p){if(p.gid)have[p.gid]=1;if(p.phone)have['t'+digits(p.phone)]=1});
+    var list=(r.people||[]).filter(function(g){return !have[g.resourceName]&&!(g.phones[0]&&have['t'+digits(g.phones[0])])});
+    var x='<input class="search" id="giQ" type="search" placeholder="Search your Google contacts"><div class="mt">'+list.length+' not in Workday yet. Check the ones to add.</div><div id="giL" class="gilist"></div><div class="row"><button class="btn primary" id="giAdd">Add checked</button><button class="btn" id="giX">Close</button></div>';
+    out.className='';out.innerHTML=x;
+    function draw(){var q=val('giQ').toLowerCase();document.getElementById('giL').innerHTML=list.map(function(g,i){if(q&&(g.name+' '+g.company+' '+g.phones.join(' ')).toLowerCase().indexOf(q)<0)return '';return '<label class="girow"><input type="checkbox" data-gi="'+i+'"'+(g._on?' checked':'')+'><span><b>'+esc(g.name||g.phones[0])+'</b><small>'+esc([g.company,g.phones[0],g.birthday?'Birthday '+bdayText(g.birthday):''].filter(function(z){return z}).join(' '+MID+' '))+'</small></span></label>'}).join('')||'<div class="empty">Nothing to add.</div>';
+      [].forEach.call(document.querySelectorAll('[data-gi]'),function(cb){cb.onchange=function(){list[+cb.dataset.gi]._on=cb.checked}})}
+    draw();document.getElementById('giQ').oninput=draw;bind('giX',closeSheet);
+    bind('giAdd',function(){var pick=list.filter(function(g){return g._on});if(!pick.length){toast('Check at least one');return}
+      var rows=pick.map(function(g,i){var id='p'+(Date.now()+i).toString(36);var o={id:id,name:g.name,company:g.company,role:g.role,phone:g.phones[0]||'',email:g.emails[0]||'',notes:g.notes,added:stampNow(),deleted:'',birthday:g.birthday,address:g.address,gid:g.resourceName};PPL.rows.push(o);return PCOLS.map(function(k){return o[k]||''})});
+      pplSave();bridge('appendValues',{book:'workday',range:'Contacts!A:L',values:rows}).then(function(){toast(pick.length+' added');pplLoad();remPush(true)},function(e){toast(bridgeErr(e))});closeSheet();render()});
+  },function(e){var o=document.getElementById('giOut');if(o)o.innerHTML='<div class="warn">'+esc(/unknown|allContacts/i.test(bridgeErr(e))?'Update the Workday Connect script first (new version).':bridgeErr(e))+'</div>'});
 }
 
 /* ---------- set up another device (iPad) with a 6-digit code ---------- */

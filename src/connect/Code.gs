@@ -5,7 +5,7 @@
  *
  * What it can do:
  *  - read and write the Workday, Equipment Manager and Dumpster Log sheets
- *  - search Google Contacts (for foremen)
+ *  - search, read and save Google Contacts (names, phones, birthdays, addresses)
  *  - look up full addresses (Google Maps geocoder, free)
  *  - save job photos to a Drive folder called "Workday Photos"
  *  - free translation (Google Translate) as a backup
@@ -60,6 +60,8 @@ function route_(action, a) {
     case 'addRow':      return addRow_(a.tab, a.row);
     case 'updateRow':   return updateRow_(a.tab, a.key, a.value, a.row);
     case 'contacts':    return searchContacts_(a.q || '');
+    case 'allContacts': return listContacts_();
+    case 'saveContact': return saveContact_(a.contact || {});
     case 'geocode':     return geocode_(a.q || '');
     case 'translate':   return { text: LanguageApp.translate(a.text || '', a.from || '', a.to || 'es') };
     case 'getValues':   return getValues_(a.book, a.range);
@@ -187,23 +189,65 @@ function updateRow_(tab, key, value, row) {
 
 /* ---------- Google Contacts ---------- */
 
+function personOut_(p) {
+  p = p || {};
+  var b = p.birthdays && p.birthdays[0] && p.birthdays[0].date, bd = '';
+  if (b && b.month && b.day) bd = (b.year ? String(b.year) : '-') + '-' + ('0' + b.month).slice(-2) + '-' + ('0' + b.day).slice(-2);
+  var ad = p.addresses && p.addresses[0] ? (p.addresses[0].formattedValue || [p.addresses[0].streetAddress, p.addresses[0].city, p.addresses[0].region, p.addresses[0].postalCode].filter(function (x) { return x; }).join(', ')) : '';
+  return {
+    resourceName: p.resourceName || '',
+    name: p.names && p.names[0] ? p.names[0].displayName : '',
+    phones: (p.phoneNumbers || []).map(function (x) { return x.value; }),
+    emails: (p.emailAddresses || []).map(function (x) { return x.value; }),
+    company: p.organizations && p.organizations[0] ? (p.organizations[0].name || '') : '',
+    role: p.organizations && p.organizations[0] ? (p.organizations[0].title || '') : '',
+    birthday: bd,
+    address: String(ad).replace(/\n/g, ', '),
+    notes: p.biographies && p.biographies[0] ? (p.biographies[0].value || '') : ''
+  };
+}
+var PERSON_FIELDS_ = 'names,phoneNumbers,emailAddresses,organizations,birthdays,addresses,biographies';
 function searchContacts_(q) {
   q = String(q).trim();
   if (!q) return { people: [] };
   if (typeof People === 'undefined') return { people: [], needsSetup: true }; /* turn on: Services + People API */
   try { People.People.searchContacts({ query: '', readMask: 'names' }); } catch (e) {} /* warm-up call Google asks for */
   Utilities.sleep(300);
-  var res = People.People.searchContacts({ query: q, readMask: 'names,phoneNumbers,emailAddresses,organizations', pageSize: 10 });
-  var people = (res.results || []).map(function (r) {
-    var p = r.person || {};
-    return {
-      name: p.names && p.names[0] ? p.names[0].displayName : '',
-      phones: (p.phoneNumbers || []).map(function (x) { return x.value; }),
-      emails: (p.emailAddresses || []).map(function (x) { return x.value; }),
-      company: p.organizations && p.organizations[0] ? (p.organizations[0].name || '') : ''
-    };
-  }).filter(function (p) { return p.name || p.phones.length; });
+  var res = People.People.searchContacts({ query: q, readMask: PERSON_FIELDS_, pageSize: 15 });
+  var people = (res.results || []).map(function (r) { return personOut_(r.person); }).filter(function (p) { return p.name || p.phones.length; });
   return { people: people };
+}
+/* all Google contacts, for "pull from Google" */
+function listContacts_() {
+  if (typeof People === 'undefined') return { people: [], needsSetup: true };
+  var out = [], token = null;
+  do {
+    var res = People.People.Connections.list('people/me', { personFields: PERSON_FIELDS_, pageSize: 1000, pageToken: token, sortOrder: 'FIRST_NAME_ASCENDING' });
+    (res.connections || []).forEach(function (p) { var o = personOut_(p); if (o.name || o.phones.length) out.push(o); });
+    token = res.nextPageToken;
+  } while (token && out.length < 5000);
+  return { people: out };
+}
+/* save one contact to Google Contacts (new, or update the one with resourceName) */
+function saveContact_(c) {
+  if (typeof People === 'undefined') return { needsSetup: true };
+  var body = { names: [{ unstructuredName: c.name || '' }] };
+  body.phoneNumbers = c.phone ? [{ value: c.phone }] : [];
+  body.emailAddresses = c.email ? [{ value: c.email }] : [];
+  body.organizations = (c.company || c.role) ? [{ name: c.company || '', title: c.role || '' }] : [];
+  body.addresses = c.address ? [{ streetAddress: c.address }] : [];
+  body.biographies = c.notes ? [{ value: c.notes, contentType: 'TEXT_PLAIN' }] : [];
+  var m = /^(\d{4}|-)?-?(\d{2})-(\d{2})$/.exec(String(c.birthday || ''));
+  body.birthdays = m ? [{ date: (m[1] && m[1] !== '-' ? { year: +m[1], month: +m[2], day: +m[3] } : { month: +m[2], day: +m[3] }) }] : [];
+  var fields = 'names,phoneNumbers,emailAddresses,organizations,addresses,biographies,birthdays';
+  if (c.resourceName) {
+    var cur = People.People.get(c.resourceName, { personFields: 'metadata' });
+    body.etag = cur.etag;
+    var up = People.People.updateContact(body, c.resourceName, { updatePersonFields: fields, personFields: PERSON_FIELDS_ });
+    return { saved: true, person: personOut_(up) };
+  }
+  var made = People.People.createContact(body, { personFields: PERSON_FIELDS_ });
+  return { saved: true, person: personOut_(made) };
 }
 
 /* ---------- Addresses ---------- */
@@ -296,7 +340,7 @@ function syncCalendar_(a) {
 function setup() {
   getAll_();
   photoFolder_();
-  try { if (typeof People !== 'undefined') searchContacts_('a'); } catch (e) {}
+  try { if (typeof People !== 'undefined') { searchContacts_('a'); listContacts_(); } } catch (e) {}
   geocode_('Lakewood');
   getCal_('Workday Reminders');
   getCal_('Workday Jobs');
