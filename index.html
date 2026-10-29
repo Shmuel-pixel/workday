@@ -590,6 +590,21 @@ html.lg input,html.lg select,html.lg textarea{border-radius:14px!important}
 html.lg .search,html.lg .msgq,html.lg .keyfind input,html.lg .compose textarea{background:var(--lg-fill)!important;border:1px solid var(--lg-edge-dim)!important;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 html.lg .thread{background:rgba(127,127,140,.08)!important;border-radius:18px!important}
 html.lg .bub{box-shadow:0 2px 8px rgba(0,0,0,.08)}
+
+/* big screen mode */
+.hbtns{display:flex;gap:8px;align-items:flex-start}
+.iconbtn.tvon,html.lg .iconbtn.tvon{background:var(--todo)!important;color:#fff!important}
+html.tv body{zoom:.8}
+html.tv .swhint{display:none}
+@media (orientation:landscape){
+  html.tv #mainIn{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+  html.tv #mainIn>*{grid-column:1/-1}
+  html.tv #mainIn>.zone{grid-column:auto}
+  html.tv header .wrap{padding-block:4px 6px;gap:6px}
+  html.tv main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+  html.tv .tab{margin:3px 2px!important;padding:3px 1px 4px!important}
+  html.tv .tab svg{width:20px;height:20px}
+}
 </style>
 
 <header id="hdr"><div class="wrap" id="hdrIn"></div></header>
@@ -604,7 +619,7 @@ html.lg .bub{box-shadow:0 2px 8px rgba(0,0,0,.08)}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 29, 2026 (54)';
+var KEY='workday.v1',APPVER='Oct 29, 2026 (55)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -874,6 +889,7 @@ var tt=null;function toast(m){var t=document.getElementById('toast');t.textConte
 var IC={
   grip:'<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="5" cy="3" r="1.4"/><circle cx="11" cy="3" r="1.4"/><circle cx="5" cy="8" r="1.4"/><circle cx="11" cy="8" r="1.4"/><circle cx="5" cy="13" r="1.4"/><circle cx="11" cy="13" r="1.4"/></svg>',
   more:'<svg viewBox="0 0 20 20" fill="currentColor"><circle cx="4" cy="10" r="1.8"/><circle cx="10" cy="10" r="1.8"/><circle cx="16" cy="10" r="1.8"/></svg>',
+  tv:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="12.5" rx="2"/><path d="M8 20.5h8M12 17v3.5"/></svg>',
   gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   day:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 12h18"/></svg>',
   cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
@@ -899,6 +915,10 @@ function chipsFor(s){
 }
 function lookGlass(){try{return localStorage.getItem('workday.look')!=='classic'}catch(e){return true}}
 document.documentElement.classList.toggle('lg',lookGlass());
+/* big screen mode: smaller, more on the screen, side by side when the phone is sideways (for showing on a TV) */
+function tvOn(){try{return localStorage.getItem('workday.tv')==='1'}catch(e){return false}}
+document.documentElement.classList.toggle('tv',tvOn());
+function tvToggle(){var on=!tvOn();try{localStorage.setItem('workday.tv',on?'1':'0')}catch(e){}document.documentElement.classList.toggle('tv',on);render();setTimeout(setHdrH,50);toast(on?(window.innerWidth<window.innerHeight?'Big screen mode on. Turn the phone sideways.':'Big screen mode on'):'Big screen mode off')}
 function setHdrH(){var h=document.getElementById('hdr');if(h)document.documentElement.style.setProperty('--hdrH',h.offsetHeight+'px')}
 try{if(window.ResizeObserver)new ResizeObserver(setHdrH).observe(document.getElementById('hdr'));window.addEventListener('resize',setHdrH)}catch(e){}
 function renderHeader(){
@@ -917,7 +937,7 @@ function renderHeader(){
     bind('mNew',openMsgNew);
     return;
   }
-  var h='<div class="toprow"><div class="dates" id="openCal" role="button" tabindex="0" aria-label="Open the calendar"><div class="eng">'+esc(engLong(s))+'</div><div class="hebeng"><span>'+esc(hebEn(s))+' <span class="calhint">'+IC.cal+(S.view==='cal'?'Close calendar':'Calendar')+'</span></span><span class="shk">Shkia '+clock(sunsetMs(s))+'</span></div></div><button class="iconbtn" id="gear" aria-label="Settings">'+IC.gear+'</button></div>';
+  var h='<div class="toprow"><div class="dates" id="openCal" role="button" tabindex="0" aria-label="Open the calendar"><div class="eng">'+esc(engLong(s))+'</div><div class="hebeng"><span>'+esc(hebEn(s))+' <span class="calhint">'+IC.cal+(S.view==='cal'?'Close calendar':'Calendar')+'</span></span><span class="shk">Shkia '+clock(sunsetMs(s))+'</span></div></div><span class="hbtns"><button class="iconbtn'+(tvOn()?' tvon':'')+'" id="tvBtn" aria-label="Big screen mode" aria-pressed="'+tvOn()+'">'+IC.tv+'</button><button class="iconbtn" id="gear" aria-label="Settings">'+IC.gear+'</button></span></div>';
   h+=chipsFor(s);
   if(S.view==='day'){
     var r=rel(s),n=diff(s,T),lab;
@@ -927,7 +947,7 @@ function renderHeader(){
     h+='<button class="navbtn" id="next" aria-label="Next day">&rsaquo;</button></div>';
   }
   el.innerHTML=h;
-  document.getElementById('gear').onclick=function(){openSettings('main')};
+  document.getElementById('gear').onclick=function(){openSettings('main')};bind('tvBtn',tvToggle);
   document.getElementById('openCal').onclick=function(){if(S.view==='cal'){S.view='day'}else{var d=parse(S.view==='day'?S.cur:todayStr());S.calY=d.getFullYear();S.calM=d.getMonth();S.view='cal'}render();mainTop()};
   if(S.view==='day'){
     document.getElementById('prev').onclick=function(){go(-1)};
