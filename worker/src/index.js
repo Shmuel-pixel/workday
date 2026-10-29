@@ -147,6 +147,12 @@ export class Box extends DurableObject {
       if (p === '/handoff' && req.method === 'POST') return json(this.handoffMake(await req.json()));
       if (p === '/widget' && req.method === 'POST') { this.put('widget', JSON.stringify(await req.json())); return json({ ok: true }); }
       if (p === '/widget-key') { if (!this.get('widget_key')) this.put('widget_key', rand(24)); return json({ key: this.get('widget_key') }); }
+      if (p === '/photo' && req.method === 'POST') {
+        var ph = await req.json(), mm = /^data:(image\/[a-z]+);base64,(.*)$/.exec(String(ph.image || ''));
+        if (!mm) return err('No photo came through.');
+        var pb = fromB64(mm[2]); if (pb.length > 1900000) return err('That photo is too big.');
+        var pid = 'ph-' + rand(16); this.saveMedia(pid, mm[1], pb); return json({ id: pid });
+      }
       if (p === '/transcribe' && req.method === 'POST') return json(await this.transcribe(await req.json()));
       if (p === '/reminders' && req.method === 'POST') return json(await this.setReminders(await req.json()));
       if (p === '/test/incoming' && req.method === 'POST') return json(await this.testIncoming(await req.json()));

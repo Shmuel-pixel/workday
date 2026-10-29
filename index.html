@@ -251,6 +251,13 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 html.lg .prow{background:var(--lg-card)!important;border:1px solid var(--lg-edge-dim);box-shadow:var(--lg-shadow),var(--lg-hi);border-radius:18px}
 .gilist{display:grid;gap:4px;max-height:50vh;overflow:auto}
 .girow{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:12px;background:var(--sunk)}.girow span{display:grid;min-width:0}.girow small{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dmrow{cursor:pointer;align-items:center;box-sizing:border-box;grid-template-columns:minmax(0,1fr) auto}.dmrow:has(.dmthumb){grid-template-columns:auto minmax(0,1fr) auto}
+.dmthumb{width:52px;height:52px;border-radius:12px;object-fit:cover;flex:none;margin-right:10px}
+.dmq{margin-top:6px;font-size:13px;font-weight:700;color:#fff;background:linear-gradient(180deg,#3D9BFF,#0A72F5);border-radius:999px;padding:7px 12px;white-space:nowrap;box-shadow:0 3px 10px rgba(0,122,255,.25)}
+.dmphotos{display:flex;flex-wrap:wrap;gap:8px}.dmphotos img{width:84px;height:84px;object-fit:cover;border-radius:12px}
+.dmadd{width:84px;height:84px;border-radius:12px;border:2px dashed var(--line);display:grid;place-items:center;color:var(--todo);font-weight:700;font-size:13px;cursor:pointer}
+.tonsbar{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:60;display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:18px;background:var(--fg);color:var(--bg);box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.tonsbar span{flex:1;font-weight:600;font-size:14px}.tonsbar input{width:80px;padding:8px;border-radius:10px;border:0}.tonsbar button{font-weight:700;color:var(--bg);padding:6px 8px}
 .setgrp{display:grid;gap:6px}
 .setlab{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding-left:4px}
 .setbox{background:var(--bg);border-radius:12px;overflow:hidden}
@@ -597,7 +604,7 @@ html.lg .bub{box-shadow:0 2px 8px rgba(0,0,0,.08)}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 29, 2026 (48)';
+var KEY='workday.v1',APPVER='Oct 29, 2026 (49)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -1352,7 +1359,7 @@ function dmErrText(e){
 function dmParse(values){
   var o=[];
   for(var i=1;i<values.length;i++){var v=values[i];if(!v||!v[0])continue;
-    o.push({row:i+1,id:String(v[0]),site:v[1]||'',co:v[2]||'',size:v[3]||'',num:v[4]==null?'':String(v[4]),status:v[5]||'',ord:v[6]||'',del:v[7]||'',req:v[8]||'',pick:v[9]||'',tons:v[10]==null?'':String(v[10]),inv:v[11]==null?'':String(v[11]),notes:v[12]||''})}
+    o.push({row:i+1,id:String(v[0]),site:v[1]||'',co:v[2]||'',size:v[3]||'',num:v[4]==null?'':String(v[4]),status:v[5]||'',ord:v[6]||'',del:v[7]||'',req:v[8]||'',pick:v[9]||'',tons:v[10]==null?'':String(v[10]),inv:v[11]==null?'':String(v[11]),notes:v[12]||'',photos:v[13]||''})}
   return o;
 }
 function firstCol(values){var o=[];for(var i=1;i<values.length;i++){var v=values[i];if(v&&v[0])o.push(String(v[0]))}return o}
@@ -1361,7 +1368,7 @@ function dmStart(){
   if(DM.started)return;DM.started=true;if(DM.state==='idle')DM.state='loading';
   getMcp().then(function(mcp){
     if(!mcp){DM.state=DM.rows.length?'cached':'nomcp';if(S.view==='dump')render();return}
-    mcp.watchTool(GS,'get_values',{spreadsheetId:DSID,range:'Dumpsters!A1:M2000'},function(ev){
+    mcp.watchTool(GS,'get_values',{spreadsheetId:DSID,range:'Dumpsters!A1:N2000'},function(ev){
       if(ev.type==='data')dmOnRows(ev.result);
       else{var c=ev.error&&ev.error.code;DM.err=ev.error;
         if(DENY[c]){DM.rows=[];dmSave();DM.state='denied'}
@@ -1376,7 +1383,7 @@ function dmStart(){
     });
   });
 }
-function dmApprove(){getMcp().then(function(mcp){if(!mcp)return;mcp.callTool(GS,'get_values',{spreadsheetId:DSID,range:'Dumpsters!A1:M2000'}).then(function(r){dmOnRows(r);render()},function(e){DM.err=e;DM.state=DENY[e.code]?'denied':(DM.rows.length?'cached':'err');render()})})}
+function dmApprove(){getMcp().then(function(mcp){if(!mcp)return;mcp.callTool(GS,'get_values',{spreadsheetId:DSID,range:'Dumpsters!A1:N2000'}).then(function(r){dmOnRows(r);render()},function(e){DM.err=e;DM.state=DENY[e.code]?'denied':(DM.rows.length?'cached':'err');render()})})}
 function dmRefresh(){getMcp().then(function(mcp){if(!mcp)return;toast('Refreshing');mcp.invalidate(GS,'get_values').catch(function(){})})}
 function dsCls(s){if(s==='Picked Up')return 'unk';if(s==='Pickup Requested')return 'warn';if(s==='Delivered')return 'good';return 'blue'}
 function isActive(r){return r.status!=='Picked Up'}
@@ -1411,7 +1418,8 @@ function renderDumpList(){
     rs.forEach(function(r){
       var d=daysOn(r),line=[];
       if(r.ord)line.push('Ordered '+dshort(r.ord));if(r.del)line.push('Delivered '+dshort(r.del));if(r.req)line.push('Pickup asked '+dshort(r.req));if(r.pick)line.push('Picked up '+dshort(r.pick));
-      h+='<button class="eqrow" data-dm="'+esc(r.id)+'"><div class="eqmain"><b>'+esc(r.size)+' '+MID+' '+esc(r.co)+(r.num?' <small>#'+esc(r.num)+'</small>':'')+'</b><span>'+esc(line.join(' '+MID+' '))+'</span>'+(r.notes?'<span>'+esc(r.notes)+'</span>':'')+'</div><div class="eqside"><span class="pill '+dsCls(r.status)+'">'+esc(r.status||'No status')+'</span>'+(d!=null?'<span class="qty">'+d+(d===1?' day':' days')+'</span>':'')+'</div></button>';
+      var nxq=dmNextOf(r),ph1=dmPhotos(r)[0];
+      h+='<div class="eqrow dmrow" role="button" tabindex="0" data-dm="'+esc(r.id)+'">'+(ph1?'<img class="dmthumb" src="'+esc(dmPhotoUrl(ph1))+'" alt="">':'')+'<div class="eqmain"><b>'+esc(r.size)+' '+MID+' '+esc(r.co)+(r.num?' <small>#'+esc(r.num)+'</small>':'')+'</b><span>'+esc(line.join(' '+MID+' '))+'</span>'+(r.notes?'<span>'+esc(r.notes)+'</span>':'')+'</div><div class="eqside"><span class="pill '+dsCls(r.status)+'">'+esc(r.status||'No status')+'</span>'+(d!=null?'<span class="qty">'+d+(d===1?' day':' days')+'</span>':'')+(nxq?'<button class="dmq" data-dmq="'+esc(r.id)+'">'+nxq[2]+'</button>':'')+'</div></div>';
     });
     h+='</section>';
   });
@@ -1420,6 +1428,45 @@ function renderDumpList(){
     document.getElementById('mainIn').innerHTML=h;document.getElementById('main').className='';
     bind('dmRef',dmRefresh);bind('dmOk',dmApprove);bind('dmNew',function(){openDm(null)});bind('dmBill',openBill);
   }
+}
+function dmNextOf(r){return r.status==='Ordered'?['Delivered','del','Mark delivered']:r.status==='Delivered'?['Pickup Requested','req','Request pickup']:r.status==='Pickup Requested'?['Picked Up','pick','Picked up']:null}
+function dmPhotos(r){return String(r.photos||'').split(/;\s*/).filter(function(x){return x})}
+function dmPhotoUrl(ref){var id=String(ref).replace(/^wd:/,'');return /^https?:/.test(id)?id:(msgOK()?msgMediaUrl(id):'')}
+function dmVals(r){var tn=parseFloat(r.tons),tons=(r.tons&&String(tn)===String(r.tons))?tn:r.tons;return [r.site,r.co,r.size,r.num,r.status,r.ord,r.del,r.req,r.pick,tons,r.inv,r.notes,r.photos||'']}
+function dmPatch(r,ch){
+  return getMcp().then(function(mcp){
+    if(!mcp)throw new Error('The dumpster log is not connected.');
+    return mcp.callTool(GS,'get_values',{spreadsheetId:DSID,range:'Dumpsters!A'+r.row},{cache:false}).then(function(res){
+      var p=res.payload,got=p&&p.values&&p.values[0]&&String(p.values[0][0]);
+      if(got!==r.id)throw new Error('The log changed. Refresh and try again.');
+      var nv={};for(var k in r)nv[k]=r[k];for(var k2 in ch)nv[k2]=ch[k2];
+      return mcp.callTool(GS,'update_values',{spreadsheetId:DSID,range:'Dumpsters!B'+r.row+':N'+r.row,values:[dmVals(nv)]}).then(function(){for(var k3 in ch)r[k3]=ch[k3];dmSave();mcp.invalidate(GS,'get_values').catch(function(){})});
+    });
+  });
+}
+function dmQuick(id){
+  var r=findDm(id),nx=r&&dmNextOf(r);if(!nx)return;
+  var ch={status:nx[0]};ch[nx[1]]=todayStr();
+  var old={status:r.status};old[nx[1]]=r[nx[1]];
+  dmPatch(r,ch).then(function(){render();if(nx[0]==='Picked Up')tonsBar(r);else toast(r.size+' at '+r.site.split(',')[0]+': '+nx[0])},function(e){toast(e.message||String(e))});
+}
+function tonsBar(r){
+  var b=document.getElementById('tonsBar');if(b)b.remove();
+  var tq=document.getElementById('toast');if(tq){clearTimeout(tt);tq.hidden=true}
+  b=document.createElement('div');b.id='tonsBar';b.className='tonsbar';
+  b.innerHTML='<span>Picked up. Tonnage?</span><input id="tbIn" inputmode="decimal" placeholder="tons"><button id="tbOk">Save</button><button id="tbX" aria-label="Skip">Skip</button>';
+  document.body.appendChild(b);
+  var tm=setTimeout(function(){b.remove()},15000);
+  document.getElementById('tbIn').onfocus=function(){clearTimeout(tm)};
+  document.getElementById('tbX').onclick=function(){clearTimeout(tm);b.remove()};
+  document.getElementById('tbOk').onclick=function(){var t=val('tbIn').trim();clearTimeout(tm);b.remove();if(!t)return;dmPatch(r,{tons:t}).then(function(){render();toast('Tonnage saved')},function(e){toast(e.message||String(e))})};
+}
+function dmAddPhoto(r,file,done){
+  if(!msgOK()){toast('Photos need Messages set up (gear, Messages and notifications)');return}
+  shrink(file,function(url){
+    toast('Uploading photo...');
+    msgApi('/photo',{image:url}).then(function(j){var list=dmPhotos(r);list.push('wd:'+j.id);return dmPatch(r,{photos:list.join('; ')})}).then(function(){toast('Photo added');if(done)done()},function(e){toast(e.message||String(e))});
+  });
 }
 function findDm(id){for(var i=0;i<DM.rows.length;i++)if(DM.rows[i].id===id)return DM.rows[i];return null}
 function dmId(){var d=new Date(),y=String(d.getFullYear()).slice(2);return 'D'+y+pad(d.getMonth()+1)+pad(d.getDate())+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds())+pad(Math.floor(d.getMilliseconds()/10))}
@@ -1442,21 +1489,22 @@ function openDm(id){
   h+='<div class="two">'+dateField('mReq','Pickup requested',r.req)+dateField('mPick','Picked up',r.pick)+'</div>';
   h+='<div class="two"><div class="field"><label for="mTons">Tonnage</label><input id="mTons" inputmode="decimal" value="'+esc(r.tons)+'"></div><div class="field"><label for="mInv">Invoice number</label><input id="mInv" value="'+esc(r.inv)+'"></div></div>';
   h+='<div class="field"><label for="mNotes">Notes</label><textarea id="mNotes" rows="2">'+esc(r.notes)+'</textarea></div>';
+  if(id){var phs=dmPhotos(r);h+='<div class="field"><label>Photos</label><div class="dmphotos">'+phs.map(function(x){var u=dmPhotoUrl(x);return u?'<a href="'+esc(u)+'" target="_blank" rel="noopener"><img src="'+esc(u)+'" alt="Dumpster photo"></a>':''}).join('')+'<label class="dmadd" for="mPh">+ Photo</label></div><input id="mPh" type="file" accept="image/*" hidden></div>'}
   h+='<div id="mWarn"></div><div class="row"><button class="btn primary" id="mSave">Save to log</button><button class="btn" id="mCancel">Cancel</button></div>';
   openSheet(h);
   var ss=document.getElementById('mSite'),sn=document.getElementById('mSiteNew');
   ss.onchange=function(){sn.hidden=ss.value!=='__new';document.getElementById('mSiteL').hidden=sn.hidden;if(!sn.hidden)sn.focus()};
   bind('mSiteL',function(){lookupAddress(sn.value,'mSiteOut',function(a){sn.value=a})});
   bind('mCancel',closeSheet);
+  var mph=document.getElementById('mPh');if(mph)mph.onchange=function(e){var f=e.target.files&&e.target.files[0];if(f)dmAddPhoto(r,f,function(){openDm(r.id)})};
   function collect(){
     var site=ss.value==='__new'?sn.value.trim():ss.value;
-    return {site:site,co:val('mCo'),size:val('mSize'),num:val('mNum').trim(),status:val('mStat'),ord:val('mOrd'),del:val('mDel'),req:val('mReq'),pick:val('mPick'),tons:val('mTons').trim(),inv:val('mInv').trim(),notes:val('mNotes'),newSite:ss.value==='__new'};
+    return {site:site,co:val('mCo'),size:val('mSize'),num:val('mNum').trim(),status:val('mStat'),ord:val('mOrd'),del:val('mDel'),req:val('mReq'),pick:val('mPick'),tons:val('mTons').trim(),inv:val('mInv').trim(),notes:val('mNotes'),photos:r.photos||'',newSite:ss.value==='__new'};
   }
   bind('dmNext',function(){
     var m={Delivered:'mDel','Pickup Requested':'mReq','Picked Up':'mPick'};
     var to=r.status==='Ordered'?'Delivered':r.status==='Delivered'?'Pickup Requested':'Picked Up';
     document.getElementById(m[to]).value=T;document.getElementById('mStat').value=to;
-    if(to==='Picked Up'){document.getElementById('mWarn').innerHTML='<div class="warn">Add the tonnage and invoice number if you have them, then tap Save.</div>';document.getElementById('mTons').focus();return}
     dmWrite(r,collect(),false);
   });
   bind('mSave',function(){
@@ -1472,7 +1520,7 @@ function dmWrite(old,v,isNew){
   getMcp().then(function(mcp){
     if(!mcp){fail('Open this page inside the Claude app to save to the dumpster log.');return}
     var tn=parseFloat(v.tons),tons=(v.tons&&String(tn)===v.tons)?tn:v.tons;
-    var vals=[v.site,v.co,v.size,v.num,v.status,v.ord,v.del,v.req,v.pick,tons,v.inv,v.notes];
+    var vals=[v.site,v.co,v.size,v.num,v.status,v.ord,v.del,v.req,v.pick,tons,v.inv,v.notes,v.photos||''];
     var id=isNew?dmId():old.id;
     var pre=v.newSite&&DM.sites.indexOf(v.site)<0?mcp.callTool(GS,'append_values',{spreadsheetId:DSID,range:'Job Sites!A1',values:[[v.site,v.site]]}).then(function(){DM.sites.push(v.site)}):Promise.resolve();
     pre.then(function(){
@@ -1480,7 +1528,7 @@ function dmWrite(old,v,isNew){
       return mcp.callTool(GS,'get_values',{spreadsheetId:DSID,range:'Dumpsters!A'+old.row},{cache:false}).then(function(res){
         var p=res.payload,got=p&&p.values&&p.values[0]&&String(p.values[0][0]);
         if(got!==old.id){var e=new Error('moved');e.code='moved';throw e}
-        return mcp.callTool(GS,'update_values',{spreadsheetId:DSID,range:'Dumpsters!B'+old.row+':M'+old.row,values:[vals]});
+        return mcp.callTool(GS,'update_values',{spreadsheetId:DSID,range:'Dumpsters!B'+old.row+':N'+old.row,values:[vals]});
       });
     }).then(function(){
       if(isNew){var nr={row:0,id:id};for(var k in v)nr[k]=v[k];DM.rows.push(nr)}else{for(var k2 in v)old[k2]=v[k2]}
@@ -2688,6 +2736,7 @@ function openSettings(page){
 
 /* ---------- events ---------- */
 document.addEventListener('click',function(e){
+  var dq=e.target.closest('[data-dmq]');if(dq){e.stopPropagation();dmQuick(dq.dataset.dmq);return}
   if(e.target.closest('[data-handoff]')){openHandoffTake();return}
   if(e.target.closest('[data-moved]')){openMoved();return}
   var tm=e.target.closest('[data-trmode],[data-wstyle]');if(tm){
