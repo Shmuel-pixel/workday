@@ -227,6 +227,19 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 .p-done{background:var(--done-soft);color:var(--done)}.p-up{background:var(--todo-soft);color:var(--todo)}.p-late{background:var(--missed-soft);color:var(--missed)}
 .lookrow{display:flex;justify-content:flex-end;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:-4px}
 .lookrow button{font-size:12px;font-weight:600;color:var(--muted);padding:3px 10px;border-radius:999px;border:1px solid var(--line)}
+.movedz .zhead h2{color:#C26A00}.cancz .zhead h2{color:var(--muted)}
+.movedrow{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 14px;border-radius:14px;background:var(--sunk);color:var(--fg);opacity:.85;margin-top:6px}
+.movedrow span:first-child{display:grid;min-width:0}.movedrow b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.movedrow small{color:var(--muted)}
+.mto{white-space:nowrap;font-weight:700;color:#C26A00;font-size:14px}.cancz .mto{color:var(--muted)}
+.cancz .movedrow b{text-decoration:line-through}
+.swbg{position:absolute;z-index:0;border-radius:20px;display:flex;align-items:center;font-weight:800;font-size:16px;color:#fff;padding:0 22px;pointer-events:none;overflow:hidden}
+.swbg.push{background:linear-gradient(90deg,#FF8A00,#FFB340);justify-content:flex-start}
+.swbg.done{background:linear-gradient(270deg,#1FAF4A,#34C759);justify-content:flex-end}
+.swbg.back{background:linear-gradient(90deg,#0A72F5,#3D9BFF)}
+.swbg .swi{display:flex;align-items:center;gap:10px;transform:scale(.85);opacity:.7;transition:transform .15s,opacity .15s}
+.swbg.ready .swi{transform:scale(1.08);opacity:1}
+.swbg svg{width:28px;height:28px}
+.card.swiping{position:relative;z-index:1;background:var(--surface)!important;-webkit-backdrop-filter:none;backdrop-filter:none}
 .setgrp{display:grid;gap:6px}
 .setlab{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding-left:4px}
 .setbox{background:var(--bg);border-radius:12px;overflow:hidden}
@@ -573,7 +586,7 @@ html.lg .bub{box-shadow:0 2px 8px rgba(0,0,0,.08)}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 28, 2026 (45)';
+var KEY='workday.v1',APPVER='Oct 29, 2026 (46)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -826,6 +839,11 @@ function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'
 function byTime(a,b){return (a.time||'99').localeCompare(b.time||'99')}
 function byOrder(a,b){var ao=a.o==null?1e6:a.o,bo=b.o==null?1e6:b.o;if(ao!==bo)return ao-bo;return byTime(a,b)}
 function cardsOn(s){return S.cards.filter(function(c){return c.date===s}).sort(byOrder)}
+function moveCard(c,to){if(!c||!to||c.date===to)return;c.moves=c.moves||[];c.moves.push({f:c.date,t:to,at:Date.now()});c.date=to;delete c.o}
+function movedFrom(s){return S.cards.filter(function(c){return c.date!==s&&(c.moves||[]).some(function(m){return m.f===s})})}
+function lastMoveFrom(c,s){var m=null;(c.moves||[]).forEach(function(x){if(x.f===s)m=x});return m}
+function pushTarget(c){var T=todayStr(),d;if(c.date<T){d=T;while(noWork(d))d=addDays(d,1);return d}d=addDays(c.date,1);while(noWork(d))d=addDays(d,1);return d}
+function pushLabel(c){var T=todayStr(),t=pushTarget(c);return t===T?'Move to today':t===addDays(T,1)?'Push to tomorrow':'Push to '+engShort(t)}
 function placeCard(c,status,beforeId){
   var list=cardsOn(c.date).filter(function(x){return x.status===status&&x.id!==c.id});
   var idx=list.length;if(beforeId){for(var i=0;i<list.length;i++)if(list[i].id===beforeId){idx=i;break}}
@@ -926,7 +944,7 @@ function zone(kind,title,list,mode,addBtn,emptyMsg){
 function missedRecent(){var T=todayStr();return S.cards.filter(function(c){var n=diff(c.date,T);return c.status==='todo'&&n<0&&n>=-7}).sort(function(a,b){return a.date.localeCompare(b.date)})}
 function renderDay(){
   var s=S.cur,r=rel(s),list=cardsOn(s),h='';
-  var todo=list.filter(function(c){return c.status==='todo'}),done=list.filter(function(c){return c.status==='done'});
+  var todo=list.filter(function(c){return c.status==='todo'}),done=list.filter(function(c){return c.status==='done'}),canc=list.filter(function(c){return c.status==='canceled'}),pushed=movedFrom(s);
   var nw=noWork(s);
   if(r==='today'&&!S.askHidden){
     var m=missedRecent();
@@ -935,11 +953,11 @@ function renderDay(){
       h+='<div class="ask"><div class="who">Assistant</div><p>You have '+m.length+' missed job'+(m.length>1?'s':'')+' from this week: '+esc(names)+'. Move '+(m.length>1?'them':'it')+' to today?</p><div class="row"><button class="btn primary" id="askYes">Move to today</button><button class="btn" id="askNo">Not now</button></div></div>';
     }
   }
-  if(list.length)h+=summaryHtml(s);
+  if(list.length||pushed.length)h+=summaryHtml(s);
   if(nw&&!list.length){
     h+='<div class="calm"><b>'+esc(nw)+'</b><span>No work and no reminders today.</span></div>';
   }else if(r==='today'){
-    h+='<div class="swhint">Swipe a card right to mark it done. Swipe a done card left to undo.</div>';
+    h+='<div class="swhint">Swipe left to mark done. Swipe right to push to tomorrow.</div>';
     h+=zone('todo','To-Do',todo,'',true,list.length?'Nothing left. Tap + to add a job, or drag a card back here.':'No jobs yet. Tap + or tell the Assistant, for example: tomorrow 8am cleanup at 3 Waswell Ct with Anjio.');
     h+=zone('done','Done',done,'',false,'Drag a card here, or use &#8943; &rarr; Mark done.');
   }else if(r==='past'){
@@ -948,12 +966,14 @@ function renderDay(){
   }else{
     h+=zone('todo','To-Do',todo,'',true,'Nothing scheduled yet. Tap + to add a job.');
   }
+  if(pushed.length)h+='<section class="zone movedz"><div class="zhead"><h2>Pushed</h2><span class="cnt">'+pushed.length+'</span></div>'+pushed.map(function(c){var m=lastMoveFrom(c,s);return '<button class="movedrow" data-open-card="'+esc(c.id)+'"><span><b>'+esc(jobTitle(c))+'</b>'+(c.address?'<small>'+esc(c.address.split(',')[0])+'</small>':'')+'</span><span class="mto">'+(c.status==='done'?'Done ':'')+'&rarr; '+esc(engShort(c.date))+'</span></button>'}).join('')+'</section>';
+  if(canc.length)h+='<section class="zone cancz"><div class="zhead"><h2>Canceled</h2><span class="cnt">'+canc.length+'</span></div>'+canc.map(function(c){return '<button class="movedrow" data-open-card="'+esc(c.id)+'"><span><b>'+esc(jobTitle(c))+'</b>'+(c.address?'<small>'+esc(c.address.split(',')[0])+'</small>':'')+'</span><span class="mto">Canceled</span></button>'}).join('')+'</section>';
   h+='<div class="row" style="justify-content:center"><button class="btn" data-sheetview="1-6dJlD1UaD16rgJfdY1cVjH_hgaYjNdQkrrJeA30WHo">View sheet</button></div>';
   if(S.cards.some(function(c){return c.sample}))h+='<div class="sample"><span>These are example cards so you can try the layout.</span><button id="clearEx">Clear examples</button></div>';
   document.getElementById('mainIn').innerHTML=h;
   var main=document.getElementById('main');main.className=r==='past'?'tint-past':r==='future'?'tint-future':'';
   var sb=document.getElementById('sumBox');if(sb)sb.addEventListener('toggle',function(){S.sumOpen=sb.open});
-  bind('askYes',function(){var T=todayStr();missedRecent().forEach(function(c){c.date=T;delete c.o});save();toast('Moved to today');render()});
+  bind('askYes',function(){var T=todayStr();missedRecent().forEach(function(c){moveCard(c,T)});save();toast('Moved to today');render()});
   bind('askNo',function(){S.askHidden=true;save();render()});
   bind('addBtn',function(){openEdit(null)});
   bind('clearEx',function(){confirmSheet('Clear all example cards?','This removes every card marked Example.','Clear examples',function(){S.cards=S.cards.filter(function(c){return !c.sample});save();closeSheet();render();toast('Examples cleared')})});
@@ -961,13 +981,17 @@ function renderDay(){
 function plural(n,w){return n+' '+w+(n===1?'':'s')}
 function summarize(s){
   var list=cardsOn(s),r=rel(s),T=todayStr();
-  var done=list.filter(function(c){return c.status==='done'}),open=list.filter(function(c){return c.status==='todo'});
+  var done=list.filter(function(c){return c.status==='done'}),open=list.filter(function(c){return c.status==='todo'}),canc=list.filter(function(c){return c.status==='canceled'}),pushed=movedFrom(s);
   var nw=noWork(s),head,lines=[];
+  var extra=(pushed.length?', '+pushed.length+' pushed':'')+(canc.length?', '+canc.length+' canceled':'');
+  if(!list.length&&pushed.length)return {head:plural(pushed.length,'job')+' pushed to another day.',lines:[['Pushed',pushed.map(function(c){return jobTitle(c)+' to '+engShort(c.date)}).join('; ')]],text:engLong(s)+'\n'+plural(pushed.length,'job')+' pushed to another day.'};
   if(!list.length)return {head:nw?nw+'. No work.':'No jobs on this day.',lines:[],text:(nw?nw+'. No work.':'No jobs on this day.')};
-  if(r==='past')head=plural(list.length,'job')+': '+done.length+' done'+(open.length?', '+open.length+' missed':', nothing missed')+'.';
-  else if(r==='today'){head=done.length+' of '+plural(list.length,'job')+' done so far.';
-    var nx=open[0];if(nx)lines.push(['Next',fmtTime(nx.time)+' '+nx.type+' at '+nx.address.split(',')[0]+(nx.crew?' ('+nx.crew+')':'')]);}
-  else{head=plural(list.length,'job')+' scheduled.';if(open[0]&&open[0].time)lines.push(['First start',fmtTime(open[0].time)+' at '+open[0].address.split(',')[0]]);}
+  if(r==='past')head=plural(list.length+pushed.length,'job')+': '+done.length+' done'+extra+(open.length?', '+open.length+' missed':', nothing missed')+'.';
+  else if(r==='today'){head=done.length+' of '+plural(list.length-canc.length,'job')+' done so far'+extra+'.';
+    var nx=open[0];if(nx)lines.push(['Next',(nx.time?fmtTime(nx.time)+' ':'')+jobTitle(nx)+(nx.address?' at '+nx.address.split(',')[0]:'')+(nx.crew?' ('+nx.crew+')':'')]);}
+  else{head=plural(open.length,'job')+' scheduled'+extra+'.';if(open[0]&&open[0].time)lines.push(['First start',fmtTime(open[0].time)+(open[0].address?' at '+open[0].address.split(',')[0]:'')]);}
+  if(pushed.length)lines.push(['Pushed',pushed.map(function(c){return jobTitle(c)+' to '+engShort(c.date)+(c.status==='done'?' (done)':'')}).join('; ')]);
+  if(canc.length)lines.push(['Canceled',canc.map(function(c){return jobTitle(c)}).join('; ')]);
   var crews={};list.forEach(function(c){var k=c.crew||'No crew';(crews[k]=crews[k]||[]).push(c)});
   Object.keys(crews).forEach(function(k){
     lines.push([k,crews[k].map(function(c){return jobTitle(c)+(c.address?' at '+c.address.split(',')[0]:'')+(c.status==='todo'&&r==='past'?' (missed)':c.status==='done'&&r==='today'?' (done)':'')}).join('; ')]);
@@ -1506,7 +1530,7 @@ function aiContext(){
   L.push('No-work days coming up: '+(nw.length?nw.join('; '):'none'));
   var cs=S.cards.filter(function(c){var n=diff(c.date,T);return n>=-7&&n<=45}).sort(function(a,b){return (a.date+(a.time||'')).localeCompare(b.date+(b.time||''))}).slice(0,120);
   L.push('Cards (id | date | time | status | type | address | contractor | crew | vehicle):');
-  cs.forEach(function(c){L.push([c.id,c.date,c.time||'-',c.status==='done'?'done':(diff(c.date,T)<0?'missed':'to-do'),c.type,c.address||'-',c.contractor||'-',c.crew||'-',c.vehicle||'-'].join(' | '))});
+  cs.forEach(function(c){L.push([c.id,c.date,c.time||'-',c.status==='done'?'done':c.status==='canceled'?'canceled':(diff(c.date,T)<0?'missed':'to-do'),c.type,c.address||'-',c.contractor||'-',c.crew||'-',c.vehicle||'-'].join(' | '))});
   if(!cs.length)L.push('(no cards yet)');
   L.push('Places: when he names a place without a full street address (a store, business, supply house, landmark, or something like the UPS store on Route 9), look it up with find_place, and with web_search if find_place has no good match. If there is one clear match, give the full address in your reply with its Google Maps link and Waze link, and ask if that is the right place before using it in a job (unless he already confirmed it). If several places match, list up to 3 with their addresses and links and ask which one. If he only asks for an address or directions, just answer with the address and links. Never invent an address.');
   L.push('Answer with only a JSON object and nothing else (after any tool use): {"reply":"...","actions":[...]}. A card can be a plain to-do with only a title. Action forms: {"do":"add","date":"","time":"","title":"","type":"","address":"","contractor":"","foreman":"","phone":"","crew":"","vehicle":"","materials":[],"tools":[],"note":""}; {"do":"update","id":"","fields":{...only the fields to change}}; {"do":"done","id":""}; {"do":"todo","id":""}; {"do":"move","id":"","date":"","time":""}; {"do":"note","id":"","text":""}; {"do":"tow","date":"","time":"","status":"Scheduled or Done","equipment":"","from":"","to":"","for":"","company":"towing company if not us","contact":"","truck":"","driver":"","notes":""} (a towing log entry: what was towed, from where, to where; confirm full addresses first); {"do":"delete","id":""}. Use an empty actions list when you only answer a question or need more details first.');
@@ -1536,12 +1560,13 @@ function aiApply(actions){
     else if(a['do']==='todo'){c.status='todo';done.push('Back to To-Do: '+cardLabel(c))}
     else if(a['do']==='move'){
       if(a.date&&noWork(a.date)){skipped.push('Did not move it to '+engShort(a.date)+' because it is '+noWork(a.date)+'.');return}
-      if(a.date)c.date=a.date;if(a.time)c.time=a.time;delete c.o;done.push('Moved: '+cardLabel(c));
+      if(a.date)moveCard(c,a.date);if(a.time)c.time=a.time;delete c.o;done.push('Moved: '+cardLabel(c));
     }
     else if(a['do']==='note'){c.comments=c.comments||[];c.comments.push({t:Date.now(),text:a.text||''});done.push('Note added to '+c.type+(c.address?' at '+c.address.split(',')[0]:''))}
     else if(a['do']==='update'){
       var f=a.fields||{};
       if(f.date&&noWork(f.date)){skipped.push('Did not change the date to '+engShort(f.date)+' because it is '+noWork(f.date)+'.');delete f.date}
+      if(f.date&&f.date!==c.date){moveCard(c,f.date);delete f.date}
       for(var k in f)if(okField[k])c[k]=f[k];
       if(f.date||f.time)delete c.o;done.push('Updated: '+cardLabel(c));
     }
@@ -1849,11 +1874,11 @@ var SHIM=(function(){
 
 /* ---------- card <-> sheet row ---------- */
 function cardRow(c,deleted){
-  return {'ID':c.id,'Date':c.date||'','Time':c.time||'','Status':c.status||'todo','Work Type':c.type||'','Address':c.address||'','Contractor':c.contractor||'','Foreman':c.foreman||'','Phone':c.phone||'','Crew':c.crew||'','Crew Size':c.crewSize||'','Title':c.title||'','Vehicle':c.vehicle||'','Materials':(c.materials||[]).join('; '),'Tools':(c.tools||[]).join('; '),'Notes':c.notes||'','Source':c.source||'manual','Order':c.o==null?'':String(c.o),'Created':c.created||'','Updated':c.updated||stampNow(),'Deleted':deleted||''};
+  return {'ID':c.id,'Date':c.date||'','Time':c.time||'','Status':c.status||'todo','Work Type':c.type||'','Address':c.address||'','Contractor':c.contractor||'','Foreman':c.foreman||'','Phone':c.phone||'','Crew':c.crew||'','Crew Size':c.crewSize||'','Title':c.title||'','Moves':(c.moves||[]).map(function(m){return m.f+'>'+m.t}).join('; '),'Vehicle':c.vehicle||'','Materials':(c.materials||[]).join('; '),'Tools':(c.tools||[]).join('; '),'Notes':c.notes||'','Source':c.source||'manual','Order':c.o==null?'':String(c.o),'Created':c.created||'','Updated':c.updated||stampNow(),'Deleted':deleted||''};
 }
 function rowCard(r,old){
   var c=old||{comments:[]};
-  c.id=r['ID'];c.date=r['Date'];c.time=r['Time'];c.status=r['Status']==='done'?'done':'todo';c.type=r['Work Type'];c.address=r['Address'];c.contractor=r['Contractor'];c.foreman=r['Foreman'];c.phone=r['Phone'];c.crew=r['Crew'];c.crewSize=r['Crew Size']||'';c.title=r['Title']||'';c.vehicle=r['Vehicle'];
+  c.id=r['ID'];c.date=r['Date'];c.time=r['Time'];c.status=r['Status']==='done'?'done':r['Status']==='canceled'?'canceled':'todo';c.type=r['Work Type'];c.address=r['Address'];c.contractor=r['Contractor'];c.foreman=r['Foreman'];c.phone=r['Phone'];c.crew=r['Crew'];c.crewSize=r['Crew Size']||'';c.title=r['Title']||'';if(r['Moves']!==undefined){var mv=String(r['Moves']||'').split(/;\s*/).filter(function(x){return x.indexOf('>')>0}).map(function(x){var q=x.split('>');return {f:q[0],t:q[1]}});if(mv.length||!(c.moves&&c.moves.length))c.moves=mv}c.vehicle=r['Vehicle'];
   c.materials=r['Materials']?r['Materials'].split(/;\s*/).filter(function(x){return x}):[];c.tools=r['Tools']?r['Tools'].split(/;\s*/).filter(function(x){return x}):[];
   c.notes=r['Notes'];c.source=r['Source']||'manual';if(r['Order']!==''&&r['Order']!=null)c.o=+r['Order'];else delete c.o;c.created=r['Created'];c.updated=r['Updated'];c.sample=false;c.comments=c.comments||[];
   return c;
@@ -2219,7 +2244,7 @@ function remPush(force){
 function hashStr(x){var h=5381;for(var i=0;i<x.length;i++)h=((h<<5)+h+x.charCodeAt(i))|0;return String(h>>>0)}
 function jobEvents(from,to){
   return S.cards.filter(function(c){return c.date&&c.date>=from&&c.date<=to}).map(function(c){
-    var title=(c.status==='done'?'Done: ':'')+jobTitle(c)+(c.address?' - '+c.address.split(',')[0]:'')+(c.crew?' ('+c.crew+')':'');
+    var title=(c.status==='done'?'Done: ':c.status==='canceled'?'Canceled: ':'')+jobTitle(c)+(c.address?' - '+c.address.split(',')[0]:'')+(c.crew?' ('+c.crew+')':'');
     var e={key:'j-'+c.id,title:title,loc:c.address||'',desc:jobMessage(c),alert:null};
     if(c.time){e.start=atTime(c.date,c.time);e.end=e.start+60*60000}else{e.allDay=true;e.start=parse(c.date).getTime()}
     e.sig=hashStr(JSON.stringify([e.title,e.start,e.loc,e.desc,e.allDay?1:0]));return e;
@@ -2422,15 +2447,18 @@ function openMenu(id){
   h+='<button class="menuitem" id="mFive">Five Star card (fill the card maker)</button>';
   h+='<button class="menuitem" id="mNotes">Notes and photos</button>';
   h+='<button class="menuitem" id="mEdit">Open and edit</button>';
+  h+=c.status==='canceled'?'<button class="menuitem" id="mUncancel">Not canceled (back to To-Do)</button>':'<button class="menuitem" id="mCancel">Canceled (keep it on record)</button>';
   h+='<button class="menuitem red" id="mDel">Delete card</button>';
   h+='<button class="btn" id="mClose">Close</button>';
   openSheet(h);
   bind('mDone',function(){c.status='done';save();closeSheet();render();toast('Marked done')});
   bind('mTodo',function(){c.status='todo';save();closeSheet();render();toast('Moved to To-Do')});
-  bind('mDoneToday',function(){var was=c.date;c.date=T;delete c.o;c.status='done';save();closeSheet();render();toast('Cleared from '+engShort(was)+' and marked done today')});
-  bind('mToday',function(){c.date=T;delete c.o;save();closeSheet();render();toast('Moved to today')});
-  bind('mTom',function(){var s=addDays(c.date<T?T:c.date,1);while(noWork(s))s=addDays(s,1);c.date=s;delete c.o;save();closeSheet();render();toast('Moved to '+engShort(s))});
+  bind('mDoneToday',function(){var was=c.date;moveCard(c,T);c.status='done';save();closeSheet();render();toast('Cleared from '+engShort(was)+' and marked done today')});
+  bind('mToday',function(){moveCard(c,T);save();closeSheet();render();toast('Moved to today')});
+  bind('mTom',function(){var s=addDays(c.date<T?T:c.date,1);while(noWork(s))s=addDays(s,1);moveCard(c,s);save();closeSheet();render();toast('Moved to '+engShort(s))});
   bind('mEdit',function(){openEdit(id)});
+  bind('mCancel',function(){c.status='canceled';save();closeSheet();render();toast('Marked canceled')});
+  bind('mUncancel',function(){c.status='todo';save();closeSheet();render();toast('Back to To-Do')});
   bind('mNotes',function(){openNotes(id)});
   bind('mSend',function(){openSend(id)});
   bind('mFive',function(){openFiveStar(id)});
@@ -2485,7 +2513,7 @@ function openEdit(id,pre){
     var miss=[];if(v.type){if(!v.address)miss.push('address');if(!v.time)miss.push('time');if(!v.crew)miss.push('crew')}
     if(miss.length&&!forced){forced=true;document.getElementById('fWarn').innerHTML='<div class="warn">No '+miss.join(', ')+' yet. Are you sure? Tap Save again to keep it this way.</div>';return}
     if(noWork(v.date)&&!forced){forced=true;document.getElementById('fWarn').innerHTML='<div class="warn">'+esc(engShort(v.date))+' is '+esc(noWork(v.date))+'. Tap Save again if you really want it there.</div>';return}
-    if(id){if(v.date!==c.date||v.time!==c.time)delete c.o;for(var k in v)c[k]=v[k];c.sample=false}else{v.id=nid();v.status='todo';v.source='manual';v.sample=false;v.comments=c.comments||[];S.cards.push(v)}
+    if(id){if(v.date!==c.date||v.time!==c.time)delete c.o;if(v.date&&v.date!==c.date)moveCard(c,v.date);for(var k in v)c[k]=v[k];c.sample=false}else{v.id=nid();v.status='todo';v.source='manual';v.sample=false;v.comments=c.comments||[];S.cards.push(v)}
     rememberJob(v);save();closeSheet();render();toast(id?'Saved':'Job added');
   });
 }
@@ -2656,6 +2684,7 @@ document.addEventListener('click',function(e){
     writeMsg(t,WRS.style).then(function(o){WRS.out=o;showWrite()},function(er){res.innerHTML='<div class="warn">'+esc(er.message||String(er))+'</div>'});return}
   var lg=e.target.closest('[data-lgo],[data-lcopy]');if(lg){e.preventDefault();if(lg.dataset.lgo)window.location.href=lg.dataset.lgo;else copyText(decodeURIComponent(lg.dataset.lcopy));return}
   var ks=e.target.closest('[data-toolseg],[data-dumpseg],[data-key],[data-tow]');if(ks){if(ks.dataset.dumpseg){DUMPSEG=ks.dataset.dumpseg;try{localStorage.setItem('workday.dumpseg',DUMPSEG)}catch(x){}render();mainTop();if(DUMPSEG==='tow')towsLoad()}else if(ks.dataset.toolseg){TOOLSEG=ks.dataset.toolseg;try{localStorage.setItem('workday.toolseg',TOOLSEG)}catch(x){}render();mainTop();if(TOOLSEG==='keys')keysLoad()}else if(ks.dataset.tow)openTow(ks.dataset.tow);else openKey(ks.dataset.key);return}
+  var oc=e.target.closest('[data-open-card]');if(oc){openEdit(oc.dataset.openCard);return}
   var cdx=e.target.closest('.card');if(cdx&&cdx.dataset.id&&!e.target.closest('button,a,input,label,[data-grip]')){openEdit(cdx.dataset.id);return}
   var t=e.target.closest('[data-fivestar],[data-sheetview],[data-zmanim],[data-send],[data-crewedit],[data-printsheet],[data-printday],[data-aiundo],[data-dm],[data-dmf],[data-eq],[data-eqloc],[data-copysum],[data-notes],[data-markdone],[data-more],[data-movetoday],[data-chat],[data-tab],[data-open],[data-rm],[data-addto]');if(!t)return;
   if(t.dataset.fivestar)openFiveStar(t.dataset.fivestar);
@@ -2675,7 +2704,7 @@ document.addEventListener('click',function(e){
   else if(t.dataset.notes)openNotes(t.dataset.notes);
   else if(t.dataset.markdone){var md=find(t.dataset.markdone);md.status='done';save();render();toast('Marked done')}
   else if(t.dataset.more)openMenu(t.dataset.more);
-  else if(t.dataset.movetoday){var c=find(t.dataset.movetoday);c.date=todayStr();delete c.o;save();render();toast('Moved to today')}
+  else if(t.dataset.movetoday){var c=find(t.dataset.movetoday);moveCard(c,todayStr());save();render();toast('Moved to today')}
   else if(t.dataset.tab){if(t.dataset.tab==='msg'&&S.view==='msg')MSG.cur=null;S.view=t.dataset.tab;if(S.view==='msg'){setTimeout(msgTick,50)}if(S.view==='day'&&!S.cur)S.cur=todayStr();if(S.view==='log')S.logFocus=null;render();mainTop()}
   else if(t.dataset.open)openDate(t.dataset.open);
   else if(t.dataset.rm){var p=t.dataset.rm.split(':');S[p[0]].splice(+p[1],1);save();pushLists(p[0]);openSettings()}
@@ -2730,11 +2759,18 @@ document.getElementById('main').addEventListener('touchend',function(e){
   if(Math.abs(dx)>70&&Math.abs(dy)<60)go(dx>0?-1:1);
 },{passive:true});
 
-/* swipe a card: right = done, left = back to To-Do */
-var cs=null;
+/* swipe a card: left = done, right = push to the next work day; a done card swipes back to To-Do */
+var cs=null,SWI={done:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" stroke-width="2"/><path d="M7 12.5l3.2 3.2L17 9"/></svg>',push:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h14M13 6l6 6-6 6"/></svg>',back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>'};
+function swBg(d,kind,label,ready){
+  if(!d.bg){var b=document.createElement('div');var el=d.el,par=el.parentNode;if(par&&getComputedStyle(par).position==='static')par.style.position='relative';
+    b.style.top=el.offsetTop+'px';b.style.left=el.offsetLeft+'px';b.style.width=el.offsetWidth+'px';b.style.height=el.offsetHeight+'px';el.parentNode.insertBefore(b,el);d.bg=b}
+  d.bg.className='swbg '+kind+(ready?' ready':'');
+  if(d.bgKind!==kind){d.bgKind=kind;d.bg.innerHTML='<span class="swi">'+(kind==='done'?label+SWI.done:SWI[kind]+label)+'</span>'}
+}
 document.addEventListener('touchstart',function(e){
   if(S.view!=='day'||drag)return;
   var card=e.target.closest('.card');if(!card||e.target.closest('[data-grip],button'))return;
+  var c=find(card.dataset.id);if(!c||c.status==='canceled')return;
   var t=e.touches[0];cs={el:card,id:card.dataset.id,x:t.clientX,y:t.clientY,dx:0,lock:''};
 },{passive:true});
 document.addEventListener('touchmove',function(e){
@@ -2742,18 +2778,26 @@ document.addEventListener('touchmove',function(e){
   if(!cs.lock){if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy))cs.lock='h';else if(Math.abs(dy)>10){cs=null;return}else return}
   if(e.cancelable)e.preventDefault();
   var c=find(cs.id);if(!c){cs=null;return}
-  if(c.status==='done'&&dx>0)dx=dx/4;if(c.status==='todo'&&dx<0)dx=dx/4;
   cs.dx=dx;cs.el.classList.add('swiping');cs.el.style.transform='translateX('+dx+'px)';
-  cs.el.classList.toggle('sw-done',c.status==='todo'&&dx>40);
-  cs.el.classList.toggle('sw-todo',c.status==='done'&&dx<-40);
+  var need=Math.min(110,cs.el.offsetWidth*0.33),ready=Math.abs(dx)>need;
+  if(c.status==='done')swBg(cs,'back',' Back to To-Do',ready);
+  else if(dx<0)swBg(cs,'done','Done ',ready);
+  else swBg(cs,'push',' '+pushLabel(c),ready);
 },{passive:false});
 document.addEventListener('touchend',function(){
-  if(!cs)return;var d=cs;cs=null;if(d.lock!=='h')return;
-  var c=find(d.id);
-  if(c&&c.status==='todo'&&d.dx>90){placeCard(c,'done',null);save();render();toast('Marked done');return}
-  if(c&&c.status==='done'&&d.dx<-90){placeCard(c,'todo',null);save();render();toast('Moved to To-Do');return}
-  d.el.classList.remove('swiping','sw-done','sw-todo');d.el.classList.add('snap');d.el.style.transform='';
-  setTimeout(function(){d.el.classList.remove('snap')},200);
+  if(!cs)return;var d=cs;cs=null;if(d.lock!=='h'){if(d.bg)d.bg.remove();return}
+  var c=find(d.id),need=Math.min(110,d.el.offsetWidth*0.33);
+  if(c&&Math.abs(d.dx)>need){
+    if(c.status==='done'){placeCard(c,'todo',null);save();render();toast('Back to To-Do');return}
+    if(d.dx<0){
+      d.el.style.transition='transform .18s ease-out';d.el.style.transform='translateX(-110%)';
+      setTimeout(function(){placeCard(c,'done',null);save();render();toast('Marked done')},170);return}
+    var to=pushTarget(c);
+    d.el.style.transition='transform .18s ease-out';d.el.style.transform='translateX(110%)';
+    setTimeout(function(){moveCard(c,to);save();render();toast((to===todayStr()?'Moved to today':'Pushed to '+engShort(to)))},170);return;
+  }
+  d.el.classList.remove('swiping');d.el.classList.add('snap');d.el.style.transform='';
+  setTimeout(function(){d.el.classList.remove('snap');if(d.bg)d.bg.remove()},200);
 });
 
 /* ---------- messages (WhatsApp through the Workday Messages service) ---------- */
@@ -2829,7 +2873,7 @@ function msgInbox(){
 }
 var WIDGETSIG='';
 function widgetData(){
-  var T=todayStr(),list=S.cards.filter(function(c){return c.date===T}).slice().sort(function(a,b){var sa=a.status==='done'?1:0,sb=b.status==='done'?1:0;return sa-sb||((a.time||'99')+'').localeCompare((b.time||'99')+'')||((a.o||0)-(b.o||0))});
+  var T=todayStr(),list=S.cards.filter(function(c){return c.date===T&&c.status!=='canceled'}).slice().sort(function(a,b){var sa=a.status==='done'?1:0,sb=b.status==='done'?1:0;return sa-sb||((a.time||'99')+'').localeCompare((b.time||'99')+'')||((a.o||0)-(b.o||0))});
   var nx=null;try{var ev=remEvents(2);ev.sort(function(a,b){return a.start-b.start});if(ev[0])nx={title:ev[0].title,t:ev[0].start}}catch(e){}
   var mi='';try{if(!noWork(T))mi=clock(minchaMs(T))}catch(e){}
   return {date:T,dateLabel:engShort(T),heb:hebEn(T),noWork:noWork(T)||'',mincha:mi,next:nx,updated:Date.now(),
