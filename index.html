@@ -240,6 +240,15 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 .swbg.ready .swi{transform:scale(1.08);opacity:1}
 .swbg svg{width:28px;height:28px}
 .card.swiping{position:relative;z-index:1;background:var(--surface)!important;-webkit-backdrop-filter:none;backdrop-filter:none}
+.prow{display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:14px;padding:4px 6px 4px 4px}
+.pmain{display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-align:left;padding:6px;color:var(--fg)}
+.pav{width:40px;height:40px;border-radius:50%;background:linear-gradient(180deg,#8EC5FF,#3D8BFF);color:#fff;display:grid;place-items:center;font-weight:800;flex:none}
+.pav.big{width:56px;height:56px;font-size:22px}
+.pcall{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--done);background:var(--done-soft);flex:none}.pcall svg{width:20px;height:20px}
+.phead{display:flex;gap:14px;align-items:center}
+.pline{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}.pline span{color:var(--muted)}.pline b{text-align:right;font-weight:600;word-break:break-word}
+.pacts{display:flex;flex-wrap:wrap;gap:8px}.pacts a{text-decoration:none}
+html.lg .prow{background:var(--lg-card)!important;border:1px solid var(--lg-edge-dim);box-shadow:var(--lg-shadow),var(--lg-hi);border-radius:18px}
 .setgrp{display:grid;gap:6px}
 .setlab{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding-left:4px}
 .setbox{background:var(--bg);border-radius:12px;overflow:hidden}
@@ -586,7 +595,7 @@ html.lg .bub{box-shadow:0 2px 8px rgba(0,0,0,.08)}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 29, 2026 (46)';
+var KEY='workday.v1',APPVER='Oct 29, 2026 (47)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -859,6 +868,7 @@ var IC={
   gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   day:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 12h18"/></svg>',
   cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  ppl:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14.6c2.6.2 4.4 1.8 5 4.4"/></svg>',
   log:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v16H5z"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>',
   ord:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7l8-4 8 4v10l-8 4-8-4z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg>',
   dump:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9h18l-2 10H5z"/><path d="M7 9V6h10v3"/></svg>',
@@ -968,7 +978,7 @@ function renderDay(){
   }
   if(pushed.length)h+='<section class="zone movedz"><div class="zhead"><h2>Pushed</h2><span class="cnt">'+pushed.length+'</span></div>'+pushed.map(function(c){var m=lastMoveFrom(c,s);return '<button class="movedrow" data-open-card="'+esc(c.id)+'"><span><b>'+esc(jobTitle(c))+'</b>'+(c.address?'<small>'+esc(c.address.split(',')[0])+'</small>':'')+'</span><span class="mto">'+(c.status==='done'?'Done ':'')+'&rarr; '+esc(engShort(c.date))+'</span></button>'}).join('')+'</section>';
   if(canc.length)h+='<section class="zone cancz"><div class="zhead"><h2>Canceled</h2><span class="cnt">'+canc.length+'</span></div>'+canc.map(function(c){return '<button class="movedrow" data-open-card="'+esc(c.id)+'"><span><b>'+esc(jobTitle(c))+'</b>'+(c.address?'<small>'+esc(c.address.split(',')[0])+'</small>':'')+'</span><span class="mto">Canceled</span></button>'}).join('')+'</section>';
-  h+='<div class="row" style="justify-content:center"><button class="btn" data-sheetview="1-6dJlD1UaD16rgJfdY1cVjH_hgaYjNdQkrrJeA30WHo">View sheet</button></div>';
+  h+='<div class="row" style="justify-content:space-between"><button class="btn" data-tab="log">Logs</button><button class="btn" data-sheetview="1-6dJlD1UaD16rgJfdY1cVjH_hgaYjNdQkrrJeA30WHo">View sheet</button></div>';
   if(S.cards.some(function(c){return c.sample}))h+='<div class="sample"><span>These are example cards so you can try the layout.</span><button id="clearEx">Clear examples</button></div>';
   document.getElementById('mainIn').innerHTML=h;
   var main=document.getElementById('main');main.className=r==='past'?'tint-past':r==='future'?'tint-future':'';
@@ -2411,7 +2421,7 @@ function printSupply(){
   });
 }
 /* ---------- tabs ---------- */
-var TABS=[['day','Today',IC.day],['msg','Messages',IC.msg],['tr','Translate',IC.tr],['log','Log',IC.log],['ord','Orders',IC.ord],['dump','Hauling',IC.dump],['tool','Tools',IC.tool]];
+var TABS=[['day','Today',IC.day],['msg','Messages',IC.msg],['tr','Translate',IC.tr],['ppl','Contacts',IC.ppl],['ord','Orders',IC.ord],['dump','Hauling',IC.dump],['tool','Tools',IC.tool]];
 function render(){
   document.body.classList.toggle('inchat',S.view==='msg'&&!!MSG.cur);
   document.body.classList.toggle('msgmode',S.view==='msg'&&msgOK());
@@ -2421,6 +2431,7 @@ function render(){
   else if(S.view==='ord'){renderPh('Orders','This page will run off your Supply Tracker orders. Tell me what one order line needs (item, quantity, job, supplier, date needed) and I will build it.');document.getElementById('mainIn').insertAdjacentHTML('beforeend','<div class="row" style="justify-content:center"><button class="btn" data-sheetview="1X-1lPEIHSr5uEjTAq7UA4MfzE1LwC_Z4erVa3dELcuo">View Supply Tracker sheet</button></div>')}
   else if(S.view==='dump')renderDump();
   else if(S.view==='msg'){renderMsg();msgFit()}
+  else if(S.view==='ppl')renderPeople();
   else renderTools();
   setHdrH();
   if(MOVED&&S.view==='day'){var mv=document.getElementById('mainIn');if(mv)mv.insertAdjacentHTML('afterbegin','<div class="newdev"><b>Workday moved to a private home</b><span>Move this device once. Takes about 2 minutes.</span><button class="btn primary" data-moved="1">Show me how</button></div>')}
@@ -2684,6 +2695,7 @@ document.addEventListener('click',function(e){
     writeMsg(t,WRS.style).then(function(o){WRS.out=o;showWrite()},function(er){res.innerHTML='<div class="warn">'+esc(er.message||String(er))+'</div>'});return}
   var lg=e.target.closest('[data-lgo],[data-lcopy]');if(lg){e.preventDefault();if(lg.dataset.lgo)window.location.href=lg.dataset.lgo;else copyText(decodeURIComponent(lg.dataset.lcopy));return}
   var ks=e.target.closest('[data-toolseg],[data-dumpseg],[data-key],[data-tow]');if(ks){if(ks.dataset.dumpseg){DUMPSEG=ks.dataset.dumpseg;try{localStorage.setItem('workday.dumpseg',DUMPSEG)}catch(x){}render();mainTop();if(DUMPSEG==='tow')towsLoad()}else if(ks.dataset.toolseg){TOOLSEG=ks.dataset.toolseg;try{localStorage.setItem('workday.toolseg',TOOLSEG)}catch(x){}render();mainTop();if(TOOLSEG==='keys')keysLoad()}else if(ks.dataset.tow)openTow(ks.dataset.tow);else openKey(ks.dataset.key);return}
+  var pp=e.target.closest('[data-person]');if(pp&&window.__ppl){openPerson(window.__ppl[+pp.dataset.person]);return}
   var oc=e.target.closest('[data-open-card]');if(oc){openEdit(oc.dataset.openCard);return}
   var cdx=e.target.closest('.card');if(cdx&&cdx.dataset.id&&!e.target.closest('button,a,input,label,[data-grip]')){openEdit(cdx.dataset.id);return}
   var t=e.target.closest('[data-fivestar],[data-sheetview],[data-zmanim],[data-send],[data-crewedit],[data-printsheet],[data-printday],[data-aiundo],[data-dm],[data-dmf],[data-eq],[data-eqloc],[data-copysum],[data-notes],[data-markdone],[data-more],[data-movetoday],[data-chat],[data-tab],[data-open],[data-rm],[data-addto]');if(!t)return;
@@ -3313,6 +3325,104 @@ function towUpdate(id,ch){
     var cur=towFind(id)||{id:id};for(var k in ch)cur[k]=ch[k];cur.updated=stampNow();
     var row=TOWCOLS.slice(1).map(function(k){return cur[k]||''});
     return bridge('updateValues',{book:'workday',range:'Tows!B'+(i+1)+':P'+(i+1),values:[row]}).then(function(){towsSave();return cur});
+  });
+}
+
+/* ---------- contacts: crew, foremen, contractors and everyone else in one place ---------- */
+var PPL={rows:[],at:0,busy:false,q:'',err:''};
+(function(){try{var o=JSON.parse(localStorage.getItem('workday.ppl')||'null');if(o){PPL.rows=o.rows||[];PPL.at=o.at||0}}catch(e){}})();
+var PCOLS=['id','name','company','role','phone','email','notes','added','deleted'];
+function pplSave(){try{localStorage.setItem('workday.ppl',JSON.stringify({rows:PPL.rows,at:PPL.at}))}catch(e){}}
+function pplLoad(){
+  if(!connOK()){PPL.at=PPL.at||1;return Promise.resolve()}
+  PPL.busy=true;
+  return bridge('getValues',{book:'workday',range:'Contacts!A1:I3000'}).then(function(d){
+    PPL.rows=(d.values||[]).slice(1).filter(function(r){return r[0]&&!r[8]}).map(function(r){var o={};PCOLS.forEach(function(k,i){o[k]=r[i]||''});return o});
+    PPL.at=Date.now();PPL.busy=false;PPL.err='';pplSave();if(S.view==='ppl')render();
+  },function(e){PPL.busy=false;PPL.at=PPL.at||1;PPL.err=bridgeErr(e);if(S.view==='ppl')render()});
+}
+function allPeople(){
+  var out=[];
+  (MASTER.crew.length?MASTER.crew:S.crew.map(function(n){return crewInfo(n)})).forEach(function(c){out.push({kind:'crew',key:c.name,name:c.name,sub:'Crew'+(c.lang?' '+MID+' '+c.lang:''),phone:c.phone||'',email:'',group:'Crew'})});
+  MASTER.foremen.forEach(function(f){out.push({kind:'foreman',key:f.contractor+'|'+f.name,name:f.name,sub:'Foreman'+(f.contractor?' '+MID+' '+f.contractor:''),phone:f.phone||'',email:f.email||'',company:f.contractor||'',group:'Foremen'})});
+  MASTER.contractors.forEach(function(c){out.push({kind:'contractor',key:c.name,name:c.name,sub:'Contractor'+(c.notes?' '+MID+' '+c.notes:''),phone:c.phone||'',email:c.email||'',group:'Contractors'})});
+  PPL.rows.forEach(function(p){out.push({kind:'other',key:p.id,name:p.name,sub:[p.role,p.company].filter(function(x){return x}).join(' '+MID+' ')||'Contact',phone:p.phone,email:p.email,company:p.company,notes:p.notes,group:'Other contacts'})});
+  return out;
+}
+function renderPeople(){
+  if(!PPL.at&&!PPL.busy)pplLoad();
+  var q=PPL.q.trim().toLowerCase(),all=allPeople();
+  var h='<div class="row" style="justify-content:space-between;align-items:center"><b style="font-size:22px">Contacts</b><button class="btn primary" id="pNew">New contact</button></div>';
+  h+='<input class="search" id="pQ" type="search" placeholder="Search name, company or number" value="'+esc(PPL.q)+'">';
+  if(PPL.err)h+='<div class="warn">'+esc(PPL.err)+'</div>';
+  var list=all.filter(function(p){return !q||(p.name+' '+p.sub+' '+p.phone+' '+(p.email||'')).toLowerCase().indexOf(q)>=0||(digits(q).length>=3&&digits(p.phone).indexOf(digits(q))>=0)});
+  var groups=['Crew','Foremen','Contractors','Other contacts'];
+  groups.forEach(function(g){
+    var l=list.filter(function(p){return p.group===g}).sort(function(a,b){return a.name.localeCompare(b.name)});if(!l.length)return;
+    h+='<div class="zlab">'+g+' ('+l.length+')</div><div class="keylist">';
+    l.forEach(function(p){var i=all.indexOf(p);
+      h+='<div class="prow"><button class="pmain" data-person="'+i+'"><span class="pav">'+esc((p.name||'?').charAt(0).toUpperCase())+'</span><span class="kmain"><b>'+esc(p.name)+'</b><small>'+esc(p.sub)+(p.phone?' '+MID+' '+esc(p.phone):'')+'</small></span></button>'+(p.phone?'<a class="pcall" href="tel:'+esc(digits(p.phone))+'" aria-label="Call">'+PIC.call+'</a>':'')+'</div>'});
+    h+='</div>';
+  });
+  if(!list.length)h+='<div class="empty" style="text-align:center">'+(q?'Nobody matches.':'No contacts yet.')+'</div>';
+  if(q.length>=3&&connOK())h+='<div class="row"><button class="btn" id="pG">Search Google Contacts for "'+esc(PPL.q.trim())+'"</button></div><div id="pGOut"></div>';
+  document.getElementById('mainIn').innerHTML=h;document.getElementById('main').className='';
+  var qi=document.getElementById('pQ');qi.oninput=function(){PPL.q=qi.value;var p=qi.selectionStart;renderPeople();var n=document.getElementById('pQ');n.focus();try{n.setSelectionRange(p,p)}catch(e){}};
+  bind('pNew',function(){openPersonEdit(null)});
+  bind('pG',function(){lookupContact(PPL.q.trim(),'pGOut',function(pc){openPersonEdit(null,{name:pc.name,company:pc.company||'',phone:pc.phones[0]||'',email:(pc.emails||[])[0]||''})})});
+  window.__ppl=all;
+}
+var PIC={call:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>'};
+function openPerson(p){
+  var d=digits(p.phone);
+  var h='<div class="phead"><span class="pav big">'+esc((p.name||'?').charAt(0).toUpperCase())+'</span><div><h3 style="margin:0">'+esc(p.name)+'</h3><div class="mt">'+esc(p.sub)+'</div></div></div>';
+  if(p.phone)h+='<div class="pline"><span>Phone</span><b>'+esc(p.phone)+'</b></div>';
+  if(p.email)h+='<div class="pline"><span>Email</span><b>'+esc(p.email)+'</b></div>';
+  if(p.notes)h+='<div class="pline"><span>Notes</span><b>'+esc(p.notes)+'</b></div>';
+  if(d){
+    h+='<div class="pacts"><a class="btn primary" href="tel:'+d+'">Call</a><a class="btn" href="sms:+'+d+'">Text</a><a class="btn good" href="https://wa.me/'+d+'" target="_blank" rel="noopener">WhatsApp</a>'+(msgOK()?'<button class="btn" id="pMsg">Message in Workday</button>':'')+'<button class="btn" id="pCopy">Copy number</button></div>';
+  }else h+='<div class="mt">No phone number saved yet.</div>';
+  if(p.email)h+='<div class="row"><a class="btn" href="mailto:'+esc(p.email)+'">Email</a></div>';
+  h+='<div class="row"><button class="btn" id="pEdit">Edit</button><button class="btn" id="pX">Close</button></div>';
+  openSheet(h);
+  bind('pX',closeSheet);
+  bind('pCopy',function(){copyText(p.phone)});
+  bind('pMsg',function(){closeSheet();msgOpen(d,p.name)});
+  bind('pEdit',function(){if(p.kind==='crew')openCrewEdit(p.name,function(){render();closeSheet()});else openPersonEdit(p)});
+}
+function openPersonEdit(p,pre){
+  var isNew=!p;p=p||{kind:'other',name:'',company:'',phone:'',email:'',notes:'',sub:''};if(pre)for(var k in pre)p[k]=pre[k];
+  var role=p.kind==='other'?((PPL.rows.filter(function(x){return x.id===p.key})[0]||{}).role||''):'';
+  var h='<h3>'+(isNew?'New contact':'Edit '+esc(p.name))+'</h3>';
+  if(isNew)h+='<div class="field"><label for="peKind">Type</label><select id="peKind"><option value="other">Other (supplier, inspector, customer...)</option><option value="foreman">Foreman</option><option value="contractor">Contractor</option></select></div>';
+  h+='<div class="field"><label for="peName">Name</label><input id="peName" value="'+esc(p.name)+'"'+(isNew?'':' readonly')+'></div>';
+  h+='<div class="field"><label for="peCo">Company / contractor</label><input id="peCo" value="'+esc(p.company||'')+'"></div>';
+  h+='<div class="field" id="peRoleF"><label for="peRole">Role</label><input id="peRole" value="'+esc(role)+'" placeholder="Supplier, inspector, customer..."></div>';
+  h+='<div class="two"><div class="field"><label for="pePh">Phone</label><input id="pePh" type="tel" value="'+esc(p.phone||'')+'"></div><div class="field"><label for="peEm">Email</label><input id="peEm" type="email" value="'+esc(p.email||'')+'"></div></div>';
+  h+='<div class="field"><label for="peNo">Notes</label><textarea id="peNo" rows="2">'+esc(p.notes||'')+'</textarea></div>';
+  h+='<div id="peW"></div><div class="row"><button class="btn primary" id="peS">Save</button><button class="btn" id="peX">Cancel</button></div>';
+  openSheet(h);
+  bind('peX',closeSheet);
+  bind('peS',function(){
+    var kind=isNew?val('peKind'):p.kind,v={name:val('peName').trim(),company:val('peCo').trim(),role:val('peRole').trim(),phone:val('pePh').trim(),email:val('peEm').trim(),notes:val('peNo').trim()};
+    if(!v.name){document.getElementById('peW').innerHTML='<div class="warn">Write a name.</div>';return}
+    if(kind==='foreman'){
+      var f=null;MASTER.foremen.forEach(function(x){if(norm(x.name)===norm(v.name)&&norm(x.contractor)===norm(v.company))f=x});
+      if(f){f.phone=v.phone;f.email=v.email}else MASTER.foremen.push({contractor:v.company,name:v.name,phone:v.phone,email:v.email});syncSave();
+      masterPush(f?'updateRow':'addRow',f?{tab:'Foremen',key:'Foreman',value:v.name,row:{'Contractor':v.company,'Foreman':v.name,'Phone':v.phone,'Email':v.email,'Notes':v.notes}}:{tab:'Foremen',row:{'Contractor':v.company,'Foreman':v.name,'Phone':v.phone,'Email':v.email,'Notes':v.notes,'Added':stampNow()}});
+    }else if(kind==='contractor'){
+      var c=null;MASTER.contractors.forEach(function(x){if(norm(x.name)===norm(v.name))c=x});
+      if(c){c.phone=v.phone;c.email=v.email;c.notes=v.notes}else MASTER.contractors.push({name:v.name,phone:v.phone,email:v.email,notes:v.notes});syncSave();
+      masterPush(c?'updateRow':'addRow',c?{tab:'Contractors',key:'Contractor',value:v.name,row:{'Contractor':v.name,'Office Phone':v.phone,'Email':v.email,'Notes':v.notes}}:{tab:'Contractors',row:{'Contractor':v.name,'Office Phone':v.phone,'Email':v.email,'Notes':v.notes,'Added':stampNow()}});
+    }else{
+      if(!connOK()){document.getElementById('peW').innerHTML='<div class="warn">Saving contacts needs the Google connection (gear, Google).</div>';return}
+      if(isNew){var id='p'+Date.now().toString(36);var row=[id,v.name,v.company,v.role,v.phone,v.email,v.notes,stampNow(),''];
+        bridge('appendValues',{book:'workday',range:'Contacts!A:I',values:[row]}).then(function(){pplLoad()},function(e){toast(bridgeErr(e))});
+        PPL.rows.push({id:id,name:v.name,company:v.company,role:v.role,phone:v.phone,email:v.email,notes:v.notes});pplSave();}
+      else{var me=PPL.rows.filter(function(x){return x.id===p.key})[0];if(me){me.company=v.company;me.role=v.role;me.phone=v.phone;me.email=v.email;me.notes=v.notes;pplSave()}
+        bridge('getValues',{book:'workday',range:'Contacts!A1:A3000'}).then(function(d){var vv=d.values||[],i;for(i=1;i<vv.length;i++)if(vv[i][0]===p.key)break;if(i<vv.length)return bridge('updateValues',{book:'workday',range:'Contacts!B'+(i+1)+':G'+(i+1),values:[[v.name,v.company,v.role,v.phone,v.email,v.notes]]})}).catch(function(e){toast(bridgeErr(e))});}
+    }
+    closeSheet();render();toast('Contact saved');
   });
 }
 
