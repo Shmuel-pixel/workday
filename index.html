@@ -632,7 +632,7 @@ html.tv .swhint{display:none}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 29, 2026 (57)';
+var KEY='workday.v1',APPVER='Oct 30, 2026 (58)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -987,6 +987,7 @@ function cardHtml(c,mode){
   h+='</div>';
   return h+'</div>';
 }
+function swHintOn(){try{var o=JSON.parse(localStorage.getItem('workday.swh')||'{}'),d=todayStr();if(o.last!==d){o.n=(o.n||0)+1;o.last=d;localStorage.setItem('workday.swh',JSON.stringify(o))}return o.n<=3}catch(e){return false}}
 function zone(kind,title,list,mode,addBtn,emptyMsg){
   var h='<section class="zone '+kind+'" data-zone="'+kind+'"><div class="zhead"><h2>'+title+'</h2><div class="row" style="align-items:center"><span class="count">'+list.length+'</span>'+(addBtn?'<button class="add" id="addBtn" aria-label="Add a job">+</button>':'')+'</div></div>';
   if(!list.length)h+='<div class="empty">'+emptyMsg+'</div>';
@@ -1009,14 +1010,14 @@ function renderDay(){
   if(nw&&!list.length){
     h+='<div class="calm"><b>'+esc(nw)+'</b><span>No work and no reminders today.</span></div>';
   }else if(r==='today'){
-    h+='<div class="swhint">Swipe left to mark done. Swipe right to push to tomorrow.</div>';
-    h+=zone('todo','To-Do',todo,'',true,list.length?'Nothing left. Tap + to add a job, or drag a card back here.':'No jobs yet. Tap + or tell the Assistant, for example: tomorrow 8am cleanup at 3 Waswell Ct with Anjio.');
-    h+=zone('done','Done',done,'',false,'Drag a card here, or use &#8943; &rarr; Mark done.');
+    if(swHintOn())h+='<div class="swhint">Swipe left to mark done. Swipe right to push to tomorrow.</div>';
+    h+=zone('todo','To-Do',todo,'',true,list.length?'All done.':'Nothing yet.');
+    h+=zone('done','Done',done,'',false,'None yet.');
   }else if(r==='past'){
-    h+=zone('done','Done',done,'',false,'Nothing was marked done this day.');
-    h+=zone('missed','Missed',todo,'missed',false,'Nothing missed. Everything got done.');
+    h+=zone('done','Done',done,'',false,'Nothing done.');
+    h+=zone('missed','Missed',todo,'missed',false,'Nothing missed.');
   }else{
-    h+=zone('todo','To-Do',todo,'',true,'Nothing scheduled yet. Tap + to add a job.');
+    h+=zone('todo','To-Do',todo,'',true,'Nothing yet.');
   }
   if(pushed.length)h+='<section class="zone movedz"><div class="zhead"><h2>Pushed</h2><span class="cnt">'+pushed.length+'</span></div>'+pushed.map(function(c){var m=lastMoveFrom(c,s);return '<button class="movedrow" data-open-card="'+esc(c.id)+'"><span><b>'+esc(jobTitle(c))+'</b>'+(c.address?'<small>'+esc(c.address.split(',')[0])+'</small>':'')+'</span><span class="mto">'+(c.status==='done'?'Done ':'')+'&rarr; '+esc(engShort(c.date))+'</span></button>'}).join('')+'</section>';
   if(canc.length)h+='<section class="zone cancz"><div class="zhead"><h2>Canceled</h2><span class="cnt">'+canc.length+'</span></div>'+canc.map(function(c){return '<button class="movedrow" data-open-card="'+esc(c.id)+'"><span><b>'+esc(jobTitle(c))+'</b>'+(c.address?'<small>'+esc(c.address.split(',')[0])+'</small>':'')+'</span><span class="mto">Canceled</span></button>'}).join('')+'</section>';
@@ -1326,13 +1327,13 @@ function openEq(id){
   if(!r)return;
   var h='<h3>'+(id?esc(r.item):'Add equipment')+'</h3>';
   if(id)h+='<div style="color:var(--muted);font-size:13px;margin-top:-6px">'+esc(r.id)+(r.updated?' '+MID+' last changed '+esc(r.updated):'')+'</div>';
-  h+='<div class="field"><label for="qItem">Item</label><input id="qItem" value="'+esc(r.item)+'" placeholder="Ring saw"></div>';
+  h+='<div class="field"><label for="qItem">Item</label><input id="qItem" value="'+esc(r.item)+'"></div>';
   h+='<div class="two"><div class="field"><label for="qBrand">Brand</label><input id="qBrand" value="'+esc(r.brand)+'"></div><div class="field"><label for="qModel">Model</label><input id="qModel" value="'+esc(r.model)+'"></div></div>';
   h+='<div class="two"><div class="field"><label for="qQty">Quantity</label><input id="qQty" inputmode="numeric" value="'+esc(r.qty)+'"></div><div class="field"><label for="qBlade">Blade size (in.)</label><input id="qBlade" value="'+esc(r.blade)+'"></div></div>';
   h+='<div class="field"><label for="qCond">Condition</label><select id="qCond">'+opts(COND,r.cond)+'</select></div>';
   h+='<div class="field"><label for="qLoc">Where it is</label><select id="qLoc">'+opts(groups(),r.group)+'</select></div>';
-  h+='<div class="field"><label for="qPow">Power / connection</label><input id="qPow" value="'+esc(r.power)+'" placeholder="Gas, Battery, Three-way generator"></div>';
-  h+='<div class="field"><label for="qAct">Action needed</label><input id="qAct" value="'+esc(r.action)+'" placeholder="Repair, Replace, Test"></div>';
+  h+='<div class="field"><label for="qPow">Power / connection</label><input id="qPow" value="'+esc(r.power)+'"></div>';
+  h+='<div class="field"><label for="qAct">Action needed</label><input id="qAct" value="'+esc(r.action)+'"></div>';
   h+='<div class="field"><label for="qSer">Serial number</label><input id="qSer" value="'+esc(r.serial)+'"></div>';
   h+='<div class="field"><label for="qNotes">Notes</label><textarea id="qNotes" rows="3">'+esc(r.notes)+'</textarea></div>';
   h+='<div id="qWarn"></div><div class="row"><button class="btn primary" id="qSave">Save to sheet</button><button class="btn" id="qCancel">Cancel</button></div>';
@@ -1686,7 +1687,7 @@ function aiApply(actions){
 }
 function aiBubbles(){
   var h='';
-  if(!AIH.length)h+='<div class="empty" style="text-align:center;align-self:center">Tell me what to do. For example: "Tomorrow 8am cleanup at 3 Waswell Ct, send Anjio with the 2016 Ford Transit." Tap the mic on the keyboard to talk instead of typing.</div>';
+  if(!AIH.length)h+='<div class="empty" style="text-align:center;align-self:center">Talk or type.</div>';
   AIH.forEach(function(m,i){
     if(m.role==='user')h+='<div class="bub"><span>'+esc(m.show||m.content)+'</span></div>';
     else{
@@ -1715,7 +1716,7 @@ function openAI(talk){
   }
   h+='<div class="thread" id="aiThr">'+aiBubbles()+'</div>';
   h+='<div class="talk"><button class="mic" id="aiMic" aria-label="Talk to the assistant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><canvas class="wave" id="aiWave" aria-hidden="true"></canvas><div class="hear" id="aiHear">Tap to talk</div></div>';
-  h+='<div class="compose" style="grid-template-columns:1fr auto"><textarea id="aiTxt" rows="1" placeholder="Or type here"></textarea><button class="send" id="aiSend">Send</button></div>';
+  h+='<div class="compose" style="grid-template-columns:1fr auto"><textarea id="aiTxt" rows="1" placeholder="Type"></textarea><button class="send" id="aiSend">Send</button></div>';
   h+='<div class="row" style="justify-content:space-between;align-items:center"><button class="btn" id="aiClose">Close</button><label class="tchk"><input type="checkbox" id="aiSpk"'+(speakOn()?' checked':'')+'>Speak answers</label><button class="btn" id="aiClear">Start over</button></div>';
   openSheet(h);
   var thr=document.getElementById('aiThr');thr.scrollTop=thr.scrollHeight;
@@ -2396,7 +2397,7 @@ function writeMsg(text,style){
 }
 function renderWrite(){
   var h='<section class="ph" style="gap:12px">'+trSeg();
-  h+='<div class="field"><label for="wrIn">Your message (type or dictate)</label><textarea id="wrIn" rows="5" placeholder="tell him we need the dumpster moved before 8 tomorrow">'+esc(WRS.text)+'</textarea></div>';
+  h+='<div class="field"><label for="wrIn">Your message (type or dictate)</label><textarea id="wrIn" rows="5">'+esc(WRS.text)+'</textarea></div>';
   h+='<div class="stylebtns"><button class="btn primary" data-wstyle="carnegie">Dale Carnegie</button><button class="btn" data-wstyle="clean">Clean it up</button><button class="btn" data-wstyle="firm">Clear and firm</button><button class="btn" data-wstyle="short">Shorter</button></div>';
   h+='<div id="wrRes"></div>';
   if(!getKey())h+='<div class="mt">Needs the Claude key (tap Assistant once to add it).</div>';
@@ -2421,9 +2422,9 @@ function renderTr(){
   var h='<section class="ph" style="gap:12px">'+trSeg();
   h+='<div class="row" style="align-items:center;justify-content:space-between"><b style="font-family:var(--display);font-size:19px">'+(TRS.rev?esc(TRS.lang)+' to English':'English to '+esc(TRS.lang))+'</b><button class="btn" id="trSwap">Swap</button></div>';
   h+='<div class="field"><label for="trLang">Language</label><select id="trLang">'+opts(LANGS.filter(function(x){return x!=='English'&&x!=='Other'}),TRS.lang)+'</select></div>';
-  h+='<div class="field"><label for="trIn">'+(TRS.rev?'Paste what they sent':'Type or dictate (tap the keyboard mic)')+'</label><textarea id="trIn" rows="5" placeholder="'+(TRS.rev?'Paste the message here':'Tell him the boards need to be cut 16 inches')+'">'+esc(TRS.text)+'</textarea></div>';
+  h+='<div class="field"><label for="trIn">'+(TRS.rev?'Paste what they sent':'Type or dictate (tap the keyboard mic)')+'</label><textarea id="trIn" rows="5">'+esc(TRS.text)+'</textarea></div>';
   h+='<div class="row" style="align-items:center"><button class="btn primary" id="trGo">Translate</button><button class="btn" id="trClr">Clear</button><label class="tchk"><input type="checkbox" id="trTl"'+(trOn()?' checked':'')+'>How to say it</label></div><div id="trRes"></div>';
-  h+='<div class="mt">'+(getKey()?'Uses Claude with your Stern Translator rules: it cleans up voice dictation and keeps names, addresses and numbers exactly.':(connOK()?'Uses Google Translate (free). Add the Claude key in the Assistant for the Stern Translator quality.':'Needs the Google connection (free) or the Claude key. Open the gear to set one up.'))+'</div></section>';
+  if(!getKey())h+='<div class="mt">'+(getKey()?'Uses Claude with your Stern Translator rules: it cleans up voice dictation and keeps names, addresses and numbers exactly.':(connOK()?'Uses Google Translate (free). Add the Claude key in the Assistant for the Stern Translator quality.':'Needs the Google connection (free) or the Claude key. Open the gear to set one up.'))+'</div></section>';
   document.getElementById('mainIn').innerHTML=h;document.getElementById('main').className='';
   if(TRS.out)showTr();
   document.getElementById('trLang').onchange=function(){TRS.lang=val('trLang');TRS.out=null;renderTr()};
@@ -2448,7 +2449,6 @@ function showTr(){
   else h+='<small>'+esc(NATIVE[TRS.lang]||TRS.lang)+(o.how==='google'?' '+MID+' Google':'')+'</small><div class="big" id="trBig">'+esc(o.translation)+'</div><small>English</small><div class="tren">'+esc(o.clean_english||TRS.text)+'</div>';
   if(o.translit)h+='<div class="translit"><small>'+(TRS.rev?'How they said it':'How to say it')+'</small>'+esc(o.translit)+'</div>';
   h+='<div class="row" style="gap:18px"><button id="trCopy">Copy</button>'+(TRS.rev?'':'<button id="trWa">WhatsApp</button><button id="trSms">Text message</button>')+'<button id="trSay">Listen</button></div></div>';
-  if(!TRS.rev)h+='<div class="mt">Copy and Send include both: '+esc(NATIVE[TRS.lang]||TRS.lang)+' on top, English under it.</div>';
   res.innerHTML=h;
   try{var tb=document.getElementById('trBig');if(tb)setTimeout(function(){tb.closest('.trout').scrollIntoView({behavior:'smooth',block:'center'})},60)}catch(e){}
   bind('trCopy',function(){copyText(both)});
@@ -2586,19 +2586,19 @@ function openEdit(id,pre){
   if(!id&&pre)for(var pk in pre)c[pk]=pre[pk];
   var h='<h3>'+(id?'Edit job':'New job')+'</h3>';
   h+='<div class="two"><div class="field"><label for="fDate">Date</label><input id="fDate" type="date" value="'+esc(c.date)+'"></div><div class="field"><label for="fTime">Time</label><input id="fTime" type="time" value="'+esc(c.time)+'"></div></div>';
-  h+='<div class="field"><label for="fTitle">Title</label><input id="fTitle" value="'+esc(c.title||'')+'" placeholder="Anything: Cleanup at Hope Hill, Call Dubin, Pick up permit"></div>';
+  h+='<div class="field"><label for="fTitle">Title</label><input id="fTitle" value="'+esc(c.title||'')+'"></div>';
   var ctags=String(c.type||'').split(/,\s*/).filter(function(x){return x}),tgh='';
   S.types.concat(ctags.filter(function(x){return S.types.indexOf(x)<0})).forEach(function(tn,i){tgh+='<label class="tchk"><input type="checkbox" name="fTag" value="'+esc(tn)+'"'+(ctags.indexOf(tn)>=0?' checked':'')+'>'+esc(tn)+'</label>'});
   h+='<div class="field"><label>Tags (optional)</label><div class="tchks">'+tgh+'</div></div>';
   var elk=findLinks(c.notes);(c.comments||[]).forEach(function(x){elk=elk.concat(findLinks(x.text))});
   if(elk.length)h+='<div class="field"><label>Links</label><div class="lbox">'+linkRows(elk)+'</div></div>';
   h+='<div class="field"><label>Notes and photos</label><div class="thread" id="thr" style="max-height:34vh">'+threadHtml(c)+'</div><div id="pend"></div><div class="compose"><label class="photo" for="nImg" aria-label="Add photo">'+IC.cam+'</label><input id="nImg" type="file" accept="image/*" hidden><textarea id="nTxt" rows="1" placeholder="Write a note"></textarea><button class="send" id="nSend" type="button">Send</button></div></div>';
-  h+='<div class="field"><label for="fAddr">Address</label><input id="fAddr" autocomplete="off" value="'+esc(c.address)+'" placeholder="Start typing, like 5 Collingswood"><div class="sugs" id="fAddrS"></div><div class="row" style="gap:14px"><button type="button" class="minilink" id="fAddrL">Look up full address</button><a class="minilink" id="fMap" target="_blank" rel="noopener" href="'+(c.address?mapUrl(c.address):'#')+'"'+(c.address?'':' hidden')+'>Open in Maps</a></div><div id="fAddrOut"></div></div>';
+  h+='<div class="field"><label for="fAddr">Address</label><input id="fAddr" autocomplete="off" value="'+esc(c.address)+'" placeholder="Start typing"><div class="sugs" id="fAddrS"></div><div class="row" style="gap:14px"><button type="button" class="minilink" id="fAddrL">Look up full address</button><a class="minilink" id="fMap" target="_blank" rel="noopener" href="'+(c.address?mapUrl(c.address):'#')+'"'+(c.address?'':' hidden')+'>Open in Maps</a></div><div id="fAddrOut"></div></div>';
   h+='<div class="field"><label for="fCon">Contractor</label><input id="fCon" autocomplete="off" value="'+esc(c.contractor)+'" placeholder="Search or type a new contractor"><div class="sugs" id="fConS"></div></div>';
-  h+='<div class="two"><div class="field"><label for="fFor">Foreman</label><input id="fFor" autocomplete="off" value="'+esc(c.foreman||'')+'" placeholder="Who you are talking to"><div class="sugs" id="fForS"></div></div><div class="field"><label for="fPh">Foreman phone</label><input id="fPh" type="tel" value="'+esc(c.phone)+'"></div></div>';
+  h+='<div class="two"><div class="field"><label for="fFor">Foreman</label><input id="fFor" autocomplete="off" value="'+esc(c.foreman||'')+'"><div class="sugs" id="fForS"></div></div><div class="field"><label for="fPh">Foreman phone</label><input id="fPh" type="tel" value="'+esc(c.phone)+'"></div></div>';
   h+='<button type="button" class="minilink" id="fForL">Find foreman in Google Contacts</button><div id="fForOut"></div>';
   h+='<div class="two"><div class="field"><label for="fCrew">Crew</label><select id="fCrew">'+opts(S.crew.concat(['Me']),c.crew,'Choose crew')+'</select></div><div class="field"><label for="fSize">Crew size</label><input id="fSize" type="number" inputmode="numeric" min="1" value="'+esc(c.crewSize||'')+'"></div><div class="field"><label for="fVeh">Vehicle</label><select id="fVeh">'+opts(S.vehicles,c.vehicle,'No vehicle')+'</select></div></div>';
-  h+='<div class="field"><label for="fMat">Materials (one per line, with amount)</label><textarea id="fMat" rows="3" placeholder="Contractor bags, 2 boxes">'+esc((c.materials||[]).join('\n'))+'</textarea></div>';
+  h+='<div class="field"><label for="fMat">Materials (one per line, with amount)</label><textarea id="fMat" rows="3">'+esc((c.materials||[]).join('\n'))+'</textarea></div>';
   var tsel=c.tools||[],th='';S.tools.concat(tsel.filter(function(x){return S.tools.indexOf(x)<0})).forEach(function(tn,i){th+='<label class="tchk"><input type="checkbox" name="fTool" id="fTool'+i+'" value="'+esc(tn)+'"'+(tsel.indexOf(tn)>=0?' checked':'')+'>'+esc(tn)+'</label>'});
   var eqo='';if(EQ.rows.length){eqo='<select id="fEqAdd" style="margin-top:6px"><option value="">Add from equipment sheet...</option>';groups().forEach(function(g){eqo+='<optgroup label="'+esc(g)+'">';EQ.rows.filter(function(r){return r.group===g}).forEach(function(r){var nm=r.item+(r.brand&&r.brand!=='Not specified'?' ('+r.brand+(r.model&&r.model!=='Not specified'?' '+r.model:'')+')':'')+' - '+g;eqo+='<option value="'+esc(nm)+'">'+esc(r.item+(r.brand?' '+r.brand:'')+(r.model?' '+r.model:''))+'</option>'});eqo+='</optgroup>'});eqo+='</select>'}
   h+='<div class="field"><label>Tools to bring</label><div class="tchks" id="fTools">'+th+'</div>'+eqo+'</div>';
@@ -3285,10 +3285,10 @@ function openKey(serial){
   var h='<h3>'+(isNew?'New key':'Key #'+esc(k.serial))+'</h3>';
   if(isNew)h+='<div class="mt">The key gets the next number when you save. Write that number on the key tag.</div>';
   else h+='<div class="mt">This number belongs to this key forever and is never used again.'+(r?' <b>Retired'+(k.retiredOn?' '+esc(k.retiredOn.slice(0,10)):'')+(k.why?': '+esc(k.why):'')+'.</b>':'')+'</div>';
-  h+='<div class="field"><label for="kOpens">What it opens</label><input id="kOpens" value="'+esc(k.opens)+'" placeholder="Front door, side gate, lockbox..."></div>';
-  h+='<div class="field"><label for="kAddr">Address</label><input id="kAddr" value="'+esc(k.address)+'" autocomplete="off" placeholder="Start typing, like 1555 Ridge"><div class="row" style="gap:14px"><button type="button" class="minilink" id="kAddrL">Look up full address</button></div><div id="kAddrOut"></div></div>';
+  h+='<div class="field"><label for="kOpens">What it opens</label><input id="kOpens" value="'+esc(k.opens)+'"></div>';
+  h+='<div class="field"><label for="kAddr">Address</label><input id="kAddr" value="'+esc(k.address)+'" autocomplete="off" placeholder="Start typing"><div class="row" style="gap:14px"><button type="button" class="minilink" id="kAddrL">Look up full address</button></div><div id="kAddrOut"></div></div>';
   h+='<div class="field"><label for="kCon">Contractor or owner</label><input id="kCon" value="'+esc(k.contractor)+'" autocomplete="off"><div class="sugs" id="kConS"></div></div>';
-  h+='<div class="field"><label for="kKept">Kept at / who has it</label><input id="kKept" value="'+esc(k.kept)+'" placeholder="Key box in the office, Anjio has it..."></div>';
+  h+='<div class="field"><label for="kKept">Kept at / who has it</label><input id="kKept" value="'+esc(k.kept)+'"></div>';
   h+='<div class="field"><label for="kNotes">Notes</label><textarea id="kNotes" rows="2">'+esc(k.notes)+'</textarea></div>';
   h+='<div id="kWarn"></div><div class="row"><button class="btn primary" id="kSave">'+(isNew?'Save and get number':'Save')+'</button><button class="btn" id="kX">Cancel</button></div>';
   if(!isNew)h+=r?'<button class="menuitem" id="kUnret">Mark active again</button>':'<button class="menuitem red" id="kRetire">Retire this key (lock changed, key lost...)</button>';
@@ -3310,7 +3310,7 @@ function openKey(serial){
     },function(e){b.disabled=false;b.textContent=isNew?'Save and get number':'Save';warn(e.message||String(e))});
   });
   bind('kRetire',function(){
-    openSheet('<h3>Retire key #'+esc(k.serial)+'?</h3><p style="margin:0;color:var(--muted)">The number stays on record and is never given to another key.</p><div class="field"><label for="kWhy">Why</label><input id="kWhy" placeholder="Lock changed, key lost, job finished..."></div><div id="kWarn"></div><div class="row"><button class="btn danger" id="kRY">Retire</button><button class="btn" id="kRN">Cancel</button></div>');
+    openSheet('<h3>Retire key #'+esc(k.serial)+'?</h3><p style="margin:0;color:var(--muted)">The number stays on record and is never given to another key.</p><div class="field"><label for="kWhy">Why</label><input id="kWhy"></div><div id="kWarn"></div><div class="row"><button class="btn danger" id="kRY">Retire</button><button class="btn" id="kRN">Cancel</button></div>');
     bind('kRN',function(){openKey(k.serial)});
     bind('kRY',function(){var why=val('kWhy').trim();keyUpdate(k.serial,{status:'Retired',retiredOn:stampNow(),why:why}).then(function(){closeSheet();render();toast('Key #'+k.serial+' retired')},function(e){warn(e.message||String(e))})});
   });
@@ -3385,11 +3385,11 @@ function openTow(id,pre){
   var h='<h3>'+(isNew?'New tow':'Tow')+'</h3>';
   h+='<div class="two"><div class="field"><label for="twDate">Date</label><input id="twDate" type="date" value="'+esc(t.date)+'"></div><div class="field"><label for="twTime">Time</label><input id="twTime" type="time" value="'+esc(t.time)+'"></div></div>';
   h+='<div class="field"><label>Status</label><div class="seg"><button type="button" class="'+(t.status!=='Done'?'on':'')+'" data-twst="Scheduled">Scheduled</button><button type="button" class="'+(t.status==='Done'?'on':'')+'" data-twst="Done">Done</button></div></div>';
-  h+='<div class="field"><label for="twEq">What we towed</label><input id="twEq" value="'+esc(t.equip)+'" autocomplete="off" placeholder="Kubota skid steer SVL75"><div class="sugs" id="twEqS"></div></div>';
+  h+='<div class="field"><label for="twEq">What we towed</label><input id="twEq" value="'+esc(t.equip)+'" autocomplete="off"><div class="sugs" id="twEqS"></div></div>';
   h+='<div class="field"><label for="twFrom">From</label><input id="twFrom" value="'+esc(t.from)+'" autocomplete="off" placeholder="Start typing an address or place"><div id="twFromOut"></div></div>';
   h+='<div class="field"><label for="twTo">To</label><input id="twTo" value="'+esc(t.to)+'" autocomplete="off" placeholder="Start typing an address or place"><div id="twToOut"></div></div>';
   h+='<div class="field"><label for="twFor">For (contractor or job)</label><input id="twFor" value="'+esc(t.forr)+'" autocomplete="off"><div class="sugs" id="twForS"></div></div>';
-  h+='<div class="two"><div class="field"><label for="twCo">Towing company</label><input id="twCo" value="'+esc(t.company||'')+'" autocomplete="off" placeholder="If someone else towed it"><div class="sugs" id="twCoS"></div></div><div class="field"><label for="twCt">Contact</label><input id="twCt" value="'+esc(t.contact||'')+'" placeholder="Name or phone"></div></div>';
+  h+='<div class="two"><div class="field"><label for="twCo">Towing company</label><input id="twCo" value="'+esc(t.company||'')+'" autocomplete="off"><div class="sugs" id="twCoS"></div></div><div class="field"><label for="twCt">Contact</label><input id="twCt" value="'+esc(t.contact||'')+'" placeholder="Name or phone"></div></div>';
   h+='<div class="two"><div class="field"><label for="twTruck">Our truck</label><select id="twTruck">'+opts(S.vehicles,t.truck,'Not set')+'</select></div><div class="field"><label for="twDrv">Driver</label><select id="twDrv">'+opts(S.crew.concat(['Me']),t.driver,'Not set')+'</select></div></div>';
   h+='<div class="field"><label for="twNotes">Notes</label><textarea id="twNotes" rows="2">'+esc(t.notes)+'</textarea></div>';
   if(t.from&&t.to)h+='<div class="row" style="gap:14px"><a class="minilink" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(t.from)+'&destination='+encodeURIComponent(t.to)+'">Route in Google Maps</a><a class="minilink" target="_blank" rel="noopener" href="https://waze.com/ul?q='+encodeURIComponent(t.to)+'&navigate=yes">Waze to drop-off</a></div>';
@@ -3507,13 +3507,12 @@ function openPersonEdit(p,pre){
   var isNew=!p;p=p||{kind:'g',name:'',company:'',role:'',phone:'',email:'',notes:'',birthday:'',address:'',gid:''};if(pre)for(var k in pre)p[k]=pre[k];
   var h='<h3>'+(isNew?'New contact':'Edit '+esc(p.name))+'</h3>';
   h+='<div class="field"><label for="peName">Name</label><input id="peName" value="'+esc(p.name)+'"></div>';
-  h+='<div class="two"><div class="field"><label for="peCo">Company</label><input id="peCo" value="'+esc(p.company||'')+'"></div><div class="field"><label for="peRole">Role</label><input id="peRole" value="'+esc(p.role||'')+'" placeholder="Foreman, supplier..."></div></div>';
+  h+='<div class="two"><div class="field"><label for="peCo">Company</label><input id="peCo" value="'+esc(p.company||'')+'"></div><div class="field"><label for="peRole">Role</label><input id="peRole" value="'+esc(p.role||'')+'"></div></div>';
   h+='<div class="two"><div class="field"><label for="pePh">Phone</label><input id="pePh" type="tel" value="'+esc(p.phone||'')+'"></div><div class="field"><label for="peEm">Email</label><input id="peEm" type="email" value="'+esc(p.email||'')+'"></div></div>';
   var bq=bdayParts(p.birthday);
   h+='<div class="two"><div class="field"><label for="peBd">Birthday</label><input id="peBd" type="date" value="'+(bq?(bq.y||2000)+'-'+pad(bq.m)+'-'+pad(bq.d):'')+'"></div><div class="field"><label>&nbsp;</label><label class="tchk"><input type="checkbox" id="peNoY"'+(bq&&!bq.y?' checked':'')+'>Year unknown</label></div></div>';
   h+='<div class="field"><label for="peAd">Address</label><input id="peAd" value="'+esc(p.address||'')+'" autocomplete="off" placeholder="Start typing"><div id="peAdOut"></div></div>';
   h+='<div class="field"><label for="peNo">Notes</label><textarea id="peNo" rows="2">'+esc(p.notes||'')+'</textarea></div>';
-  h+='<div class="mt">Saves to your Google Contacts, so it shows on your iPhone too.</div>';
   h+='<div id="peW"></div><div class="row"><button class="btn primary" id="peS">Save</button><button class="btn" id="peX">Cancel</button></div>';
   openSheet(h);
   bind('peX',closeSheet);
