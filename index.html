@@ -609,6 +609,15 @@ html.tv .swhint{display:none}
 .dmlinks{display:flex;gap:18px;justify-content:flex-end;font-size:14px}
 .dmpill{font-weight:700;font-size:13px;padding:7px 12px;cursor:pointer}
 .dmnext{font-size:11px;color:var(--muted)}
+
+/* talk button: clear on/off */
+.mic{position:relative;transition:transform .12s ease,background .2s ease}
+.mic:active{transform:scale(.88)}
+.mic.on,html.lg .mic.on{background:radial-gradient(120% 120% at 30% 20%,#FF6B61 0%,#E5281C 60%,#B51A10 100%)!important;transform:scale(.92);box-shadow:inset 0 5px 12px rgba(0,0,0,.35),0 0 0 6px rgba(229,40,28,.22)!important;animation:none}
+.mic.on::after{content:'';position:absolute;inset:-4px;border-radius:50%;border:3px solid rgba(229,40,28,.65);animation:micring 1.1s ease-out infinite;pointer-events:none}
+@keyframes micring{from{transform:scale(1);opacity:1}to{transform:scale(1.55);opacity:0}}
+.mic.work,html.lg .mic.work{background:var(--muted)!important;transform:scale(.96)}
+.hear.hearon{color:#E5281C;font-weight:700}
 </style>
 
 <header id="hdr"><div class="wrap" id="hdrIn"></div></header>
@@ -623,7 +632,7 @@ html.tv .swhint{display:none}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 29, 2026 (56)';
+var KEY='workday.v1',APPVER='Oct 29, 2026 (57)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -1787,9 +1796,11 @@ function autoTalk(){try{return localStorage.getItem('workday.autotalk')!=='0'}ca
 function voiceUI(state,text){
   var b=document.getElementById('aiMic'),t=document.getElementById('aiHear');if(!b||!t)return;
   b.className='mic'+(state==='listen'?' on':state==='work'?' work':'');
+  var want=state==='listen'?'stop':'mic';if(b.getAttribute('data-ic')!==want){b.setAttribute('data-ic',want);b.innerHTML=want==='stop'?'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';b.setAttribute('aria-label',want==='stop'?'Stop listening':'Talk to the assistant')}
+  t.classList.toggle('hearon',state==='listen');
   if(b.parentNode)b.parentNode.classList.toggle('listening',state==='listen');
   if(state==='listen')waveStart();else waveStop();
-  t.textContent=text||(state==='listen'?'Listening... tap the mic when you are done':state==='work'?'Got it...':'Tap to talk');
+  t.textContent=text||(state==='listen'?'Listening... tap the red button to stop':state==='work'?'Got it...':'Tap to talk');
 }
 /* listening waveform: real mic level when we have it, a gentle idle wave otherwise */
 var WAVE={an:null,buf:null,raf:0,hist:[],t:0};
