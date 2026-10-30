@@ -131,8 +131,8 @@ main.tint-past{background:var(--past-tint)} main.tint-future{background:var(--fu
 .sum summary::-webkit-details-marker{display:none}
 .sum summary span{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .sum summary i{font-style:normal;color:var(--muted);font-size:13px;font-weight:600}
-.sum[open] summary i::after{content:" - hide"}
-.sum:not([open]) summary i::after{content:" - show"}
+.sum[open] summary i::after{content:" hide"}
+.sum:not([open]) summary i::after{content:" show"}
 .sum[open]{gap:8px}
 .sum{padding:10px 12px}
 .sumtop{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -618,10 +618,16 @@ html.tv .swhint{display:none}
 @keyframes micring{from{transform:scale(1);opacity:1}to{transform:scale(1.55);opacity:0}}
 .mic.work,html.lg .mic.work{background:var(--muted)!important;transform:scale(.96)}
 .hear.hearon{color:#E5281C;font-weight:700}
+
+#ptr{height:0;overflow:hidden;display:grid;place-items:end center;color:var(--muted);font-size:13px;font-weight:600;transition:height .2s ease}
+#ptr.pulling{transition:none}
+#ptr span{padding-bottom:10px;display:flex;align-items:center;gap:8px}
+#ptr .spin{width:16px;height:16px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--todo);animation:ptrs .7s linear infinite}
+@keyframes ptrs{to{transform:rotate(360deg)}}
 </style>
 
 <header id="hdr"><div class="wrap" id="hdrIn"></div></header>
-<main id="main"><div class="wrap" id="mainIn"></div></main>
+<main id="main"><div id="ptr" aria-live="polite"><span id="ptrT"></span></div><div class="wrap" id="mainIn"></div></main>
 <button class="fab" id="fab" aria-label="Talk to the assistant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
 <nav class="tabs" id="tabs" aria-label="Pages"></nav>
 <div class="scrim" id="scrim" hidden><div class="sheet" id="sheet"><div class="wrap" id="sheetIn"></div></div></div>
@@ -632,7 +638,7 @@ html.tv .swhint{display:none}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 30, 2026 (59)';
+var KEY='workday.v1',APPVER='Oct 30, 2026 (60)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -3721,6 +3727,27 @@ function openMoved(){
   bind('mvCopy',function(){copyText(APP_URL)});bind('mvCode',openHandoffMake);bind('mvLater',closeSheet);
 }
 var MOVED=location.hostname==='shmuel-pixel.github.io';
+
+/* pull down at the top to update everything */
+(function(){
+  var main=document.getElementById('main'),box=document.getElementById('ptr'),txt=document.getElementById('ptrT');if(!main||!box)return;
+  var y0=null,x0=0,pull=0,on=false,busy=false;
+  function setH(h){box.style.height=h+'px'}
+  main.addEventListener('touchstart',function(e){if(busy||main.scrollTop>0||e.touches.length!==1||!document.getElementById('scrim').hidden){y0=null;return}y0=e.touches[0].clientY;x0=e.touches[0].clientX;pull=0;on=false},{passive:true});
+  main.addEventListener('touchmove',function(e){if(y0===null)return;var dy=e.touches[0].clientY-y0,dx=e.touches[0].clientX-x0;
+    if(!on){if(dy>8&&dy>Math.abs(dx)*1.5&&main.scrollTop<=0){on=true;box.classList.add('pulling')}else if(Math.abs(dx)>10||dy<0){y0=null;return}else return}
+    if(e.cancelable)e.preventDefault();pull=Math.min(dy*0.5,90);setH(pull);txt.textContent=pull>=60?'Let go to update':'Pull to update'},{passive:false});
+  function end(){if(y0===null)return;y0=null;box.classList.remove('pulling');if(!on){return}on=false;
+    if(pull<60){setH(0);return}
+    busy=true;setH(44);txt.innerHTML='<i class="spin"></i>Updating...';
+    try{inboxAt=0}catch(x){}
+    var jobs=[];try{jobs.push(syncNow(true))}catch(x){}
+    try{msgInbox()}catch(x){}
+    try{if(S.view==='dump')dmRefresh();if(S.view==='ppl'){PPL.at=0;jobs.push(pplLoad())}if(S.view==='msg')jobs.push(msgPollChats())}catch(x){}
+    Promise.all(jobs.map(function(p){return Promise.resolve(p).catch(function(){})})).then(function(){return new Promise(function(r){setTimeout(r,500)})}).then(function(){busy=false;setH(0);render();toast(connOK()?'Up to date':'Not connected to Google')});
+  }
+  main.addEventListener('touchend',end);main.addEventListener('touchcancel',end);
+})();
 /* ---------- start ---------- */
 connLoad();remLoad();eqLoad();dmLoad();msgLoad();
 if(!load()){seed();save()}
