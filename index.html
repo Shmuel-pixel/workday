@@ -632,7 +632,7 @@ html.tv .swhint{display:none}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 30, 2026 (58)';
+var KEY='workday.v1',APPVER='Oct 30, 2026 (59)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -886,7 +886,8 @@ function byTime(a,b){return (a.time||'99').localeCompare(b.time||'99')}
 function byOrder(a,b){var ao=a.o==null?1e6:a.o,bo=b.o==null?1e6:b.o;if(ao!==bo)return ao-bo;return byTime(a,b)}
 function cardsOn(s){return S.cards.filter(function(c){return c.date===s}).sort(byOrder)}
 function moveCard(c,to){if(!c||!to||c.date===to)return;c.moves=c.moves||[];c.moves.push({f:c.date,t:to,at:Date.now()});c.date=to;delete c.o}
-function movedFrom(s){return S.cards.filter(function(c){return c.date!==s&&(c.moves||[]).some(function(m){return m.f===s})})}
+/* jobs that were planned for day s and moved off it. A job that was pushed onto s and then moved back is not counted. */
+function movedFrom(s){return S.cards.filter(function(c){if(c.date===s)return false;var mv=c.moves||[];for(var i=0;i<mv.length;i++){if(mv[i].f===s)return true;if(mv[i].t===s)return false}return false})}
 function lastMoveFrom(c,s){var m=null;(c.moves||[]).forEach(function(x){if(x.f===s)m=x});return m}
 function pushTarget(c){var T=todayStr(),d;if(c.date<T){d=T;while(noWork(d))d=addDays(d,1);return d}d=addDays(c.date,1);while(noWork(d))d=addDays(d,1);return d}
 function pushLabel(c){var T=todayStr(),t=pushTarget(c);return t===T?'Move to today':t===addDays(T,1)?'Push to tomorrow':'Push to '+engShort(t)}
