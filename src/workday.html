@@ -603,6 +603,9 @@ html.tv .swhint{display:none}
 #ptr span{padding-bottom:10px;display:flex;align-items:center;gap:8px}
 #ptr .spin{width:16px;height:16px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--todo);animation:ptrs .7s linear infinite}
 @keyframes ptrs{to{transform:rotate(360deg)}}
+.undobar{position:fixed;left:16px;bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:61;display:flex;align-items:center;gap:14px;padding:9px 10px 9px 14px;border-radius:14px;background:rgba(28,28,30,.88);color:#fff;font-size:14px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.25);opacity:0;transform:translateY(10px);pointer-events:none;transition:opacity .2s,transform .2s;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.undobar.show{opacity:1;transform:none;pointer-events:auto}
+.undobar button{color:#64B5FF;font-weight:800;font-size:14px;padding:4px 6px}
 </style>
 
 <header id="hdr"><div class="wrap" id="hdrIn"></div></header>
@@ -617,7 +620,7 @@ html.tv .swhint{display:none}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Nov 1, 2026 (61)';
+var KEY='workday.v1',APPVER='Nov 1, 2026 (62)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -870,6 +873,23 @@ function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'
 function byTime(a,b){return (a.time||'99').localeCompare(b.time||'99')}
 function byOrder(a,b){var ao=a.o==null?1e6:a.o,bo=b.o==null?1e6:b.o;if(ao!==bo)return ao-bo;return byTime(a,b)}
 function cardsOn(s){return S.cards.filter(function(c){return c.date===s}).sort(byOrder)}
+/* undo: every change to a job can be undone for 5 seconds */
+var UNDO=null,undoT=null;
+function snap(list){return list.filter(Boolean).map(function(c){return JSON.parse(JSON.stringify(c))})}
+function offerUndo(snaps,label){
+  UNDO=snaps;clearTimeout(undoT);
+  var b=document.getElementById('undoBar');if(!b){b=document.createElement('div');b.id='undoBar';b.className='undobar';document.body.appendChild(b)}
+  var tq=document.getElementById('toast');if(tq){clearTimeout(tt);tq.hidden=true}
+  b.innerHTML='<span>'+esc(label)+'</span><button id="undoBtn">Undo</button>';b.classList.add('show');
+  document.getElementById('undoBtn').onclick=doUndo;
+  undoT=setTimeout(function(){b.classList.remove('show');UNDO=null},5000);
+}
+function doUndo(){
+  if(!UNDO)return;
+  UNDO.forEach(function(sv){var i=-1;S.cards.forEach(function(x,k){if(x.id===sv.id)i=k});if(i>=0)S.cards[i]=sv;else S.cards.push(sv);try{if(SYNC.tomb[sv.id])delete SYNC.tomb[sv.id]}catch(e){}});
+  UNDO=null;clearTimeout(undoT);var b=document.getElementById('undoBar');if(b)b.classList.remove('show');
+  save();closeSheet();render();toast('Undone');
+}
 function moveCard(c,to){if(!c||!to||c.date===to)return;c.moves=c.moves||[];c.moves.push({f:c.date,t:to,at:Date.now()});c.date=to;delete c.o}
 /* jobs that were planned for day s and moved off it. A job that was pushed onto s and then moved back is not counted. */
 function movedFrom(s){return S.cards.filter(function(c){if(c.date===s)return false;var mv=c.moves||[];for(var i=0;i<mv.length;i++){if(mv[i].f===s)return true;if(mv[i].t===s)return false}return false})}
@@ -1004,6 +1024,7 @@ function renderDay(){
     h+=zone('missed','Missed',todo,'missed',false,'Nothing missed.');
   }else{
     h+=zone('todo','To-Do',todo,'',true,'Nothing yet.');
+    if(done.length)h+=zone('done','Done',done,'',false,'');
   }
   if(pushed.length)h+='<section class="zone movedz"><div class="zhead"><h2>Pushed</h2><span class="cnt">'+pushed.length+'</span></div>'+pushed.map(function(c){var m=lastMoveFrom(c,s);return '<button class="movedrow" data-open-card="'+esc(c.id)+'"><span><b>'+esc(jobTitle(c))+'</b>'+(c.address?'<small>'+esc(c.address.split(',')[0])+'</small>':'')+'</span><span class="mto">'+(c.status==='done'?'Done ':'')+'&rarr; '+esc(engShort(c.date))+'</span></button>'}).join('')+'</section>';
   if(canc.length)h+='<section class="zone cancz"><div class="zhead"><h2>Canceled</h2><span class="cnt">'+canc.length+'</span></div>'+canc.map(function(c){return '<button class="movedrow" data-open-card="'+esc(c.id)+'"><span><b>'+esc(jobTitle(c))+'</b>'+(c.address?'<small>'+esc(c.address.split(',')[0])+'</small>':'')+'</span><span class="mto">Canceled</span></button>'}).join('')+'</section>';
@@ -2550,20 +2571,20 @@ function openMenu(id){
   h+='<button class="menuitem red" id="mDel">Delete card</button>';
   h+='<button class="btn" id="mClose">Close</button>';
   openSheet(h);
-  bind('mDone',function(){c.status='done';save();closeSheet();render();toast('Marked done')});
-  bind('mTodo',function(){c.status='todo';save();closeSheet();render();toast('Moved to To-Do')});
-  bind('mDoneToday',function(){var was=c.date;moveCard(c,T);c.status='done';save();closeSheet();render();toast('Cleared from '+engShort(was)+' and marked done today')});
-  bind('mToday',function(){moveCard(c,T);save();closeSheet();render();toast('Moved to today')});
-  bind('mTom',function(){var s=addDays(c.date<T?T:c.date,1);while(noWork(s))s=addDays(s,1);moveCard(c,s);save();closeSheet();render();toast('Moved to '+engShort(s))});
+  bind('mDone',function(){var sv=snap([c]);c.status='done';save();closeSheet();render();offerUndo(sv,'Marked done')});
+  bind('mTodo',function(){var sv=snap([c]);c.status='todo';save();closeSheet();render();offerUndo(sv,'Moved to To-Do')});
+  bind('mDoneToday',function(){var sv=snap([c]);moveCard(c,T);c.status='done';save();closeSheet();render();offerUndo(sv,'Done today')});
+  bind('mToday',function(){var sv=snap([c]);moveCard(c,T);save();closeSheet();render();offerUndo(sv,'Moved to today')});
+  bind('mTom',function(){var s=addDays(c.date<T?T:c.date,1);while(noWork(s))s=addDays(s,1);var sv=snap([c]);moveCard(c,s);save();closeSheet();render();offerUndo(sv,'Moved to '+engShort(s))});
   bind('mEdit',function(){openEdit(id)});
-  bind('mCancel',function(){c.status='canceled';save();closeSheet();render();toast('Marked canceled')});
-  bind('mUncancel',function(){c.status='todo';save();closeSheet();render();toast('Back to To-Do')});
+  bind('mCancel',function(){var sv=snap([c]);c.status='canceled';save();closeSheet();render();offerUndo(sv,'Marked canceled')});
+  bind('mUncancel',function(){var sv=snap([c]);c.status='todo';save();closeSheet();render();offerUndo(sv,'Back to To-Do')});
   bind('mNotes',function(){openNotes(id)});
   bind('mSend',function(){openSend(id)});
   bind('mFive',function(){openFiveStar(id)});
   bind('mUp',function(){if(moveBy(id,-1)){save();closeSheet();render()}else toast('Already at the top')});
   bind('mDown',function(){if(moveBy(id,1)){save();closeSheet();render()}else toast('Already at the bottom')});
-  bind('mDel',function(){confirmSheet('Delete this card?',jobTitle(c)+(c.address?' at '+c.address:''),'Delete',function(){S.cards=S.cards.filter(function(x){return x.id!==id});save();closeSheet();render();toast('Card deleted')})});
+  bind('mDel',function(){confirmSheet('Delete this card?',jobTitle(c)+(c.address?' at '+c.address:''),'Delete',function(){var sv=snap([c]);S.cards=S.cards.filter(function(x){return x.id!==id});save();closeSheet();render();offerUndo(sv,'Card deleted')})});
   bind('mClose',closeSheet);
 }
 function opts(list,val,blank){var h=blank?'<option value="">'+blank+'</option>':'';list.forEach(function(v){h+='<option'+(v===val?' selected':'')+'>'+esc(v)+'</option>'});if(val&&list.indexOf(val)<0)h+='<option selected>'+esc(val)+'</option>';return h}
@@ -2805,9 +2826,9 @@ document.addEventListener('click',function(e){
   else if(t.dataset.eqloc){EQ.loc=t.dataset.eqloc;render()}
   else if(t.dataset.copysum)copyText(summarize(t.dataset.copysum).text);
   else if(t.dataset.notes)openNotes(t.dataset.notes);
-  else if(t.dataset.markdone){var md=find(t.dataset.markdone);md.status='done';save();render();toast('Marked done')}
+  else if(t.dataset.markdone){var md=find(t.dataset.markdone),sv1=snap([md]);md.status='done';save();render();offerUndo(sv1,'Marked done')}
   else if(t.dataset.more)openMenu(t.dataset.more);
-  else if(t.dataset.movetoday){var c=find(t.dataset.movetoday);moveCard(c,todayStr());save();render();toast('Moved to today')}
+  else if(t.dataset.movetoday){var c=find(t.dataset.movetoday),sv2=snap([c]);moveCard(c,todayStr());save();render();offerUndo(sv2,'Moved to today')}
   else if(t.dataset.tab){if(t.dataset.tab==='msg'&&S.view==='msg')MSG.cur=null;S.view=t.dataset.tab;if(S.view==='msg'){setTimeout(msgTick,50)}if(S.view==='day'&&!S.cur)S.cur=todayStr();if(S.view==='log')S.logFocus=null;render();mainTop()}
   else if(t.dataset.open)openDate(t.dataset.open);
   else if(t.dataset.rm){var p=t.dataset.rm.split(':');S[p[0]].splice(+p[1],1);save();pushLists(p[0]);openSettings()}
@@ -2884,6 +2905,7 @@ document.addEventListener('touchmove',function(e){
   cs.dx=dx;cs.el.classList.add('swiping');cs.el.style.transform='translateX('+dx+'px)';
   var need=Math.min(110,cs.el.offsetWidth*0.33),ready=Math.abs(dx)>need;
   if(c.status==='done')swBg(cs,'back',' Back to To-Do',ready);
+  else if(dx<0&&c.date>todayStr())swBg(cs,'done','Move to today ',ready);
   else if(dx<0)swBg(cs,'done','Done ',ready);
   else swBg(cs,'push',' '+pushLabel(c),ready);
 },{passive:false});
@@ -2891,13 +2913,17 @@ document.addEventListener('touchend',function(){
   if(!cs)return;var d=cs;cs=null;if(d.lock!=='h'){if(d.bg)d.bg.remove();return}
   var c=find(d.id),need=Math.min(110,d.el.offsetWidth*0.33);
   if(c&&Math.abs(d.dx)>need){
-    if(c.status==='done'){placeCard(c,'todo',null);save();render();toast('Back to To-Do');return}
+    var sv=snap([c]);
+    if(c.status==='done'){placeCard(c,'todo',null);save();render();offerUndo(sv,'Back to To-Do');return}
+    if(d.dx<0&&c.date>todayStr()){
+      d.el.style.transition='transform .18s ease-out';d.el.style.transform='translateX(-110%)';
+      setTimeout(function(){moveCard(c,todayStr());save();render();offerUndo(sv,'Moved to today')},170);return}
     if(d.dx<0){
       d.el.style.transition='transform .18s ease-out';d.el.style.transform='translateX(-110%)';
-      setTimeout(function(){placeCard(c,'done',null);save();render();toast('Marked done')},170);return}
+      setTimeout(function(){placeCard(c,'done',null);save();render();offerUndo(sv,'Marked done')},170);return}
     var to=pushTarget(c);
     d.el.style.transition='transform .18s ease-out';d.el.style.transform='translateX(110%)';
-    setTimeout(function(){moveCard(c,to);save();render();toast((to===todayStr()?'Moved to today':'Pushed to '+engShort(to)))},170);return;
+    setTimeout(function(){moveCard(c,to);save();render();offerUndo(sv,(to===todayStr()?'Moved to today':'Pushed to '+engShort(to)))},170);return;
   }
   d.el.classList.remove('swiping');d.el.classList.add('snap');d.el.style.transform='';
   setTimeout(function(){d.el.classList.remove('snap');if(d.bg)d.bg.remove()},200);
