@@ -617,7 +617,7 @@ html.tv .swhint{display:none}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Oct 30, 2026 (60)';
+var KEY='workday.v1',APPVER='Nov 1, 2026 (61)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -917,7 +917,7 @@ document.documentElement.classList.toggle('lg',lookGlass());
 /* big screen mode: smaller, more on the screen, side by side when the phone is sideways (for showing on a TV) */
 function tvOn(){try{return localStorage.getItem('workday.tv')==='1'}catch(e){return false}}
 document.documentElement.classList.toggle('tv',tvOn());
-function tvToggle(){var on=!tvOn();try{localStorage.setItem('workday.tv',on?'1':'0')}catch(e){}document.documentElement.classList.toggle('tv',on);render();setTimeout(setHdrH,50);toast(on?(window.innerWidth<window.innerHeight?'Big screen mode on. Turn the phone sideways.':'Big screen mode on'):'Big screen mode off')}
+function tvToggle(){var on=!tvOn();try{localStorage.setItem('workday.tv',on?'1':'0')}catch(e){}document.documentElement.classList.toggle('tv',on);try{if(on&&screen.orientation&&screen.orientation.lock)screen.orientation.lock('landscape').catch(function(){});if(!on&&screen.orientation&&screen.orientation.unlock)screen.orientation.unlock()}catch(e){}render();setTimeout(setHdrH,50);toast(on?(window.innerWidth<window.innerHeight?'Big screen mode on. Turn the phone sideways.':'Big screen mode on'):'Big screen mode off')}
 function setHdrH(){var h=document.getElementById('hdr');if(h)document.documentElement.style.setProperty('--hdrH',h.offsetHeight+'px')}
 try{if(window.ResizeObserver)new ResizeObserver(setHdrH).observe(document.getElementById('hdr'));window.addEventListener('resize',setHdrH)}catch(e){}
 function renderHeader(){
@@ -936,7 +936,7 @@ function renderHeader(){
     bind('mNew',openMsgNew);
     return;
   }
-  var h='<div class="toprow"><div class="dates" id="openCal" role="button" tabindex="0" aria-label="Open the calendar"><div class="eng">'+esc(engLong(s))+'</div><div class="hebeng"><span>'+esc(hebEn(s))+' <span class="calhint">'+IC.cal+(S.view==='cal'?'Close calendar':'Calendar')+'</span></span><span class="shk">Shkia '+clock(sunsetMs(s))+'</span></div></div><span class="hbtns"><button class="iconbtn'+(tvOn()?' tvon':'')+'" id="tvBtn" aria-label="Big screen mode" aria-pressed="'+tvOn()+'">'+IC.tv+'</button><button class="iconbtn" id="gear" aria-label="Settings">'+IC.gear+'</button></span></div>';
+  var h='<div class="toprow"><div class="dates" id="openCal" role="button" tabindex="0" aria-label="Open the calendar"><div class="eng">'+esc(engLong(s))+'</div><div class="hebeng"><span>'+esc(hebEn(s))+' <span class="calhint">'+IC.cal+(S.view==='cal'?'Close calendar':'Calendar')+'</span></span><span class="shk">Shkia '+clock(sunsetMs(s))+'</span></div></div><button class="iconbtn" id="gear" aria-label="Settings">'+IC.gear+'</button></div>';
   h+=chipsFor(s);
   if(S.view==='day'){
     var r=rel(s),n=diff(s,T),lab;
@@ -946,7 +946,7 @@ function renderHeader(){
     h+='<button class="navbtn" id="next" aria-label="Next day">&rsaquo;</button></div>';
   }
   el.innerHTML=h;
-  document.getElementById('gear').onclick=function(){openSettings('main')};bind('tvBtn',tvToggle);
+  document.getElementById('gear').onclick=function(){openSettings('main')};
   document.getElementById('openCal').onclick=function(){if(S.view==='cal'){S.view='day'}else{var d=parse(S.view==='day'?S.cur:todayStr());S.calY=d.getFullYear();S.calM=d.getMonth();S.view='cal'}render();mainTop()};
   if(S.view==='day'){
     document.getElementById('prev').onclick=function(){go(-1)};
@@ -2734,10 +2734,11 @@ function openSettings(page){
     h+=setGroup('Home Screen',setRow('sWidget','Widget','Today\'s jobs on your Home Screen',''));
     h+=setGroup('App','<div class="setrow static"><span><b>Version '+esc((APPVER.match(/\((\d+)\)/)||[])[1]||APPVER)+'</b><small>'+esc(APPVER.replace(/\s*\(\d+\)/,''))+'</small></span><span class="setr"></span></div><button class="setrow" id="appUpd"><span><b style="color:var(--todo)">Update app now</b></span><span></span></button>');
     h+='<div class="lookrow"><span>Look</span><button id="lookSw" class="'+(lookGlass()?'on':'')+'">'+(lookGlass()?'Glass':'Classic')+'</button></div>';
+    h+='<div class="lookrow"><span>Big screen</span><button id="tvSw" class="'+(tvOn()?'on':'')+'">'+(tvOn()?'On':'Off')+'</button></div>';
     h+='<button class="btn primary" id="sClose">Done</button>';
     openSheet(h);
     bind('sClose',function(){closeSheet();render()});
-    bind('appUpd',updateApp);
+    bind('appUpd',updateApp);bind('tvSw',function(){tvToggle();openSettings('main')});
     bind('lookSw',function(){var g=!lookGlass();try{localStorage.setItem('workday.look',g?'glass':'classic')}catch(e){}document.documentElement.classList.toggle('lg',g);setHdrH();openSettings('main');toast(g?'Glass look on':'Classic look on')});
     bind('sConn',openConn);bind('sMsg',openMsgSetup);
     bind('sLoc',function(){openLocation(openSettings)});
