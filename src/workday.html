@@ -632,7 +632,7 @@ html.tv .swhint{display:none}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Nov 2, 2026 (65)';
+var KEY='workday.v1',APPVER='Nov 2, 2026 (66)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -3425,15 +3425,15 @@ var TOWCOLS=['id','date','time','status','equip','from','to','forr','truck','dri
 function towsSave(){try{localStorage.setItem('workday.tows',JSON.stringify({rows:TOWS.rows,at:TOWS.at}))}catch(e){}}
 function towsLoad(){
   if(!connOK()){TOWS.err='Towing needs the Google connection (gear, Google).';TOWS.at=TOWS.at||1;if(DUMPSEG==='tow'&&S.view==='dump')render();return Promise.resolve()}
-  TOWS.busy=true;
+  TOWS.busy=true;TOWS.tryAt=Date.now();if(DUMPSEG==='tow'&&S.view==='dump')render();
   return bridge('getValues',{book:'workday',range:'Tows!A1:P3000'}).then(function(d){
     var v=d.values||[];TOWS.rows=v.slice(1).filter(function(r){return r[0]&&!r[13]}).map(function(r){var o={};TOWCOLS.forEach(function(k,i){o[k]=r[i]||''});return o});
     TOWS.at=Date.now();TOWS.err='';TOWS.busy=false;towsSave();if(DUMPSEG==='tow'&&S.view==='dump')render();
-  },function(e){TOWS.busy=false;TOWS.err=bridgeErr(e);if(DUMPSEG==='tow'&&S.view==='dump')render()});
+  },function(e){TOWS.busy=false;TOWS.err=bridgeErr(e);if(DUMPSEG==='tow'&&S.view==='dump'){render();toast('Towing did not load. '+TOWS.err)}});
 }
 function towFind(id){for(var i=0;i<TOWS.rows.length;i++)if(TOWS.rows[i].id===id)return TOWS.rows[i];return null}
 function renderTows(){
-  if(!TOWS.at&&!TOWS.busy)towsLoad();
+  if(!TOWS.busy&&Date.now()-(TOWS.tryAt||0)>60000)towsLoad();
   var T=todayStr(),q=TOWS.q.trim().toLowerCase();
   var h=dumpSeg();
   h+='<div class="row" style="justify-content:space-between;align-items:center"><b style="font-size:18px">Towing</b><span class="row"><button class="btn primary" id="twNew">New tow</button><button class="btn" id="twRef">'+(TOWS.busy?'Loading...':'Refresh')+'</button></span></div>';
@@ -3876,7 +3876,7 @@ var MOVED=location.hostname==='shmuel-pixel.github.io';
     try{inboxAt=0}catch(x){}
     var jobs=[];try{jobs.push(syncNow(true))}catch(x){}
     try{msgInbox()}catch(x){}
-    try{if(S.view==='dump')dmRefresh();if(S.view==='ppl'){PPL.at=0;jobs.push(pplLoad())}if(S.view==='msg')jobs.push(msgPollChats())}catch(x){}
+    try{if(S.view==='dump'&&DUMPSEG==='tow')jobs.push(towsLoad());if(S.view==='tool'&&TOOLSEG==='keys')jobs.push(keysLoad());if(S.view==='dump')dmRefresh();if(S.view==='ppl'){PPL.at=0;jobs.push(pplLoad())}if(S.view==='msg')jobs.push(msgPollChats())}catch(x){}
     Promise.all(jobs.map(function(p){return Promise.resolve(p).catch(function(){})})).then(function(){return new Promise(function(r){setTimeout(r,500)})}).then(function(){busy=false;setH(0);render();toast(connOK()?'Up to date':'Not connected to Google')});
   }
   main.addEventListener('touchend',end);main.addEventListener('touchcancel',end);
