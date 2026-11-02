@@ -632,7 +632,7 @@ html.tv .swhint{display:none}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Nov 2, 2026 (64)';
+var KEY='workday.v1',APPVER='Nov 2, 2026 (65)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -901,6 +901,35 @@ function doUndo(){
   UNDO.forEach(function(sv){var i=-1;S.cards.forEach(function(x,k){if(x.id===sv.id)i=k});if(i>=0)S.cards[i]=sv;else S.cards.push(sv);try{if(SYNC.tomb[sv.id])delete SYNC.tomb[sv.id]}catch(e){}});
   UNDO=null;clearTimeout(undoT);var b=document.getElementById('undoBar');if(b)b.classList.remove('show');
   save();closeSheet();render();toast('Undone');
+}
+/* follow-up: a job like "schedule the tow" or "order a dumpster" asks when you mark it done, and fills in the log */
+function siteMatch(a,list){var k=function(x){return norm(String(x||'')).split(' ').slice(0,2).join(' ')},ka=k(a);if(!ka)return '';for(var i=0;i<list.length;i++)if(k(list[i])===ka)return list[i];return ''}
+function followKind(c){var t=((c.type||'')+' '+(c.title||'')+' '+(c.notes||'')).toLowerCase();if(/\btow/.test(t))return 'tow';if(/dumpster|container|roll ?off/.test(t))return /pick ?up|swap|empty/.test(t)?'dpick':'ddrop';return ''}
+function afterDone(c){
+  var k=followKind(c);if(!k)return;
+  var q=k==='tow'?'Did you set up the tow?':k==='ddrop'?'Did you order the dumpster?':'Did you call for the dumpster pickup?';
+  var yes=k==='tow'?'Yes, log the tow':k==='ddrop'?'Yes, log the dumpster':'Yes, mark it';
+  setTimeout(function(){
+    openSheet('<h3>'+q+'</h3><div class="mt">'+esc(jobTitle(c))+'</div><div class="row"><button class="btn primary" id="fuYes">'+yes+'</button><button class="btn" id="fuNot">Not yet</button></div><button class="minilink" id="fuSkip">No need</button>');
+    bind('fuSkip',closeSheet);
+    bind('fuNot',function(){c.status='todo';save();closeSheet();render();toast('Kept on To-Do')});
+    bind('fuYes',function(){
+      if(k==='tow'){var eq=(c.title||'').replace(/\b(schedule|set ?up|book|call( for)?|arrange)\b/ig,'').replace(/\b(a |the )?tow(ing)?( for| of)?\b/ig,'').replace(/\s*-\s*$/,'').replace(/^\s*-\s*/,'').trim();
+        openTow(null,{date:c.date<todayStr()?todayStr():c.date,time:c.time||'',equip:eq,from:c.address||'',forr:c.contractor||'',notes:c.notes||''});return}
+      if(k==='ddrop'){openDm(null,{site:c.address||'',ord:todayStr(),notes:c.notes||''});return}
+      var site=siteMatch(c.address,DM.rows.map(function(r){return r.site}));
+      var on=DM.rows.filter(function(r){return r.site===site&&(r.status==='Delivered'||r.status==='Ordered')});
+      if(on.length===1){dmQuickTo(on[0],'Pickup Requested');closeSheet();return}
+      if(!on.length){closeSheet();S.view='dump';DUMPSEG='dump';render();toast('No dumpster on site at that address. Pick it here.');return}
+      openSheet('<h3>Which dumpster?</h3>'+on.map(function(r){return '<button class="sheetrow" style="width:100%;text-align:left" data-fupk="'+esc(r.id)+'"><span><b>'+esc(r.size+' '+MID+' '+r.co)+'</b><br><small>'+esc(r.status)+'</small></span></button>'}).join('')+'<button class="btn" id="fuX">Cancel</button>');
+      bind('fuX',closeSheet);[].forEach.call(document.querySelectorAll('[data-fupk]'),function(b){b.onclick=function(){var r=findDm(b.dataset.fupk);if(r)dmQuickTo(r,'Pickup Requested');closeSheet()}});
+    });
+  },350);
+}
+function dmQuickTo(r,status){
+  var key={Delivered:'del','Pickup Requested':'req','Picked Up':'pick'}[status];var ch={status:status};if(key)ch[key]=todayStr();
+  var old={status:r.status};if(key)old[key]=r[key];for(var k in ch)r[k]=ch[k];dmSave();render();toast(r.size+' at '+r.site.split(',')[0]+': '+status);
+  dmPatch(r,ch).catch(function(e){for(var k2 in old)r[k2]=old[k2];dmSave();render();toast('Not saved: '+(e.message||String(e)))});
 }
 function moveCard(c,to){if(!c||!to||c.date===to)return;c.moves=c.moves||[];c.moves.push({f:c.date,t:to,at:Date.now()});c.date=to;delete c.o}
 /* jobs that were planned for day s and moved off it. A job that was pushed onto s and then moved back is not counted. */
@@ -1526,9 +1555,10 @@ function dmAddPhoto(r,file,done){
 function findDm(id){for(var i=0;i<DM.rows.length;i++)if(DM.rows[i].id===id)return DM.rows[i];return null}
 function dmId(){var d=new Date(),y=String(d.getFullYear()).slice(2);return 'D'+y+pad(d.getMonth()+1)+pad(d.getDate())+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds())+pad(Math.floor(d.getMilliseconds()/10))}
 function dateField(id,label,v){return '<div class="field"><label for="'+id+'">'+label+'</label><input id="'+id+'" type="date" value="'+esc(v)+'"></div>'}
-function openDm(id){
+function openDm(id,pre){
   var T=todayStr();
   var r=id?findDm(id):{id:'',site:'',co:DM.cos[0]||'',size:DM.sizes.indexOf('30 yard')>=0?'30 yard':(DM.sizes[0]||''),num:'',status:'Ordered',ord:T,del:'',req:'',pick:'',tons:'',inv:'',notes:''};
+  if(!id&&pre){for(var pk in pre)r[pk]=pre[pk];if(r.site){var ms=siteMatch(r.site,dmSiteList());if(ms)r.site=ms}}
   if(!r)return;
   var h='<h3>'+(id?esc(r.size+' at '+r.site):'Order a dumpster')+'</h3>';
   if(id){
@@ -1548,6 +1578,7 @@ function openDm(id){
   h+='<div id="mWarn"></div><div class="row"><button class="btn primary" id="mSave">Save to log</button><button class="btn" id="mCancel">Cancel</button></div>';
   openSheet(h);
   var ss=document.getElementById('mSite'),sn=document.getElementById('mSiteNew');
+  if(!id&&r.site&&ss.value!==r.site){ss.value='__new';sn.hidden=false;sn.value=r.site;var msl=document.getElementById('mSiteL');if(msl)msl.hidden=false}
   ss.onchange=function(){sn.hidden=ss.value!=='__new';document.getElementById('mSiteL').hidden=sn.hidden;if(!sn.hidden)sn.focus()};
   bind('mSiteL',function(){lookupAddress(sn.value,'mSiteOut',function(a){sn.value=a})});
   bind('mCancel',closeSheet);
@@ -2583,9 +2614,9 @@ function openMenu(id){
   h+='<button class="menuitem red" id="mDel">Delete card</button>';
   h+='<button class="btn" id="mClose">Close</button>';
   openSheet(h);
-  bind('mDone',function(){var sv=snap([c]);c.status='done';save();closeSheet();render();offerUndo(sv,'Marked done')});
+  bind('mDone',function(){var sv=snap([c]);c.status='done';save();closeSheet();render();offerUndo(sv,'Marked done');afterDone(c)});
   bind('mTodo',function(){var sv=snap([c]);c.status='todo';save();closeSheet();render();offerUndo(sv,'Moved to To-Do')});
-  bind('mDoneToday',function(){var sv=snap([c]);moveCard(c,T);c.status='done';save();closeSheet();render();offerUndo(sv,'Done today')});
+  bind('mDoneToday',function(){var sv=snap([c]);moveCard(c,T);c.status='done';save();closeSheet();render();offerUndo(sv,'Done today');afterDone(c)});
   bind('mToday',function(){var sv=snap([c]);moveCard(c,T);save();closeSheet();render();offerUndo(sv,'Moved to today')});
   bind('mTom',function(){var s=addDays(c.date<T?T:c.date,1);while(noWork(s))s=addDays(s,1);var sv=snap([c]);moveCard(c,s);save();closeSheet();render();offerUndo(sv,'Moved to '+engShort(s))});
   bind('mEdit',function(){openEdit(id)});
@@ -2859,7 +2890,7 @@ document.addEventListener('click',function(e){
   else if(t.dataset.eqloc){EQ.loc=t.dataset.eqloc;render()}
   else if(t.dataset.copysum)copyText(summarize(t.dataset.copysum).text);
   else if(t.dataset.notes)openNotes(t.dataset.notes);
-  else if(t.dataset.markdone){var md=find(t.dataset.markdone),sv1=snap([md]);md.status='done';save();render();offerUndo(sv1,'Marked done')}
+  else if(t.dataset.markdone){var md=find(t.dataset.markdone),sv1=snap([md]);md.status='done';save();render();offerUndo(sv1,'Marked done');afterDone(md)}
   else if(t.dataset.more)openMenu(t.dataset.more);
   else if(t.dataset.movetoday){var c=find(t.dataset.movetoday),sv2=snap([c]);moveCard(c,todayStr());save();render();offerUndo(sv2,'Moved to today')}
   else if(t.dataset.tab){if(t.dataset.tab==='msg'&&S.view==='msg')MSG.cur=null;S.view=t.dataset.tab;if(S.view==='msg'){setTimeout(msgTick,50)}if(S.view==='day'&&!S.cur)S.cur=todayStr();if(S.view==='log')S.logFocus=null;render();mainTop()}
@@ -2953,7 +2984,7 @@ document.addEventListener('touchend',function(){
       setTimeout(function(){moveCard(c,todayStr());save();render();offerUndo(sv,'Moved to today')},170);return}
     if(d.dx<0){
       d.el.style.transition='transform .18s ease-out';d.el.style.transform='translateX(-110%)';
-      setTimeout(function(){placeCard(c,'done',null);save();render();offerUndo(sv,'Marked done')},170);return}
+      setTimeout(function(){placeCard(c,'done',null);save();render();offerUndo(sv,'Marked done');afterDone(c)},170);return}
     var to=pushTarget(c);
     d.el.style.transition='transform .18s ease-out';d.el.style.transform='translateX(110%)';
     setTimeout(function(){moveCard(c,to);save();render();offerUndo(sv,(to===todayStr()?'Moved to today':'Pushed to '+engShort(to)))},170);return;
