@@ -616,6 +616,8 @@ html.tv .swhint{display:none}
 .fgrp[open]>summary::after{transform:rotate(90deg)}
 .fgrp[open] .fgv{visibility:hidden}
 .fgin{display:grid;gap:12px;padding:0 14px 14px}
+.rcrow{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}.rcrow img{width:46px;height:60px;object-fit:cover;border-radius:8px}.rcrow div{display:grid;gap:2px;min-width:0}.rcrow small{color:var(--muted);font-size:13px}
+.rcprev{max-width:100%;max-height:34vh;border-radius:12px;display:block;margin:6px auto}
 </style>
 
 <header id="hdr"><div class="wrap" id="hdrIn"></div></header>
@@ -630,7 +632,7 @@ html.tv .swhint{display:none}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Nov 1, 2026 (63)';
+var KEY='workday.v1',APPVER='Nov 2, 2026 (64)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -2627,19 +2629,21 @@ function openEdit(id,pre){
   h+='<details class="fgrp"'+(c.notes?' open':'')+'><summary><b>Notes</b>'+gsum('note')+'</summary><div class="fgin">';
   h+='<div class="field"><textarea id="fNotes" rows="3">'+esc(c.notes)+'</textarea></div>';
   h+='</div></details>';
+  if(id){var rcl=rcFor(id);h+='<details class="fgrp"'+(rcl.length?' open':'')+'><summary><b>Receipts</b><span class="fgv">'+(rcl.length?rcl.length+' '+MID+' '+esc(money(rcSum(rcl))):'None')+'</span></summary><div class="fgin" id="rcBox">'+rcListHtml(c)+'</div></details>'}
   h+='<details class="fgrp"'+((c.comments||[]).length?' open':'')+'><summary><b>Photos and updates</b>'+gsum('thr')+'</summary><div class="fgin">';
   if(elk.length)h+='<div class="field"><label>Links</label><div class="lbox">'+linkRows(elk)+'</div></div>';
   h+='<div class="field"><div class="thread" id="thr" style="max-height:34vh">'+threadHtml(c)+'</div><div id="pend"></div><div class="compose"><label class="photo" for="nImg" aria-label="Add photo">'+IC.cam+'</label><input id="nImg" type="file" accept="image/*" hidden><textarea id="nTxt" rows="1" placeholder="Write a note"></textarea><button class="send" id="nSend" type="button">Send</button></div></div>';
   h+='</div></details></div>';
   h+='<div id="fWarn"></div><div class="row"><button class="btn primary" id="fSave">Save</button><button class="btn" id="fCancel">Cancel</button></div>';
   openSheet(h);
-  function fgSums(){var q=function(k){return document.querySelector('[data-fgv="'+k+'"]')},set=function(k,t){var e=q(k);if(e)e.textContent=t||'None'};
+  function fgSums(){if(!document.getElementById('fCon'))return;var q=function(k){return document.querySelector('[data-fgv="'+k+'"]')},set=function(k,t){var e=q(k);if(e)e.textContent=t||'None'};
     set('con',[val('fCon').trim(),val('fFor').trim()].filter(function(x){return x}).join(' '+MID+' '));
     set('veh',[val('fVeh'),val('fSize')?val('fSize')+' guys':''].filter(function(x){return x}).join(' '+MID+' '));
     set('tag',[].slice.call(document.querySelectorAll('input[name=fTag]:checked')).map(function(x){return x.value}).join(', '));
     var nm=val('fMat').split('\n').filter(function(x){return x.trim()}).length,nt=document.querySelectorAll('input[name=fTool]:checked').length;set('mat',[nm?nm+' material'+(nm>1?'s':''):'',nt?nt+' tool'+(nt>1?'s':''):''].filter(function(x){return x}).join(', '));
     var nv=val('fNotes').trim();set('note',nv?nv.slice(0,28)+(nv.length>28?'...':''):'');
     var nc=(c.comments||[]).length;set('thr',nc?nc+'':'')}
+  bind('rcAdd',function(){openReceipt(c,function(){openEdit(id)})});if(id&&connOK()&&Date.now()-RC.at>60000)rcLoad().then(function(){var bx=document.getElementById('rcBox');if(bx){bx.innerHTML=rcListHtml(c);bind('rcAdd',function(){openReceipt(c,function(){openEdit(id)})})}});
   fgSums();var shIn=document.getElementById('sheetIn');if(shIn){shIn.addEventListener('input',fgSums);shIn.addEventListener('change',fgSums)}
   var ea=document.getElementById('fEqAdd');if(ea)ea.onchange=function(){var v=ea.value;if(!v)return;var box=document.getElementById('fTools');var n=box.querySelectorAll('input').length;var lb=document.createElement('label');lb.className='tchk';lb.innerHTML='<input type="checkbox" name="fTool" id="fTool'+n+'" checked value="'+esc(v)+'">'+esc(v);box.appendChild(lb);ea.value=''};
   function setMap(){var a=val('fAddr').trim(),m=document.getElementById('fMap');m.hidden=!a;m.href=a?mapUrl(a):'#'}
@@ -2718,11 +2722,11 @@ function showPend(){var p=document.getElementById('pend');if(!p)return;
   p.innerHTML='<div class="pend"><img src="'+pendImg+'" alt="Photo to send"><span>Photo ready to send</span><button id="pX">Remove</button></div>';
   bind('pX',function(){pendImg=null;showPend()});
 }
-function shrink(file,cb){
+function shrink(file,cb,mx,q){
   var r=new FileReader();r.onload=function(){var im=new Image();im.onload=function(){
-    var max=1000,w=im.width,h=im.height,k=Math.min(1,max/Math.max(w,h));
+    var max=mx||1000,w=im.width,h=im.height,k=Math.min(1,max/Math.max(w,h));
     var cv=document.createElement('canvas');cv.width=Math.round(w*k);cv.height=Math.round(h*k);
-    cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);cb(cv.toDataURL('image/jpeg',0.7));
+    cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);cb(cv.toDataURL('image/jpeg',q||0.7));
   };im.onerror=function(){toast('That photo could not be opened. Try a different one.')};im.src=r.result};
   r.readAsDataURL(file);
 }
@@ -3612,7 +3616,7 @@ function makeXlsx(sheets){
 }
 /* ---------- backups: weekly copy of every sheet + Google Contacts, kept in the Workday service (not at Google). Save a copy to Files. ---------- */
 var BK_PLAN=(function(){var p=[];function add(book,file,tabs){tabs.forEach(function(t){p.push({book:book,file:file,tab:t})})}
-  add('workday','Workday',['Cards','Contractors','Foremen','Job Sites','Crew','Keys','Tows','Contacts','Contact Items','Notes','Suggestions','Lists','Settings']);
+  add('workday','Workday',['Cards','Contractors','Foremen','Job Sites','Crew','Keys','Tows','Contacts','Contact Items','Receipts','Notes','Suggestions','Lists','Settings']);
   add('dumpsters','Dumpsters',['Dumpsters','Job Sites','Companies','Sizes']);
   add('equipment','Equipment',['Equipment','Locations','Tasks','History']);
   add('supply','Supply',['Stock','Log','Orders','Audits','Sections','Sizes','Locations','People','Deleted Entries']);
@@ -3706,6 +3710,69 @@ function bkNudge(){
       document.getElementById('bkbX').onclick=gone;
     });
   }).catch(function(){});
+}
+
+/* ---------- receipts on jobs (Receipts tab in the Workday sheet) ---------- */
+var RCCOLS=['id','card','job','date','store','addr','items','sub','tax','total','paid','why','photo','added','deleted'];
+var RC={rows:[],at:0,busy:false,err:''};
+(function(){try{var o=JSON.parse(localStorage.getItem('workday.rc')||'null');if(o){RC.rows=o.rows||[];RC.at=o.at||0}}catch(e){}})();
+function rcSave(){try{localStorage.setItem('workday.rc',JSON.stringify({rows:RC.rows,at:RC.at}))}catch(e){}}
+function rcLoad(){
+  if(!connOK()||RC.busy)return Promise.resolve();RC.busy=true;
+  return bridge('getValues',{book:'workday',range:'Receipts!A1:O3000'}).then(function(d){
+    RC.rows=(d.values||[]).slice(1).filter(function(r){return r[0]&&!r[14]}).map(function(r){var o={};RCCOLS.forEach(function(k,i){o[k]=r[i]||''});return o});
+    RC.at=Date.now();RC.busy=false;RC.err='';rcSave();
+  },function(e){RC.busy=false;RC.err=bridgeErr(e)});
+}
+function rcFor(cardId){return RC.rows.filter(function(r){return r.card===cardId})}
+function money(n){var x=parseFloat(String(n||'').replace(/[^0-9.\-]/g,''));return isNaN(x)?'':'$'+x.toFixed(2)}
+function rcSum(list){var t=0;list.forEach(function(r){var x=parseFloat(String(r.total||'').replace(/[^0-9.\-]/g,''));if(!isNaN(x))t+=x});return t}
+function rcListHtml(c){
+  var l=rcFor(c.id);
+  var h=l.map(function(r){var ph=r.photo?dmPhotoUrl(r.photo):'';return '<div class="rcrow">'+(ph?'<a href="'+esc(ph)+'" target="_blank" rel="noopener"><img src="'+esc(ph)+'" alt="Receipt"></a>':'')+'<div><b>'+esc(r.store||'Receipt')+' '+MID+' '+esc(money(r.total))+'</b><small>'+esc([r.date?dshort(r.date):'',r.items.split('\n')[0]].filter(function(x){return x}).join(' '+MID+' '))+'</small>'+(r.why?'<small>Why: '+esc(r.why)+'</small>':'')+'</div></div>'}).join('');
+  return h+'<button type="button" class="btn" id="rcAdd">+ Add receipt</button>';
+}
+/* read the receipt photo with Claude and fill in the form */
+function rcRead(dataUrl){
+  var key=getKey();if(!key)return Promise.resolve(null);
+  var b64=dataUrl.replace(/^data:image\/[a-z]+;base64,/,'');
+  var prompt='This is a store receipt. Reply with only a JSON object: {"store":"store name","address":"store street address, town, state","date":"YYYY-MM-DD","items":[{"qty":1,"name":"plain-English item name with size","code":"part/SKU if shown","price":0,"total":0}],"subtotal":0,"tax":0,"total":0,"paid":"card type and last 4 digits only, or Cash"}. Write item names the way a contractor would say them (for example AW32 HYD FLUID 1 GA -> AW32 hydraulic fluid, 1 gallon). Never include full card numbers.';
+  return claudeFetch(key,{model:AIMODEL,max_tokens:900,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:prompt}]}]}).then(function(res){
+    if(!res.ok)return null;var t=(res.j.content||[]).map(function(b){return b.text||''}).join('');var a=t.indexOf('{'),z=t.lastIndexOf('}');if(a<0)return null;try{return JSON.parse(t.slice(a,z+1))}catch(e){return null}
+  },function(){return null});
+}
+function rcItemsText(items){return (items||[]).map(function(it){return (it.qty||1)+' x '+(it.name||'')+(it.code?' ('+it.code+')':'')+(it.price?' @ $'+Number(it.price).toFixed(2):'')+(it.total?' = $'+Number(it.total).toFixed(2):'')}).join('\n')}
+function openReceipt(c,back){
+  var h='<h3>Add receipt</h3><div class="mt">'+esc(jobTitle(c))+'</div>';
+  h+='<label class="btn primary" for="rcPh" style="text-align:center">Take or pick a photo</label><input id="rcPh" type="file" accept="image/*" hidden><div id="rcPv"></div>';
+  h+='<div class="field"><label for="rcStore">Store</label><input id="rcStore"></div>';
+  h+='<div class="two"><div class="field"><label for="rcDate">Date</label><input id="rcDate" type="date" value="'+todayStr()+'"></div><div class="field"><label for="rcTot">Total</label><input id="rcTot" inputmode="decimal"></div></div>';
+  h+='<div class="field"><label for="rcItems">What was bought</label><textarea id="rcItems" rows="3"></textarea></div>';
+  h+='<div class="field"><label for="rcWhy">Why</label><input id="rcWhy"></div>';
+  h+='<details class="fgrp" style="border-radius:14px;background:rgba(120,120,128,.12)"><summary><b>More</b><span class="fgv">store address, tax, paid with</span></summary><div class="fgin"><div class="field"><label for="rcAddr">Store address</label><input id="rcAddr"></div><div class="two"><div class="field"><label for="rcSub">Subtotal</label><input id="rcSub" inputmode="decimal"></div><div class="field"><label for="rcTax">Tax</label><input id="rcTax" inputmode="decimal"></div></div><div class="field"><label for="rcPaid">Paid with</label><input id="rcPaid"></div></div></details>';
+  h+='<div id="rcW"></div><div class="row"><button class="btn primary" id="rcSave">Save receipt</button><button class="btn" id="rcX">Cancel</button></div>';
+  openSheet(h);
+  var photo='';
+  bind('rcX',function(){back?back():closeSheet()});
+  document.getElementById('rcPh').onchange=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;
+    shrink(f,function(url){photo=url;document.getElementById('rcPv').innerHTML='<img class="rcprev" src="'+url+'" alt="Receipt photo"><div class="mt" id="rcRd">'+(getKey()?'Reading the receipt...':'')+'</div>';
+      rcRead(url).then(function(o){var rd=document.getElementById('rcRd');if(!o){if(rd)rd.textContent=getKey()?'Could not read it. Fill in what you need.':'';return}
+        function put(id,v){var el=document.getElementById(id);if(el&&v!==undefined&&v!==null&&v!==''&&!el.value.trim())el.value=v}
+        put('rcStore',o.store);put('rcAddr',o.address);if(o.date&&/^\d{4}-\d\d-\d\d$/.test(o.date))document.getElementById('rcDate').value=o.date;
+        put('rcItems',rcItemsText(o.items));put('rcSub',o.subtotal?Number(o.subtotal).toFixed(2):'');put('rcTax',o.tax?Number(o.tax).toFixed(2):'');put('rcTot',o.total?Number(o.total).toFixed(2):'');put('rcPaid',o.paid);
+        if(rd)rd.textContent='Filled in from the photo. Check it, add why, and save.'});
+    },1600,0.75)};
+  bind('rcSave',function(){
+    var v={store:val('rcStore').trim(),date:val('rcDate'),total:val('rcTot').trim(),items:val('rcItems').trim(),why:val('rcWhy').trim(),addr:val('rcAddr').trim(),sub:val('rcSub').trim(),tax:val('rcTax').trim(),paid:val('rcPaid').trim()};
+    if(!v.store&&!v.total&&!photo){document.getElementById('rcW').innerHTML='<div class="warn">Add a photo or the store and total.</div>';return}
+    if(!connOK()){document.getElementById('rcW').innerHTML='<div class="warn">Receipts need the Google connection.</div>';return}
+    var btn=document.getElementById('rcSave');btn.disabled=true;btn.textContent='Saving...';
+    var up=photo&&msgOK()?msgApi('/photo',{image:photo}).then(function(j){return 'wd:'+j.id},function(){return ''}):Promise.resolve('');
+    up.then(function(ref){
+      var r={id:'r'+Date.now().toString(36),card:c.id,job:jobTitle(c),date:v.date,store:v.store,addr:v.addr,items:v.items,sub:v.sub,tax:v.tax,total:v.total,paid:v.paid,why:v.why,photo:ref,added:stampNow(),deleted:''};
+      return bridge('appendValues',{book:'workday',range:'Receipts!A:O',values:[RCCOLS.map(function(k){return r[k]||''})]}).then(function(){RC.rows.push(r);rcSave();toast('Receipt saved');back?back():(closeSheet(),render())});
+    }).catch(function(e){btn.disabled=false;btn.textContent='Save receipt';document.getElementById('rcW').innerHTML='<div class="warn">'+esc(bridgeErr(e))+'</div>'});
+  });
 }
 
 /* ---------- set up another device (iPad) with a 6-digit code ---------- */
