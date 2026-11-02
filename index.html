@@ -653,7 +653,7 @@ html.tv .swhint{display:none}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Nov 2, 2026 (66)';
+var KEY='workday.v1',APPVER='Nov 2, 2026 (67)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -3541,10 +3541,29 @@ function pplLoad(){
   return bridge('allContacts',{}).then(function(r){
     PPL.busy=false;
     if(r&&r.needsSetup){PPL.err='Turn on People API in the Workday Connect script.';if(S.view==='ppl')render();return}
-    PPL.list=(r.people||[]).map(gPerson);PPL.at=Date.now();PPL.err='';pplSave();if(S.view==='ppl')render();
+    PPL.list=(r.people||[]).map(gPerson);PPL.at=Date.now();PPL.err='';pplSave();if(S.view==='ppl')render();gcMirror(r.people||[]);
   },function(e){PPL.busy=false;PPL.at=PPL.at||1;var m=bridgeErr(e);PPL.err=/unknown|allContacts/i.test(m)?'Update the Workday Connect script first (new version).':m;if(S.view==='ppl')render()});
 }
 function allPeople(){return PPL.list}
+/* copy of Google Contacts in the Workday sheet (tab "Google Contacts") so Claude in the Project chat can look people up.
+   The first time it sends everyone; after that it writes again only when something changed. */
+var GCM={key:'workday.gcmirror',busy:false};
+function gcMirror(people){
+  if(GCM.busy||!connOK())return;
+  var rows=people.map(function(g){return [g.name||'',(g.phones||[]).join('; '),(g.emails||[]).join('; '),g.company||'',g.role||'',g.address||'',String(g.notes||'').replace(/\n/g,' '),g.resourceName||'']});
+  rows.sort(function(a,b){return a[0].toLowerCase().localeCompare(b[0].toLowerCase())});
+  var sig=String(rows.length)+':'+gcHash(JSON.stringify(rows)),old={};
+  try{old=JSON.parse(localStorage.getItem(GCM.key)||'{}')||{}}catch(e){}
+  if(old.sig===sig&&Date.now()-(old.at||0)<7*86400000)return;
+  var st=stampNow();rows=rows.map(function(r){return r.concat([st])});
+  var n=rows.length,prev=old.n||0;while(rows.length<prev)rows.push(['','','','','','','','','']);
+  GCM.busy=true;
+  bridge('updateValues',{book:'workday',range:'Google Contacts!A2:I'+(rows.length+1),values:rows.length?rows:[['','','','','','','','','']]}).then(function(){
+    GCM.busy=false;try{localStorage.setItem(GCM.key,JSON.stringify({sig:sig,n:n,at:Date.now()}))}catch(e){}
+  },function(e){GCM.busy=false});
+}
+function gcHash(s){var h=5381;for(var i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36)}
+setTimeout(function(){try{if(connOK()&&!PPL.busy&&Date.now()-(PPL.at||0)>3600000)pplLoad()}catch(e){}},6000);
 function bdayParts(b){var m=/^(\d{4}|-)?-?(\d{2})-(\d{2})$/.exec(String(b||''));if(!m)return null;return {y:m[1]&&m[1]!=='-'?+m[1]:0,m:+m[2],d:+m[3]}}
 function bdayText(b){var q=bdayParts(b);if(!q)return '';var t=MONS[q.m-1].slice(0,3)+' '+q.d;if(q.y){var now=new Date(),age=now.getFullYear()-q.y;var thisYear=new Date(now.getFullYear(),q.m-1,q.d);if(thisYear<new Date(now.getFullYear(),now.getMonth(),now.getDate()))age++;t+=', '+q.y+' (turns '+age+')'}return t}
 function bdayReminders(days){
