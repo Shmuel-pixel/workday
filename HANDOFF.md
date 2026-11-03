@@ -68,3 +68,13 @@ A home-screen web app (iPhone and iPad) for Shmuel, a scheduler at Five Star Ser
 - Orders page (needs what one order line has).
 - Phomemo M110 tool and key stickers (paused).
 - Text messages (iMessage) for the AI: only possible with a Mac.
+
+## WhatsApp setup progress (Nov 2, 2026)
+Done on Meta (developers.facebook.com, account shmuel@fixyourdeck.com):
+- Business portfolio "Deck King" (unverified). App "Workday Messages", App ID 1859832258787403, use case "Connect with customers through WhatsApp". Marked as Tech Provider.
+- Facebook Login for Business configuration from template "WhatsApp Embedded Signup Configuration With 60 Expiration Token": Configuration ID 1710875990372180 (token expires in 60 days; add a reconnect reminder).
+- App domains: workday.shmuel-4f0.workers.dev. Login with JS SDK = Yes, Allowed JS SDK domain workday.shmuel-4f0.workers.dev, OAuth redirect https://workday.shmuel-4f0.workers.dev/ (saved).
+Left to do:
+1. Webhook: Use cases > Customize WhatsApp > Configuration. Callback https://workday-messages.shmuel-4f0.workers.dev/webhook, verify token from Workday (gear > Messages and notifications). Subscribe: messages, smb_message_echoes, history, smb_app_state_sync, account_update.
+2. In Workday (gear > Messages and notifications): App ID, Configuration ID, App secret (from App settings > Basic; never paste it in a chat).
+3. Connect WhatsApp page, sign in, scan QR with WhatsApp Business. If Meta refuses, do Business verification for Deck King first.
