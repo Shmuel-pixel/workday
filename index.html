@@ -649,6 +649,13 @@ html.lg .nbcard{background:var(--lg-card)!important;border:1px solid var(--lg-ed
 .nbbody{display:grid;gap:6px;font-size:16px;line-height:1.4}.nbbody p{margin:0;white-space:pre-wrap;word-wrap:break-word}.nbbody p.gap{height:6px}
 .nbck{display:flex;gap:10px;align-items:flex-start}.nbck input{width:22px;height:22px;flex:none;margin-top:1px}.nbck.done span{text-decoration:line-through;color:var(--muted)}
 .minilink.red{color:var(--missed)}
+
+/* tomorrow view: green */
+.tmrwbtn{display:grid;justify-items:center;gap:2px;width:100%;padding:10px 12px;border-radius:16px;background:linear-gradient(180deg,#2FBF6A,#17924A);color:#fff;box-shadow:0 6px 18px rgba(23,146,74,.35)}
+.tmrwbtn b{font-size:20px;font-weight:800;letter-spacing:.06em}.tmrwbtn span{font-size:13px;font-weight:600;opacity:.95}
+html.tmrw main,html.lg.tmrw main,html.tmrw main.tint-future,html.lg.tmrw main.tint-future{background:linear-gradient(180deg,#E2F6E9,#CDEFD9)!important}
+html.tmrw header{border-bottom:3px solid #17924A}
+@media (prefers-color-scheme:dark){html.tmrw main,html.lg.tmrw main,html.tmrw main.tint-future,html.lg.tmrw main.tint-future{background:linear-gradient(180deg,#0F2A1A,#0A2014)!important}}
 </style>
 
 <header id="hdr"><div class="wrap" id="hdrIn"></div></header>
@@ -663,7 +670,7 @@ html.lg .nbcard{background:var(--lg-card)!important;border:1px solid var(--lg-ed
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Nov 2, 2026 (68)';
+var KEY='workday.v1',APPVER='Nov 3, 2026 (69)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -963,6 +970,9 @@ function dmQuickTo(r,status){
   var old={status:r.status};if(key)old[key]=r[key];for(var k in ch)r[k]=ch[k];dmSave();render();toast(r.size+' at '+r.site.split(',')[0]+': '+status);
   dmPatch(r,ch).catch(function(e){for(var k2 in old)r[k2]=old[k2];dmSave();render();toast('Not saved: '+(e.message||String(e)))});
 }
+function nextWorkDay(){var d=addDays(todayStr(),1),g=0;while(noWork(d)&&g<6){d=addDays(d,1);g++}return d}
+/* after 5 PM, open on the next work day (once per evening; going back to today stays there) */
+function eveCheck(){try{var T=todayStr();if(new Date().getHours()>=17&&S.view==='day'&&S.cur===T&&localStorage.getItem('workday.eve')!==T){localStorage.setItem('workday.eve',T);S.cur=nextWorkDay();render()}}catch(e){}}
 function moveCard(c,to){if(!c||!to||c.date===to)return;c.moves=c.moves||[];c.moves.push({f:c.date,t:to,at:Date.now()});c.date=to;delete c.o}
 /* jobs that were planned for day s and moved off it. A job that was pushed onto s and then moved back is not counted. */
 function movedFrom(s){return S.cards.filter(function(c){if(c.date===s)return false;var mv=c.moves||[];for(var i=0;i<mv.length;i++){if(mv[i].f===s)return true;if(mv[i].t===s)return false}return false})}
@@ -1036,7 +1046,8 @@ function renderHeader(){
     var r=rel(s),n=diff(s,T),lab;
     if(r==='today')lab='Today';else if(r==='past')lab=(n===-1?'Yesterday':(-n)+' days ago');else lab=(n===1?'Tomorrow':'In '+n+' days');
     h+='<div class="daynav"><button class="navbtn" id="prev" aria-label="Previous day" '+(n<=-7?'disabled':'')+'>&lsaquo;</button>';
-    h+=r==='today'?'<div class="status st-today">'+lab+'</div>':'<button class="status st-'+r+'" id="goToday">'+lab+' &middot; <u>Today &rarr;</u></button>';
+    if(s===nextWorkDay())h+='<button class="tmrwbtn" id="goToday"><b>'+(s===addDays(T,1)?'TOMORROW':esc(engShort(s)).toUpperCase())+'</b><span>'+esc(engShort(s))+' &middot; tap to go to today</span></button>';
+    else h+=r==='today'?'<div class="status st-today">'+lab+'</div>':'<button class="status st-'+r+'" id="goToday">'+lab+' &middot; <u>Today &rarr;</u></button>';
     h+='<button class="navbtn" id="next" aria-label="Next day">&rsaquo;</button></div>';
   }
   el.innerHTML=h;
@@ -2610,6 +2621,7 @@ var TABS=[['day','Today',IC.day],['msg','Messages',IC.msg],['tr','Translate',IC.
 function render(){
   document.body.classList.toggle('inchat',S.view==='msg'&&!!MSG.cur);
   document.body.classList.toggle('msgmode',S.view==='msg'&&msgOK());
+  document.documentElement.classList.toggle('tmrw',S.view==='day'&&S.cur===nextWorkDay());
   renderHeader();
   if(S.view==='tr')renderTr();
   else if(S.view==='day')renderDay();else if(S.view==='cal')renderCal();else if(S.view==='log')renderLog();
@@ -4036,12 +4048,13 @@ try{var qch=new URLSearchParams(location.search).get('chat');if(qch&&msgOK()){S.
 render();
 if(MSG.cur)msgOpen(MSG.cur);
 if(MOVED)setTimeout(openMoved,800);
+eveCheck();setInterval(function(){if(!document.hidden)eveCheck()},60000);
 setTimeout(loadKZ,400);
 if(msgOK()){setTimeout(function(){bkConfig(false)},6000);setTimeout(bkNudge,9000);msgCfgToSW();setTimeout(msgTick,1500);setTimeout(function(){remPush(true)},5000);setTimeout(function(){try{if(window.Notification&&Notification.permission==='granted')msgPushOn().catch(function(){})}catch(e){}},3000)}
 try{if(navigator.serviceWorker)navigator.serviceWorker.addEventListener('message',function(e){var d=e.data||{};if(d.type==='openDay'){closeSheet();S.view='day';S.cur=todayStr();render();mainTop();return}if(d.type==='openChat'&&msgOK()){closeSheet();if(d.chat)msgOpen(d.chat);else{MSG.cur=null;S.view='msg';render();msgTick()}}})}catch(e){}
 try{if(location.search.indexOf('chat=')>=0&&history.replaceState)history.replaceState(null,'',location.pathname)}catch(e){}
 if(connOK()){setTimeout(function(){syncNow()},800);setInterval(function(){if(!document.hidden)syncNow()},120000)}
-document.addEventListener('visibilitychange',function(){if(!document.hidden&&connOK())syncNow();if(!document.hidden&&msgOK()){msgTick();remPush()}});
+document.addEventListener('visibilitychange',function(){if(!document.hidden)eveCheck();if(!document.hidden&&connOK())syncNow();if(!document.hidden&&msgOK()){msgTick();remPush()}});
 window.addEventListener('online',function(){if(connOK())syncNow()});
 })();
 </script>
