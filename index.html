@@ -656,6 +656,19 @@ html.lg .nbcard{background:var(--lg-card)!important;border:1px solid var(--lg-ed
 html.tmrw main,html.lg.tmrw main,html.tmrw main.tint-future,html.lg.tmrw main.tint-future{background:linear-gradient(180deg,#E2F6E9,#CDEFD9)!important}
 html.tmrw header{border-bottom:3px solid #17924A}
 @media (prefers-color-scheme:dark){html.tmrw main,html.lg.tmrw main,html.tmrw main.tint-future,html.lg.tmrw main.tint-future{background:linear-gradient(180deg,#0F2A1A,#0A2014)!important}}
+.aibox{display:grid;gap:6px;padding:10px 10px 8px 14px;border-radius:24px;background:var(--surface);border:1px solid var(--line);box-shadow:0 4px 16px rgba(0,0,0,.08)}
+html.lg .aibox{background:var(--lg-card)!important;border:1px solid var(--lg-edge-dim)}
+.aibox textarea{font-family:inherit!important;border:0!important;background:transparent!important;box-shadow:none!important;padding:4px 0!important;font-size:17px;min-height:48px;max-height:30vh;resize:none;outline:none}
+.aibar{display:none;align-items:center;gap:8px}.aibox:not(.listening) .aibar.idle{display:flex}.aibox.listening .aibar.live{display:flex}
+.aisp{flex:1}
+.aib{width:44px;height:44px;border-radius:22px;display:grid;place-items:center;background:rgba(120,120,128,.14);color:var(--fg);font-size:22px;flex:none}
+.aib svg{width:22px;height:22px}
+.aib.go{background:#D97757;color:#fff;font-size:22px;font-weight:700}
+.aib.stop i{width:14px;height:14px;border-radius:3px;background:var(--fg);display:block}
+.aibox .wave{display:block;flex:1;width:auto;max-width:none;height:34px}
+.aibox.working{opacity:.7}
+.aipv{position:relative;width:72px}.aipv img{width:72px;height:72px;object-fit:cover;border-radius:12px;display:block}.aipv button{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:11px;background:var(--fg);color:var(--bg);font-size:14px;line-height:1}
+.bub img{max-width:180px;border-radius:12px;display:block}
 </style>
 
 <header id="hdr"><div class="wrap" id="hdrIn"></div></header>
@@ -670,7 +683,7 @@ html.tmrw header{border-bottom:3px solid #17924A}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Nov 4, 2026 (71)';
+var KEY='workday.v1',APPVER='Nov 4, 2026 (72)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -1806,7 +1819,7 @@ function aiBubbles(){
   var h='';
   if(!AIH.length)h+='<div class="empty" style="text-align:center;align-self:center">Talk or type.</div>';
   AIH.forEach(function(m,i){
-    if(m.role==='user')h+='<div class="bub"><span>'+esc(m.show||m.content)+'</span></div>';
+    if(m.role==='user')h+='<div class="bub">'+(m.img?'<img src="'+m.img+'" alt="Photo">':'')+'<span>'+esc(m.img?(m.show||'').replace(/^\[Photo\] /,''):(m.show||m.content))+'</span></div>';
     else{
       h+='<div class="bub ai">'+(m.reply?'<span>'+linkify(esc(m.reply))+'</span>'+linkRows(findLinks(m.reply)):'');
       if(m.done&&m.done.length)h+='<ul class="aidone">'+m.done.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>';
@@ -1832,19 +1845,25 @@ function openAI(talk){
     return;
   }
   h+='<div class="thread" id="aiThr">'+aiBubbles()+'</div>';
-  h+='<div class="talk"><button class="mic" id="aiMic" aria-label="Talk to the assistant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><canvas class="wave" id="aiWave" aria-hidden="true"></canvas><div class="hear" id="aiHear">Tap to talk</div></div>';
-  h+='<div class="compose" style="grid-template-columns:1fr auto"><textarea id="aiTxt" rows="1" placeholder="Type"></textarea><button class="send" id="aiSend">Send</button></div>';
-  h+='<div class="row" style="justify-content:space-between;align-items:center"><button class="btn" id="aiClose">Close</button><label class="tchk"><input type="checkbox" id="aiSpk"'+(speakOn()?' checked':'')+'>Speak answers</label><button class="btn" id="aiClear">Start over</button></div>';
+  h+='<div class="aibox" id="aiBox"><div id="aiPv"></div><textarea id="aiTxt" rows="2" placeholder="Talk or type"></textarea>'+
+    '<div class="aibar idle"><label class="aib" for="aiImg" aria-label="Add photo">'+IC.cam+'</label><input id="aiImg" type="file" accept="image/*" hidden><span class="aisp"></span><button class="aib aimic" id="aiMic" aria-label="Talk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><button class="aib go" id="aiGo" aria-label="Send">&uarr;</button></div>'+
+    '<div class="aibar live"><button class="aib" id="aiX" aria-label="Cancel">&times;</button><canvas class="wave" id="aiWave" aria-hidden="true"></canvas><button class="aib stop" id="aiStop" aria-label="Stop"><i></i></button><button class="aib go" id="aiGo2" aria-label="Send">&uarr;</button></div></div>';
+  h+='<div class="hear" id="aiHear"></div>';
+  h+='<div class="row" style="justify-content:space-between;align-items:center"><button class="minilink" id="aiClose">Close</button><label class="tchk"><input type="checkbox" id="aiSpk"'+(speakOn()?' checked':'')+'>Speak answers</label><button class="minilink" id="aiClear">Start over</button></div>';
   openSheet(h);
   var thr=document.getElementById('aiThr');thr.scrollTop=thr.scrollHeight;
   var ta=document.getElementById('aiTxt');
-  bind('aiClose',function(){if(VOICE.busy){if(VOICE.mode==='rec')recStop(false);else{VOICE.stopReq=true;VOICE.busy=false;VOICE.mode='';try{VOICE.rec.abort()}catch(e){}}}try{speechSynthesis.cancel()}catch(e){}closeSheet();render()});
+  bind('aiClose',function(){if(VOICE.busy){VOICE.after='cancel';if(VOICE.mode==='rec')recStop(false);else{VOICE.stopReq=true;VOICE.busy=false;VOICE.mode='';try{VOICE.rec.abort()}catch(e){}}}try{speechSynthesis.cancel()}catch(e){}closeSheet();render()});
   bind('aiClear',function(){AIH=[];openAI()});
-  bind('aiSend',function(){var t=ta.value.trim();if(!t||AIBUSY)return;VOICE.last=false;aiSend(t)});
-  bind('aiMic',voiceToggle);
+  bind('aiGo',function(){var t=ta.value.trim();if((!t&&!AIPH)||AIBUSY)return;VOICE.last=false;aiSend(t)});
+  bind('aiGo2',function(){voiceEnd('send')});bind('aiStop',function(){voiceEnd('keep')});bind('aiX',function(){voiceEnd('cancel')});
+  bind('aiMic',function(){VOICE.after='send';voiceStart()});
+  document.getElementById('aiImg').onchange=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;shrink(f,function(u){AIPH=u;aiPvDraw()},1400,0.75)};aiPvDraw();
   document.getElementById('aiSpk').onchange=function(e){try{localStorage.setItem('workday.speak',e.target.checked?'1':'0')}catch(x){}if(!e.target.checked)try{speechSynthesis.cancel()}catch(x){}};
   if(talk)voiceStart();
 }
+var AIPH='';
+function aiPvDraw(){var pv=document.getElementById('aiPv');if(!pv)return;pv.innerHTML=AIPH?'<div class="aipv"><img src="'+AIPH+'" alt="Photo"><button id="aiPvX" aria-label="Remove photo">&times;</button></div>':'';bind('aiPvX',function(){AIPH='';aiPvDraw()})}
 function aiRedraw(){var thr=document.getElementById('aiThr');if(!thr)return;thr.innerHTML=aiBubbles();thr.scrollTop=thr.scrollHeight}
 var AIWEB=true;
 function placeLookup(q){
@@ -1879,10 +1898,13 @@ function aiCall(key,msgs,round){
 }
 function aiSend(text){
   var key=getKey();if(!key){openAI();return}
-  AIH.push({role:'user',content:text});AIBUSY=true;
+  var img=AIPH;AIPH='';aiPvDraw();
+  var content=img?[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img.replace(/^data:image\/[a-z]+;base64,/,'')}},{type:'text',text:text||'Look at this photo.'}]:text;
+  AIH.push({role:'user',content:content,show:(img?'[Photo] ':'')+text,img:img});AIBUSY=true;
   var ta=document.getElementById('aiTxt');if(ta)ta.value='';
   aiRedraw();
-  var msgs=AIH.filter(function(m){return !m.fail}).slice(-12).map(function(m){return {role:m.role,content:m.role==='user'?m.content:(m.raw||m.reply||'')}});
+  var hist=AIH.filter(function(m){return !m.fail}).slice(-12),pics=0;
+  var msgs=hist.slice().reverse().map(function(m){var c=m.role==='user'?m.content:(m.raw||m.reply||'');if(m.role==='user'&&typeof c!=='string'){pics++;if(pics>2)c=m.show||'(photo)'}return {role:m.role,content:c}}).reverse();
   while(msgs.length&&msgs[0].role!=='user')msgs.shift();
   aiCall(key,msgs,0)
   .then(function(res){
@@ -1912,13 +1934,23 @@ var VOICE={busy:false,mode:'',ctx:null,stream:null,proc:null,chunks:[],rate:4800
 function speakOn(){try{return localStorage.getItem('workday.speak')!=='0'}catch(e){return true}}
 function autoTalk(){try{return localStorage.getItem('workday.autotalk')!=='0'}catch(e){return true}}
 function voiceUI(state,text){
-  var b=document.getElementById('aiMic'),t=document.getElementById('aiHear');if(!b||!t)return;
-  b.className='mic'+(state==='listen'?' on':state==='work'?' work':'');
-  var want=state==='listen'?'stop':'mic';if(b.getAttribute('data-ic')!==want){b.setAttribute('data-ic',want);b.innerHTML=want==='stop'?'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';b.setAttribute('aria-label',want==='stop'?'Stop listening':'Talk to the assistant')}
-  t.classList.toggle('hearon',state==='listen');
-  if(b.parentNode)b.parentNode.classList.toggle('listening',state==='listen');
-  if(state==='listen')waveStart();else waveStop();
-  t.textContent=text||(state==='listen'?'Listening... tap the red button to stop':state==='work'?'Got it...':'Tap to talk');
+  var box=document.getElementById('aiBox'),t=document.getElementById('aiHear'),ta=document.getElementById('aiTxt');if(!box)return;
+  box.classList.toggle('listening',state==='listen');box.classList.toggle('working',state==='work');
+  if(state==='listen'){waveStart();if(ta&&text!==undefined)ta.value=text;if(ta)ta.scrollTop=ta.scrollHeight;if(t)t.textContent=''}
+  else{waveStop();if(t)t.textContent=state==='work'?(text||'Writing it down...'):(text||'')}
+}
+/* end listening: send it, keep it in the box to fix or add a photo, or throw it away */
+function voiceEnd(how){
+  VOICE.after=how;if(!VOICE.busy){if(how==='send'){var ta=document.getElementById('aiTxt'),v=ta?ta.value.trim():'';if(v||AIPH){VOICE.last=false;aiSend(v)}}return}
+  if(VOICE.mode==='rec')recStop(how!=='cancel');else{VOICE.stopReq=true;try{VOICE.rec.stop()}catch(e){}}
+}
+function voiceFinish(t){
+  var how=VOICE.after||'send',ta=document.getElementById('aiTxt'),base=VOICE.base||'';VOICE.after='';
+  var full=((base?base+' ':'')+(t||'')).trim();
+  if(how==='cancel'){if(ta)ta.value=base;voiceUI('');return}
+  if(how==='keep'){if(ta)ta.value=full;voiceUI('');return}
+  if(!full&&!AIPH){if(ta)ta.value=base;voiceUI('','I did not hear anything.');return}
+  voiceUI('');VOICE.last=true;aiSend(full);
 }
 /* listening waveform: real mic level when we have it, a gentle idle wave otherwise */
 var WAVE={an:null,buf:null,raf:0,hist:[],t:0};
@@ -1936,7 +1968,7 @@ function waveDraw(){
   else lvl=0.25+0.2*Math.sin(WAVE.t/6)+0.15*Math.sin(WAVE.t/2.3);
   var bars=Math.max(12,Math.floor(w/7));
   if(WAVE.t%2===0){WAVE.hist.push(lvl);while(WAVE.hist.length>bars)WAVE.hist.shift()}
-  var col=getComputedStyle(document.documentElement).getPropertyValue('--missed')||'#C42B1C';
+  var col=getComputedStyle(document.documentElement).getPropertyValue('--fg')||'#1C1C1E';
   g.fillStyle=col.trim()||'#C42B1C';
   var bw=3,gap=(w-bars*bw)/(bars-1),off=bars-WAVE.hist.length;
   for(var k=0;k<bars;k++){
@@ -1952,6 +1984,7 @@ function vocabWords(){var w=[];try{w=(localStorage.getItem('workday.words')||'')
 function vocabPrompt(){var w=[].concat(vocabWords(),S.crew,(MASTER.contractors||[]).map(function(x){return x.name}),(MASTER.foremen||[]).map(function(x){return x.name}),S.tools,S.types,S.vehicles);var seen={},out=[];w.forEach(function(x){x=String(x||'').trim();if(x&&!seen[x.toLowerCase()]){seen[x.toLowerCase()]=1;out.push(x)}});return ('Five Star Services, Lakewood NJ. '+out.join(', ')).slice(0,700)}
 function voiceStart(){
   if(AIBUSY)return;
+  var ta0=document.getElementById('aiTxt');VOICE.base=ta0?ta0.value.trim():'';if(!VOICE.after)VOICE.after='send';
   try{window.speechSynthesis&&speechSynthesis.cancel();if(window.speechSynthesis){var u=new SpeechSynthesisUtterance('');speechSynthesis.speak(u)}}catch(e){}
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition,AC=window.AudioContext||window.webkitAudioContext;
   /* make the audio engine now, while the tap counts, in case we need the backup way */
@@ -1984,7 +2017,7 @@ function recStart(){
       if(VOICE.heard&&!VOICE.partBusy&&now-VOICE.partAt>Math.max(1700,(now-VOICE.start)/6)){
         VOICE.partAt=now;VOICE.partBusy=true;
         var part=wavB64(VOICE.chunks.slice(),VOICE.rate);
-        msgApi('/transcribe',{audio:part,prompt:vocabPrompt()}).then(function(j){VOICE.partBusy=false;if(VOICE.busy&&VOICE.mode==='rec'&&j&&j.text)voiceUI('listen',j.text)},function(){VOICE.partBusy=false});
+        msgApi('/transcribe',{audio:part,prompt:vocabPrompt()}).then(function(j){VOICE.partBusy=false;if(VOICE.busy&&VOICE.mode==='rec'&&j&&j.text)voiceUI('listen',((VOICE.base?VOICE.base+' ':'')+j.text).trim())},function(){VOICE.partBusy=false});
       }
     };
     try{var an=ctx.createAnalyser();an.fftSize=1024;an.smoothingTimeConstant=0.2;src.connect(an);WAVE.an=an;WAVE.buf=new Uint8Array(an.fftSize)}catch(x){}
@@ -1997,15 +2030,15 @@ function recStop(send){
   try{VOICE.stream&&VOICE.stream.getTracks().forEach(function(t){t.stop()})}catch(e){}
   try{VOICE.ctx&&VOICE.ctx.close()}catch(e){}
   WAVE.an=null;
-  if(!send){voiceUI('');return}
-  if(!VOICE.heard){voiceUI('','I did not hear anything. Tap to talk.');return}
+  if(!send){VOICE.after='cancel';voiceFinish('');return}
+  if(!VOICE.heard){voiceFinish('');return}
   voiceUI('work','Writing it down...');
   var b64=wavB64(VOICE.chunks,VOICE.rate);VOICE.chunks=[];
   msgApi('/transcribe',{audio:b64,prompt:vocabPrompt()}).then(function(j){
     if(j.error){voiceUI('',j.error);return}
-    var t=(j.text||'').trim();if(!t){voiceUI('','I did not catch that. Tap to try again.');return}
-    voiceUI('',t);VOICE.last=true;aiSend(t);
-  },function(e){voiceUI('','Could not write it down: '+(e.message||e)+'. Type it below instead.')});
+    var t=(j.text||'').trim();
+    voiceFinish(t);
+  },function(e){voiceUI('','Could not write it down: '+(e.message||e)+'. Type it instead.')});
 }
 function wavB64(chunks,rate){
   var n=0;chunks.forEach(function(c){n+=c.length});
@@ -2027,7 +2060,7 @@ function nativeStart(SR){
     var r;try{r=new SR()}catch(e){try{localStorage.setItem('workday.nonative','1')}catch(x){}if(msgOK())return recStart();VOICE.busy=false;voiceUI('','Voice is not available here. Type below.');return}
     VOICE.rec=r;var sess='';
     r.lang='en-US';r.interimResults=true;r.continuous=true;
-    r.onresult=function(e){var t='';for(var i=0;i<e.results.length;i++)t+=e.results[i][0].transcript;sess=t;live=(acc?acc+' ':'')+t;got=got||!!t.trim();voiceUI('listen',live)};
+    r.onresult=function(e){var t='';for(var i=0;i<e.results.length;i++)t+=e.results[i][0].transcript;sess=t;live=(acc?acc+' ':'')+t;got=got||!!t.trim();voiceUI('listen',((VOICE.base?VOICE.base+' ':'')+live).trim())};
     r.onerror=function(e){
       if(e.error==='not-allowed'||e.error==='service-not-allowed'||e.error==='audio-capture'||e.error==='network'||e.error==='language-not-supported'){
         try{localStorage.setItem('workday.nonative','1')}catch(x){}
@@ -2044,7 +2077,7 @@ function nativeStart(SR){
       if(!VOICE.stopReq&&VOICE.busy&&Date.now()-started<180000){try{begin()}catch(x){}return}
       VOICE.busy=false;
       if(!got){VOICE.nmiss=(VOICE.nmiss||0)+1;if(VOICE.nmiss>=2)try{localStorage.setItem('workday.nonative','1')}catch(x){}}else VOICE.nmiss=0;
-      var t=acc.trim();if(t){voiceUI('',t);VOICE.last=true;aiSend(t)}else voiceUI('',got?'':'I did not hear anything. Tap to talk.');
+      voiceFinish(acc.trim());
     };
     try{r.start()}catch(e){VOICE.busy=false;try{localStorage.setItem('workday.nonative','1')}catch(x){}if(msgOK())return recStart();voiceUI('','Voice could not start. Type below.')}
   }
