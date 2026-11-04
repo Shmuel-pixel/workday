@@ -649,7 +649,7 @@ html.tmrw header{border-bottom:3px solid #17924A}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Nov 3, 2026 (69)';
+var KEY='workday.v1',APPVER='Nov 4, 2026 (70)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -919,6 +919,7 @@ function doUndo(){
   UNDO=null;clearTimeout(undoT);var b=document.getElementById('undoBar');if(b)b.classList.remove('show');
   save();closeSheet();render();toast('Undone');
 }
+var _doUndoCards=doUndo;doUndo=function(){if(typeof UNDO==='function'){var f=UNDO;UNDO=null;clearTimeout(undoT);var b=document.getElementById('undoBar');if(b)b.classList.remove('show');f();return}_doUndoCards()};
 /* follow-up: a job like "schedule the tow" or "order a dumpster" asks when you mark it done, and fills in the log */
 function siteMatch(a,list){var k=function(x){return norm(String(x||'')).split(' ').slice(0,2).join(' ')},ka=k(a);if(!ka)return '';for(var i=0;i<list.length;i++)if(k(list[i])===ka)return list[i];return ''}
 function followKind(c){var t=((c.type||'')+' '+(c.title||'')+' '+(c.notes||'')).toLowerCase();if(/\btow/.test(t))return 'tow';if(/dumpster|container|roll ?off/.test(t))return /pick ?up|swap|empty/.test(t)?'dpick':'ddrop';if(/porta|potty|toilet/.test(t))return 'porta';if(/\brent(al|ing)?\b/.test(t))return 'rental';return ''}
@@ -946,8 +947,8 @@ function afterDone(c){
 }
 function dmQuickTo(r,status){
   var key={Delivered:'del','Pickup Requested':'req','Picked Up':'pick'}[status];var ch={status:status};if(key)ch[key]=todayStr();
-  var old={status:r.status};if(key)old[key]=r[key];for(var k in ch)r[k]=ch[k];dmSave();render();toast(r.size+' at '+r.site.split(',')[0]+': '+status);
-  dmPatch(r,ch).catch(function(e){for(var k2 in old)r[k2]=old[k2];dmSave();render();toast('Not saved: '+(e.message||String(e)))});
+  var old={status:r.status};if(key)old[key]=r[key];for(var k in ch)r[k]=ch[k];dmSave();render();
+  dmPatch(r,ch).then(function(){offerUndo(function(){dmRevert(r,old)},r.size+' at '+r.site.split(',')[0]+': '+status)}).catch(function(e){for(var k2 in old)r[k2]=old[k2];dmSave();render();toast('Not saved: '+(e.message||String(e)))});
 }
 function nextWorkDay(){var d=addDays(todayStr(),1),g=0;while(noWork(d)&&g<6){d=addDays(d,1);g++}return d}
 /* after 5 PM, open on the next work day (once per evening; going back to today stays there) */
@@ -1554,9 +1555,10 @@ function dmQuick(id){
   var ch={status:nx[0]};ch[nx[1]]=todayStr();
   var old={status:r.status};old[nx[1]]=r[nx[1]];
   for(var k in ch)r[k]=ch[k];dmSave();render();
-  if(nx[0]==='Picked Up')tonsBar(r);
-  dmPatch(r,ch).then(function(){},function(e){for(var k2 in old)r[k2]=old[k2];dmSave();render();toast('Not saved: '+(e.message||String(e)))});
+  dmPatch(r,ch).then(function(){offerUndo(function(){dmRevert(r,old)},r.size+' at '+r.site.split(',')[0]+': '+nx[0])},function(e){for(var k2 in old)r[k2]=old[k2];dmSave();render();toast('Not saved: '+(e.message||String(e)))});
 }
+/* put a dumpster back the way it was (undo) */
+function dmRevert(r,old){var back={};for(var k in old)back[k]=old[k]||'';for(var k2 in back)r[k2]=back[k2];dmSave();render();dmPatch(r,back).then(function(){toast('Undone')},function(e){toast('Undo not saved: '+(e.message||String(e)))})}
 function tonsBar(r){
   var b=document.getElementById('tonsBar');if(b)b.remove();
   var tq=document.getElementById('toast');if(tq){clearTimeout(tt);tq.hidden=true}
