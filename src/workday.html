@@ -557,7 +557,7 @@ html.lg .trout{border-radius:20px;background:linear-gradient(180deg,#3D9BFF,#0A7
 html.lg .btn{background:var(--lg-fill)!important;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border:1px solid var(--lg-edge)!important;box-shadow:var(--lg-hi);border-radius:16px!important}
 html.lg .btn.primary,html.lg .btn.good{background:linear-gradient(180deg,#3D9BFF,#0A72F5)!important;color:#fff!important;border:1px solid rgba(255,255,255,.35)!important;box-shadow:0 6px 18px rgba(0,122,255,.30),inset 0 1px 0 rgba(255,255,255,.45)}
 html.lg .btn.good{background:linear-gradient(180deg,#42D46A,#22A84A)!important;box-shadow:0 6px 18px rgba(40,170,80,.28),inset 0 1px 0 rgba(255,255,255,.45)}
-html.lg .btn.danger{border-color:rgba(255,59,48,.35)!important}
+html.lg .btn.danger{background:linear-gradient(180deg,#FF5A4F,#E0271C)!important;color:#fff!important;border:1px solid rgba(255,255,255,.35)!important}
 html.lg .iconbtn{background:var(--lg-fill)!important;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border:1px solid var(--lg-edge)!important;box-shadow:var(--lg-shadow),var(--lg-hi)}
 html.lg .fab,html.lg .mic{background:radial-gradient(120% 120% at 30% 20%,#5AAEFF 0%,#0A72F5 55%,#0657C9 100%)!important;border:1px solid rgba(255,255,255,.45)!important;box-shadow:0 10px 28px rgba(0,110,255,.38),inset 0 1px 0 rgba(255,255,255,.55),inset 0 -6px 14px rgba(0,40,120,.25)!important}
 html.lg .mic.on{background:radial-gradient(120% 120% at 30% 20%,#FF7A70 0%,#F0372B 60%,#C4231A 100%)!important}
@@ -649,7 +649,7 @@ html.tmrw header{border-bottom:3px solid #17924A}
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Nov 4, 2026 (70)';
+var KEY='workday.v1',APPVER='Nov 4, 2026 (71)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -911,7 +911,7 @@ function offerUndo(snaps,label){
   var tq=document.getElementById('toast');if(tq){clearTimeout(tt);tq.hidden=true}
   b.innerHTML='<span>'+esc(label)+'</span><button id="undoBtn">Undo</button>';b.classList.add('show');
   document.getElementById('undoBtn').onclick=doUndo;
-  undoT=setTimeout(function(){b.classList.remove('show');UNDO=null},5000);
+  undoT=setTimeout(function(){b.classList.remove('show');UNDO=null},6000);
 }
 function doUndo(){
   if(!UNDO)return;
@@ -945,11 +945,7 @@ function afterDone(c){
     });
   },350);
 }
-function dmQuickTo(r,status){
-  var key={Delivered:'del','Pickup Requested':'req','Picked Up':'pick'}[status];var ch={status:status};if(key)ch[key]=todayStr();
-  var old={status:r.status};if(key)old[key]=r[key];for(var k in ch)r[k]=ch[k];dmSave();render();
-  dmPatch(r,ch).then(function(){offerUndo(function(){dmRevert(r,old)},r.size+' at '+r.site.split(',')[0]+': '+status)}).catch(function(e){for(var k2 in old)r[k2]=old[k2];dmSave();render();toast('Not saved: '+(e.message||String(e)))});
-}
+function dmQuickTo(r,status){dmStep(r,status)}
 function nextWorkDay(){var d=addDays(todayStr(),1),g=0;while(noWork(d)&&g<6){d=addDays(d,1);g++}return d}
 /* after 5 PM, open on the next work day (once per evening; going back to today stays there) */
 function eveCheck(){try{var T=todayStr();if(new Date().getHours()>=17&&S.view==='day'&&S.cur===T&&localStorage.getItem('workday.eve')!==T){localStorage.setItem('workday.eve',T);S.cur=nextWorkDay();render()}}catch(e){}}
@@ -1552,10 +1548,35 @@ function dmPatch(r,ch){
 }
 function dmQuick(id){
   var r=findDm(id),nx=r&&dmNextOf(r);if(!nx)return;
-  var ch={status:nx[0]};ch[nx[1]]=todayStr();
-  var old={status:r.status};old[nx[1]]=r[nx[1]];
-  for(var k in ch)r[k]=ch[k];dmSave();render();
-  dmPatch(r,ch).then(function(){offerUndo(function(){dmRevert(r,old)},r.size+' at '+r.site.split(',')[0]+': '+nx[0])},function(e){for(var k2 in old)r[k2]=old[k2];dmSave();render();toast('Not saved: '+(e.message||String(e)))});
+  if(r.status==='Delivered'){
+    openSheet('<h3>'+esc(r.size+' at '+r.site.split(',')[0])+'</h3><div class="mt">Pickup only, or swap for a new one?</div><div class="two"><button class="btn primary" id="dqPick">Pickup</button><button class="btn good" id="dqSwap">Swap</button></div><button class="btn" id="dqX">Cancel</button>');
+    bind('dqX',closeSheet);bind('dqPick',function(){closeSheet();dmStep(r,'Pickup Requested')});bind('dqSwap',function(){closeSheet();dmSwap(r)});return}
+  dmStep(r,nx[0]);
+}
+/* move a dumpster to a status now; the Undo bar shows right away */
+function dmStep(r,status){
+  var key={Delivered:'del','Pickup Requested':'req','Picked Up':'pick'}[status];var ch={status:status};if(key)ch[key]=todayStr();
+  var old={status:r.status};if(key)old[key]=r[key];for(var k in ch)r[k]=ch[k];dmSave();render();
+  var p=dmPatch(r,ch).catch(function(e){for(var k2 in old)r[k2]=old[k2];dmSave();render();toast('Not saved: '+(e.message||String(e)));throw e});
+  offerUndo(function(){p.then(function(){dmRevert(r,old)},function(){})},r.size+' at '+r.site.split(',')[0]+': '+status);
+}
+/* swap: this one is called in for pickup, and the same dumpster is ordered again starting today */
+function dmSwap(r){
+  var T=todayStr(),old={status:r.status,req:r.req,notes:r.notes};
+  var ch={status:'Pickup Requested',req:T,notes:(r.notes?r.notes+'; ':'')+'Swapped '+dshort(T)};
+  for(var k in ch)r[k]=ch[k];
+  var nr={row:0,id:dmId(),site:r.site,co:r.co,size:r.size,num:'',status:'Ordered',ord:T,del:'',req:'',pick:'',tons:'',inv:'',notes:'Swap for '+(r.num?'#'+r.num:r.size+' delivered '+dshort(r.del)),photos:''};
+  DM.rows.push(nr);dmSave();render();
+  var p1=dmPatch(r,ch);
+  var p2=getMcp().then(function(mcp){if(!mcp)throw new Error('The dumpster log is not connected.');return mcp.callTool(GS,'append_values',{spreadsheetId:DSID,range:'Dumpsters!A1',values:[[nr.id].concat(dmVals(nr))]}).then(function(){mcp.invalidate(GS,'get_values').catch(function(){})})});
+  var both=Promise.all([p1,p2]).catch(function(e){toast('Swap not fully saved: '+(e.message||String(e)));throw e});
+  offerUndo(function(){both.then(function(){},function(){}).then(function(){dmRevert(r,old);dmClearNew(nr.id)})},'Swapped: '+r.size+' called in, new one ordered');
+}
+/* undo a dumpster row that was just added: blank it in the sheet and drop it here */
+function dmClearNew(id){
+  DM.rows=DM.rows.filter(function(x){return x.id!==id});dmSave();render();
+  getMcp().then(function(mcp){if(!mcp)return;return mcp.callTool(GS,'get_values',{spreadsheetId:DSID,range:'Dumpsters!A1:A3000'},{cache:false}).then(function(res){var v=(res.payload&&res.payload.values)||[],i;for(i=1;i<v.length;i++)if(String(v[i][0])===id)break;if(i>=v.length)return;
+    return mcp.callTool(GS,'update_values',{spreadsheetId:DSID,range:'Dumpsters!A'+(i+1)+':N'+(i+1),values:[['','','','','','','','','','','','','','']]}).then(function(){mcp.invalidate(GS,'get_values').catch(function(){})})})}).catch(function(e){toast('Undo not saved: '+(e.message||String(e)))});
 }
 /* put a dumpster back the way it was (undo) */
 function dmRevert(r,old){var back={};for(var k in old)back[k]=old[k]||'';for(var k2 in back)r[k2]=back[k2];dmSave();render();dmPatch(r,back).then(function(){toast('Undone')},function(e){toast('Undo not saved: '+(e.message||String(e)))})}
