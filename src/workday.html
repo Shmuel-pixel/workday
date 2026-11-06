@@ -635,6 +635,7 @@ html.tv .swhint{display:none}
 .nbpk.on{outline:2px solid var(--todo)}
 .nbfmenu{display:flex;flex-direction:column;gap:8px;margin:10px 0}
 .nefnew{display:flex;gap:8px;margin-top:8px}
+.mcgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px}.mcgrid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block}
 .mcurl{font:13px ui-monospace,Menlo,monospace;word-break:break-all;padding:10px 12px;border-radius:12px;background:rgba(120,120,128,.14);margin:6px 0}.nefnew input{flex:1;min-width:0}
 .nbcard{display:grid;gap:4px;align-content:start;text-align:left;padding:12px;border-radius:16px;background:var(--surface);border:1px solid var(--line);min-height:96px}
 html.lg .nbcard{background:var(--lg-card)!important;border:1px solid var(--lg-edge-dim);box-shadow:var(--lg-shadow),var(--lg-hi)}
@@ -707,7 +708,7 @@ html.lg .aibox{background:var(--lg-card)!important;border:1px solid var(--lg-edg
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Nov 6, 2026 (81)';
+var KEY='workday.v1',APPVER='Nov 6, 2026 (82)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -3851,12 +3852,16 @@ function openMcp(rot){
   h+='<div class="mt">With this, Claude in any chat (iPhone, iPad or computer) can read and change your jobs, dumpsters, towing, keys, notes, contacts, equipment and supply sheets. It asks you before it changes anything.</div>';
   h+='<div id="mcOut" class="mt">Making your link...</div>';
   h+='<ol class="steps"><li>Tap <b>Copy link</b>.</li><li>Open <b>claude.ai</b> in Safari (or the Claude app on a computer). Go to <b>Customize</b>, then <b>Connectors</b>, tap <b>+</b>, then <b>Add custom connector</b>.</li><li>Name: <b>Workday</b>. Paste the link in the URL box. If it asks about signing in, pick <b>No sign in</b>. Tap <b>Add</b>.</li><li>In a chat, tap <b>+</b>, then <b>Connectors</b>, and turn on <b>Workday</b>.</li></ol>';
-  h+='<h3 style="margin-top:18px">Photos for Claude</h3><div class="mt">Make a Shortcut once. Then in Photos tap <b>Share</b>, then <b>Send to Workday</b>, and tell Claude where to put it (a note, a job or a dumpster).</div><div id="mcPh"></div>';
+  h+='<h3 style="margin-top:18px">Photos for Claude</h3><div class="mt">Make a Shortcut once. Then in Photos tap <b>Share</b>, then <b>Send to Workday</b>, and tell Claude where to put it, or later just say: sort my pictures.</div><div id="mcInbox" class="mt"></div><div id="mcPh"></div>';
   h+='<ol class="steps"><li>Tap <b>Copy photo link</b>.</li><li>Open the <b>Shortcuts</b> app, tap <b>+</b>. Tap the name at the top and call it <b>Send to Workday</b>.</li><li>Tap the <b>i</b> (or the name, then Details) and turn on <b>Show in Share Sheet</b>. Done. At the top, tap <b>Any</b> and pick only <b>Images</b>.</li><li>Tap <b>Search Actions</b>, add <b>Convert Image</b>, set it to <b>JPEG</b>.</li><li>Add <b>Resize Image</b>, set the width to <b>1600</b>.</li><li>Add <b>Get Contents of URL</b>. Tap <b>URL</b> and paste the photo link. Tap the arrow to show more: Method <b>POST</b>, Request Body <b>File</b>, File = <b>Resized Image</b>.</li><li>Add <b>Show Notification</b>, set the text to <b>Contents of URL</b>. Tap <b>Done</b>.</li></ol>';
   h+='<div class="mt">Keep the link private. Anyone with it can change your sheets. If it gets out, tap <b>Make a new link</b> and the old one stops working.</div>';
   h+='<div class="row" style="gap:18px;flex-wrap:wrap"><button class="minilink" id="mcRot">Make a new link</button><button class="minilink red" id="mcOff">Turn off</button></div><button class="btn" id="mcDone">Done</button>';
   openSheet(h);bind('mcBack',function(){openSettings('main')});bind('mcDone',closeSheet);
   var out=document.getElementById('mcOut');
+  msgApi('/photos/inbox').then(function(j){var el=document.getElementById('mcInbox');if(!el)return;var all=j.photos||[],wait=all.filter(function(x){return !x.used});
+    if(!all.length){el.innerHTML='<b>Holding area:</b> empty';return}
+    var show=wait.length?wait:all.slice(0,12);
+    el.innerHTML='<b>Holding area:</b> '+(wait.length?wait.length+' waiting to be sorted':'all sorted')+'<div class="mcgrid">'+show.slice(0,24).map(function(x){var u=MSG.url+'/media/'+encodeURIComponent(x.id)+'?k='+encodeURIComponent(MSG.key);return '<a href="'+esc(u)+'" target="_blank"><img loading="lazy" src="'+esc(u)+'" alt=""></a>'}).join('')+'</div>'+(wait.length?'':'<div class="mt">Showing the last ones sorted.</div>')},function(){});
   msgApi('/mcp/setup',{conn:{url:CONN.url,token:CONN.token},rotate:!!rot}).then(function(j){
     out.innerHTML='<div class="mcurl">'+esc(j.url)+'</div><div class="row"><button class="btn primary" id="mcCopy">Copy link</button></div>';
     bind('mcCopy',function(){copyText(j.url);var b=document.getElementById('mcCopy');if(b)b.textContent='Copied'});

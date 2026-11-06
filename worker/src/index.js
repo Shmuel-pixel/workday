@@ -147,6 +147,7 @@ export class Box extends DurableObject {
       if (!this.get('app_key') || key !== this.get('app_key')) return err('Wrong or missing app key', 401);
 
       if (p === '/status') return json(this.status(url));
+      if (p === '/photos/inbox') return json({ photos: this.sql.exec('SELECT id,ts,used FROM mcp_photos ORDER BY ts DESC LIMIT 200').toArray() });
       if (p === '/mcp/setup' && req.method === 'POST') {
         var mb = await req.json();
         if (mb.conn && mb.conn.url && mb.conn.token) this.put('mcp_conn', JSON.stringify({ url: String(mb.conn.url), token: String(mb.conn.token) }));
