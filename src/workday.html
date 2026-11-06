@@ -619,6 +619,22 @@ html.tv .swhint{display:none}
 .rcrow{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}.rcrow img{width:46px;height:60px;object-fit:cover;border-radius:8px}.rcrow div{display:grid;gap:2px;min-width:0}.rcrow small{color:var(--muted);font-size:13px}
 .rcprev{max-width:100%;max-height:34vh;border-radius:12px;display:block;margin:6px auto}
 .nbgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.nbfolds{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:2px 0 12px}
+.nbfold{display:flex;align-items:center;gap:10px;min-height:54px;padding:10px 12px;border-radius:14px;border:0;background:rgba(120,120,128,.14);color:inherit;font:inherit;text-align:left;min-width:0}
+.nbfold svg{width:26px;height:26px;flex:none;color:#F5A623}
+.nbfold b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}
+.nbfold small{opacity:.6;font-size:13px}
+.nbfadd{background:transparent;border:1.5px dashed rgba(120,120,128,.45)}.nbfadd svg{color:var(--todo)}
+.nbcrumb{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin:2px 0 10px;font-size:16px}
+.nbcrumb button{border:0;background:none;color:var(--todo);font:inherit;padding:6px 2px}
+.nbcrumb i{opacity:.45;font-style:normal}.nbcrumb b{padding:6px 2px}
+.nbcrumb .nbfopt{margin-left:auto;font-size:20px;line-height:1;padding:4px 12px;border-radius:12px;background:rgba(120,120,128,.14);color:inherit}
+.nbpick{display:flex;flex-direction:column;gap:6px;max-height:55vh;overflow:auto;margin:6px 0 12px}
+.nbpk{display:flex;align-items:center;gap:10px;min-height:50px;padding:8px 14px;border-radius:14px;border:0;background:rgba(120,120,128,.12);color:inherit;font:inherit;text-align:left}
+.nbpk svg{width:24px;height:24px;flex:none;color:#F5A623}.nbpk b{flex:1}.nbpk small{opacity:.6}
+.nbpk.on{outline:2px solid var(--todo)}
+.nbfmenu{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+.nefnew{display:flex;gap:8px;margin-top:8px}.nefnew input{flex:1;min-width:0}
 .nbcard{display:grid;gap:4px;align-content:start;text-align:left;padding:12px;border-radius:16px;background:var(--surface);border:1px solid var(--line);min-height:96px}
 html.lg .nbcard{background:var(--lg-card)!important;border:1px solid var(--lg-edge-dim);box-shadow:var(--lg-shadow),var(--lg-hi)}
 .nbcard b{font-size:15px;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
@@ -690,7 +706,7 @@ html.lg .aibox{background:var(--lg-card)!important;border:1px solid var(--lg-edg
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Nov 6, 2026 (78)';
+var KEY='workday.v1',APPVER='Nov 6, 2026 (79)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -3938,14 +3954,14 @@ function openReceipt(c,back){
 }
 
 /* ---------- notebook: notes that are not tied to a day (Notebook tab in the Workday sheet) ---------- */
-var NBCOLS=['id','title','body','tags','con','pin','created','updated','deleted','color','remind','photos','arch'];
-var NB={rows:[],at:0,busy:false,err:'',q:'',tag:''};
+var NBCOLS=['id','title','body','tags','con','pin','created','updated','deleted','color','remind','photos','arch','folder'];
+var NB={rows:[],at:0,busy:false,err:'',q:'',tag:'',dir:''};
 (function(){try{var o=JSON.parse(localStorage.getItem('workday.nb')||'null');if(o){NB.rows=o.rows||[];NB.at=o.at||0}}catch(e){}})();
 function nbSave(){try{localStorage.setItem('workday.nb',JSON.stringify({rows:NB.rows,at:NB.at}))}catch(e){}}
 function nbLoad(){
   if(!connOK()){NB.err='Notes are saved in your Google sheet. Connect Google first (gear, Google connection).';NB.at=NB.at||1;return Promise.resolve()}
   if(NB.busy)return Promise.resolve();NB.busy=true;
-  return bridge('getValues',{book:'workday',range:'Notebook!A1:M3000'}).then(function(d){
+  return bridge('getValues',{book:'workday',range:'Notebook!A1:N3000'}).then(function(d){
     NB.rows=(d.values||[]).slice(1).filter(function(r){return r[0]&&!r[8]}).map(function(r){var o={};NBCOLS.forEach(function(k,i){o[k]=r[i]||''});return o});
     NB.at=Date.now();NB.busy=false;NB.err='';nbSave();nbPull();if(S.view==='note')render();
   },function(e){NB.busy=false;NB.at=NB.at||1;NB.err=bridgeErr(e);if(S.view==='note')render()});
@@ -3955,10 +3971,10 @@ function nbWrite(n,isNew){
   n.updated=stampNow();if(isNew)n.created=n.updated;nbSave();
   if(!connOK())return Promise.reject(new Error('Not connected to Google'));
   var row=NBCOLS.map(function(k){return n[k]||''});
-  if(isNew)return bridge('appendValues',{book:'workday',range:'Notebook!A:M',values:[row]});
+  if(isNew)return bridge('appendValues',{book:'workday',range:'Notebook!A:N',values:[row]});
   return bridge('getValues',{book:'workday',range:'Notebook!A1:A3000'}).then(function(d){var v=d.values||[],i;for(i=1;i<v.length;i++)if(String(v[i][0])===n.id)break;
-    if(i>=v.length)return bridge('appendValues',{book:'workday',range:'Notebook!A:M',values:[row]});
-    return bridge('updateValues',{book:'workday',range:'Notebook!B'+(i+1)+':M'+(i+1),values:[row.slice(1)]})});
+    if(i>=v.length)return bridge('appendValues',{book:'workday',range:'Notebook!A:N',values:[row]});
+    return bridge('updateValues',{book:'workday',range:'Notebook!B'+(i+1)+':N'+(i+1),values:[row.slice(1)]})});
 }
 /* checklist lines: "[ ] item" or "[x] item" */
 function nbLines(body){return String(body||'').split('\n')}
@@ -4087,23 +4103,83 @@ function nbAnswer(lines,idx,before){
   for(var st=0;st<t.length;st++){if(st>0&&/[\w.$]/.test(t.charAt(st-1))&&/[\w.$]/.test(t.charAt(st)))continue;var part=t.slice(st);if(!/\d/.test(part)||!/[-+*\/x\u00d7\u00f7^%()]/.test(part.replace(/^\s*-/,''))&&!/\(/.test(part))continue;try{var v=nbCalcExpr(part);best={v:v,money:/\$/.test(before)};break}catch(e){}}
   return best;
 }
+/* folders: a note's Folder is a path like "Payback/Loads". Empty folders are kept as rows with an id starting "fd-". */
+var NBFSVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
+function nbIsF(n){return /^fd-/.test(String(n.id))}
+function nbFolders(){var m={};NB.rows.forEach(function(n){var f=String(n.folder||'').trim();if(!f)return;var p=f.split('/');for(var i=1;i<=p.length;i++)m[p.slice(0,i).join('/')]=1});return Object.keys(m).sort(function(a,b){return a.toLowerCase().localeCompare(b.toLowerCase())})}
+function nbKids(dir){var pre=dir?dir+'/':'';return nbFolders().filter(function(f){return f.indexOf(pre)===0&&f.length>pre.length&&f.slice(pre.length).indexOf('/')<0})}
+function nbInDir(n,dir){var f=String(n.folder||'');return f===dir||(dir&&f.indexOf(dir+'/')===0)}
+function nbFName(f){var p=String(f).split('/');return p[p.length-1]}
+function nbFNice(f){return f?String(f).split('/').join(' \u203a '):'Notes'}
+function nbFCount(f){return NB.rows.filter(function(n){return !nbIsF(n)&&!n.arch&&nbInDir(n,f)}).length}
+function nbParent(f){var i=String(f).lastIndexOf('/');return i<0?'':f.slice(0,i)}
+/* make a folder (or find the one with that name); returns its path */
+function nbMakeFolder(path){var have=nbFolders().filter(function(f){return f.toLowerCase()===path.toLowerCase()})[0];if(have)return have;
+  var f={};NBCOLS.forEach(function(k){f[k]=''});f.id='fd-'+Date.now().toString(36);f.title=nbFName(path);f.folder=path;NB.rows.push(f);
+  nbWrite(f,true).catch(function(e){toast('Saved on this phone. Google: '+bridgeErr(e))});return path}
+/* change many notes at once, with Undo */
+function nbBatch(fn,label){
+  var before=NB.rows.slice(),snap=NB.rows.map(function(n){return {n:n,s:JSON.stringify(n)}});fn();
+  var ch=snap.filter(function(o){return JSON.stringify(o.n)!==o.s});
+  function writeAll(list){return list.reduce(function(pr,n){return pr.then(function(){return nbWrite(n,false)})},Promise.resolve()).catch(function(e){toast('Saved on this phone. Google: '+bridgeErr(e))})}
+  nbSave();writeAll(ch.map(function(o){return o.n}));render();
+  offerUndo(function(){ch.forEach(function(o){var old=JSON.parse(o.s);for(var k in old)o.n[k]=old[k]});NB.rows=before;nbSave();writeAll(ch.map(function(o){return o.n}));render()},label);
+}
+function nbRepath(from,to){NB.rows.forEach(function(n){var f=String(n.folder||'');if(f===from)n.folder=to;else if(f.indexOf(from+'/')===0)n.folder=(to?to+'/':'')+f.slice(from.length+1)});if(NB.dir===from||NB.dir.indexOf(from+'/')===0)NB.dir=to+NB.dir.slice(from.length)}
+function nbNewFolder(parent,cb){
+  var h='<h3>New folder</h3><div class="mt">Inside '+esc(nbFNice(parent))+'</div><div class="field"><label for="nfName">Folder name</label><input id="nfName" autocomplete="off"></div><div id="nfW"></div><div class="row"><button class="btn primary" id="nfOk">Make folder</button><button class="btn" id="nfX">Cancel</button></div>';
+  openSheet(h);var i=document.getElementById('nfName');setTimeout(function(){i.focus()},60);
+  bind('nfX',function(){cb?cb(null):closeSheet()});
+  i.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();document.getElementById('nfOk').click()}};
+  bind('nfOk',function(){var nm=i.value.replace(/\//g,'-').replace(/\s+/g,' ').trim();if(!nm){document.getElementById('nfW').innerHTML='<div class="warn">Type a name.</div>';return}
+    var path=nbMakeFolder((parent?parent+'/':'')+nm);nbSave();
+    if(cb)cb(path);else{closeSheet();NB.dir=path;NB.tag='';NB.q='';render();toast('Folder made')}});
+}
+/* pick a folder: big buttons, one per folder */
+function nbPickFolder(title,cur,skip,cb,back){
+  var fs=nbFolders().filter(function(f){return !skip||(f!==skip&&f.indexOf(skip+'/')!==0)});
+  var h='<h3>'+esc(title)+'</h3><div class="nbpick"><button class="nbpk'+(!cur?' on':'')+'" data-pk="">'+NBFSVG+'<b>Notes</b><small>Top, no folder</small></button>'+fs.map(function(f){return '<button class="nbpk'+(f===cur?' on':'')+'" data-pk="'+esc(f)+'" style="margin-left:'+(18*(f.split('/').length-1))+'px">'+NBFSVG+'<b>'+esc(nbFName(f))+'</b><small>'+nbFCount(f)+'</small></button>'}).join('')+'</div><div class="row"><button class="btn" id="pkNew">+ New folder</button><button class="btn" id="pkX">Cancel</button></div>';
+  openSheet(h);
+  bind('pkX',back||closeSheet);
+  bind('pkNew',function(){nbNewFolder('',function(p){if(p===null)nbPickFolder(title,cur,skip,cb,back);else cb(p)})});
+  [].forEach.call(document.querySelectorAll('[data-pk]'),function(b){b.onclick=function(){cb(b.dataset.pk)}});
+}
+function nbFolderMenu(dir){
+  var par=nbParent(dir),k=nbFCount(dir);
+  var h='<h3>'+esc(nbFName(dir))+'</h3><div class="mt">'+esc(nbFNice(dir))+' '+MID+' '+k+(k===1?' note':' notes')+'</div><div class="nbfmenu"><button class="btn" id="fmNew">New folder inside</button><button class="btn" id="fmRen">Rename</button><button class="btn" id="fmMove">Move folder</button><button class="btn danger" id="fmDel">Delete folder</button></div><button class="btn" id="fmX">Close</button>';
+  openSheet(h);bind('fmX',closeSheet);
+  bind('fmNew',function(){nbNewFolder(dir,function(p){if(p===null)nbFolderMenu(dir);else{closeSheet();NB.dir=p;render();toast('Folder made')}})});
+  bind('fmRen',function(){openSheet('<h3>Rename folder</h3><div class="field"><label for="frName">Folder name</label><input id="frName" value="'+esc(nbFName(dir))+'"></div><div class="row"><button class="btn primary" id="frOk">Save</button><button class="btn" id="frX">Cancel</button></div>');
+    bind('frX',function(){nbFolderMenu(dir)});
+    bind('frOk',function(){var nm=val('frName').replace(/\//g,'-').trim();if(!nm||nm===nbFName(dir)){closeSheet();return}var to=(par?par+'/':'')+nm;closeSheet();nbBatch(function(){nbRepath(dir,to);NB.rows.forEach(function(n){if(nbIsF(n)&&n.folder===to)n.title=nm})},'Folder renamed')})});
+  bind('fmMove',function(){nbPickFolder('Move "'+nbFName(dir)+'" into',par,dir,function(p){closeSheet();if(p===par)return;var to=(p?p+'/':'')+nbFName(dir);nbBatch(function(){nbRepath(dir,to)},'Folder moved')},function(){nbFolderMenu(dir)})});
+  bind('fmDel',function(){confirmSheet('Delete the folder "'+nbFName(dir)+'"?','Nothing inside is deleted. The notes and folders in it move up to '+nbFNice(par)+'.','Delete folder',function(){closeSheet();var at=stampNow();
+    nbBatch(function(){NB.rows.forEach(function(n){if(nbIsF(n)&&n.folder===dir)n.deleted=at});NB.rows=NB.rows.filter(function(n){return !n.deleted});nbRepath(dir,par);NB.dir=par},'Folder deleted')})});
+}
 function renderNotes(){
   if(!NB.busy&&(!NB.at||Date.now()-NB.at>5*60000))nbLoad();
   else if(Date.now()-(NB.pt||0)>30000){NB.pt=Date.now();nbPull()}
   var q=NB.q.trim().toLowerCase(),arch=NB.tag==='__arch';
-  var h='<div class="eqbar"><div><b>Notes</b><span>'+(function(){var k=NB.rows.filter(function(n){return !n.arch}).length;return k?k+(k===1?' note':' notes'):''})()+'</span></div><button class="addround" id="nbNew" aria-label="New note">+</button></div>';
+  var h='<div class="eqbar"><div><b>Notes</b><span>'+(function(){var k=NB.rows.filter(function(n){return !n.arch&&!nbIsF(n)}).length;return k?k+(k===1?' note':' notes'):''})()+'</span></div><button class="addround" id="nbNew" aria-label="New note">+</button></div>';
   h+='<input class="search" id="nbQ" type="search" placeholder="Search notes" value="'+esc(NB.q)+'">';
-  var tags={};NB.rows.forEach(function(n){if(n.arch)return;nbTags(n).forEach(function(t){tags[t]=1});if(n.con)tags[n.con]=1});
+  var tags={};NB.rows.forEach(function(n){if(n.arch||nbIsF(n))return;nbTags(n).forEach(function(t){tags[t]=1});if(n.con)tags[n.con]=1});
   var tl=Object.keys(tags).sort(),hasArch=NB.rows.some(function(n){return n.arch}),hasRem=NB.rows.some(function(n){return n.remind&&!n.arch});
   h+='<div class="eqchips"><button class="ttab'+(!NB.tag?' on':'')+'" data-nbtag="">All</button>'+(hasRem?'<button class="ttab'+(NB.tag==='__rem'?' on':'')+'" data-nbtag="__rem">Reminders</button>':'')+tl.map(function(t){return '<button class="ttab'+(NB.tag===t?' on':'')+'" data-nbtag="'+esc(t)+'">'+esc(t)+'</button>'}).join('')+(hasArch?'<button class="ttab'+(arch?' on':'')+'" data-nbtag="__arch">Archive</button>':'')+'</div>';
   if(NB.err)h+='<div class="warn">'+esc(NB.err)+'</div>';
-  var list=NB.rows.filter(function(n){if(arch!==!!n.arch)return false;if(NB.tag==='__rem'&&!n.remind)return false;if(NB.tag&&NB.tag.charAt(0)!=='_'&&nbTags(n).indexOf(NB.tag)<0&&n.con!==NB.tag)return false;return !q||(n.title+' '+n.body+' '+n.tags+' '+n.con).toLowerCase().indexOf(q)>=0});
+  var flat=!!(q||NB.tag);if(NB.dir&&nbFolders().indexOf(NB.dir)<0)NB.dir='';
+  if(!flat){
+    if(NB.dir){var parts=NB.dir.split('/');h+='<div class="nbcrumb"><button data-nbdir="">Notes</button>'+parts.map(function(pt,i){var path=parts.slice(0,i+1).join('/');return '<i>\u203a</i>'+(i===parts.length-1?'<b>'+esc(pt)+'</b>':'<button data-nbdir="'+esc(path)+'">'+esc(pt)+'</button>')}).join('')+'<button class="nbfopt" id="nbFMenu" aria-label="Folder options">&middot;&middot;&middot;</button></div>'}
+    h+='<div class="nbfolds">'+nbKids(NB.dir).map(function(f){var c=nbFCount(f);return '<button class="nbfold" data-nbdir="'+esc(f)+'">'+NBFSVG+'<b>'+esc(nbFName(f))+'</b><small>'+(c?c:'Empty')+'</small></button>'}).join('')+'<button class="nbfold nbfadd" id="nbNewF">'+NBFSVG+'<b>New folder</b></button></div>';
+  }
+  var list=NB.rows.filter(function(n){if(nbIsF(n))return false;if(!flat&&String(n.folder||'')!==NB.dir)return false;if(arch!==!!n.arch)return false;if(NB.tag==='__rem'&&!n.remind)return false;if(NB.tag&&NB.tag.charAt(0)!=='_'&&nbTags(n).indexOf(NB.tag)<0&&n.con!==NB.tag)return false;return !q||(n.title+' '+n.body+' '+n.tags+' '+n.con).toLowerCase().indexOf(q)>=0});
   list.sort(function(a,b){if(NB.tag==='__rem')return nbRemMs(a)-nbRemMs(b);return (b.pin?1:0)-(a.pin?1:0)||String(b.updated).localeCompare(String(a.updated))});
-  if(!list.length)h+='<div class="empty" style="text-align:center">'+(q||NB.tag?'Nothing here.':NB.busy?'Loading...':'No notes yet.')+'</div>';
-  h+='<div class="nbgrid">'+list.map(function(n){var pr=nbProgress(n.body),ph=nbPhotos(n).filter(function(x){return !nbIsAudio(x)})[0],hasAu=nbPhotos(n).some(nbIsAudio);return '<button class="nbcard'+(n.color?' nbc-'+esc(n.color):'')+'" data-nb="'+esc(n.id)+'">'+(ph?'<img class="nbimg'+(nbIsDraw(ph)?' nbimgd':'')+'" src="'+esc(nbImg(ph))+'" alt="">':'')+(n.pin?'<i class="nbpin">Pinned</i>':'')+'<b>'+esc(n.title||nbPreview(n.body).slice(0,40)||'Note')+'</b><span>'+esc(nbPreview(n.body))+'</span>'+(n.remind?'<em class="nbrem">'+esc(nbRemTxt(n))+'</em>':'')+'<small>'+esc([hasAu?'Recording':'',nbShared()[n.id]?'Shared':'',n.con,nbTags(n).join(', '),pr].filter(function(x){return x}).join(' '+MID+' '))+'</small></button>'}).join('')+'</div>';
+  if(!list.length)h+='<div class="empty" style="text-align:center">'+(q||NB.tag?'Nothing here.':NB.busy?'Loading...':NB.dir?(nbKids(NB.dir).length?'':'This folder is empty. Tap + to add a note here.'):'No notes yet.')+'</div>';
+  h+='<div class="nbgrid">'+list.map(function(n){var pr=nbProgress(n.body),ph=nbPhotos(n).filter(function(x){return !nbIsAudio(x)})[0],hasAu=nbPhotos(n).some(nbIsAudio);return '<button class="nbcard'+(n.color?' nbc-'+esc(n.color):'')+'" data-nb="'+esc(n.id)+'">'+(ph?'<img class="nbimg'+(nbIsDraw(ph)?' nbimgd':'')+'" src="'+esc(nbImg(ph))+'" alt="">':'')+(n.pin?'<i class="nbpin">Pinned</i>':'')+'<b>'+esc(n.title||nbPreview(n.body).slice(0,40)||'Note')+'</b><span>'+esc(nbPreview(n.body))+'</span>'+(n.remind?'<em class="nbrem">'+esc(nbRemTxt(n))+'</em>':'')+'<small>'+esc([flat&&n.folder?nbFName(n.folder):'',hasAu?'Recording':'',nbShared()[n.id]?'Shared':'',n.con,nbTags(n).join(', '),pr].filter(function(x){return x}).join(' '+MID+' '))+'</small></button>'}).join('')+'</div>';
   document.getElementById('mainIn').innerHTML=h;document.getElementById('main').className='';
   var qi=document.getElementById('nbQ');qi.oninput=function(){NB.q=qi.value;var p=qi.selectionStart;renderNotes();var n2=document.getElementById('nbQ');n2.focus();try{n2.setSelectionRange(p,p)}catch(e){}};
-  bind('nbNew',function(){openNoteEdit(null)});
+  bind('nbNew',function(){openNoteEdit(null,flat?null:{folder:NB.dir})});
+  bind('nbNewF',function(){nbNewFolder(NB.dir)});bind('nbFMenu',function(){nbFolderMenu(NB.dir)});
+  [].forEach.call(document.querySelectorAll('[data-nbdir]'),function(b){b.onclick=function(){NB.dir=b.dataset.nbdir;renderNotes();try{window.scrollTo(0,0)}catch(e){}}});
   [].forEach.call(document.querySelectorAll('[data-nbtag]'),function(b){b.onclick=function(){NB.tag=b.dataset.nbtag;renderNotes()}});
   [].forEach.call(document.querySelectorAll('[data-nb]'),function(b){b.onclick=function(){openNote(b.dataset.nb)}});
 }
@@ -4114,7 +4190,7 @@ function openNote(id){
   var n=nbFind(id);if(!n)return;
   var L=nbLines(n.body);
   var h='<div class="nbhead'+(n.color?' nbc-'+esc(n.color):'')+'"><h3 style="margin:0">'+esc(n.title||'Note')+'</h3><button class="minilink" id="nbPin">'+(n.pin?'Unpin':'Pin')+'</button></div>';
-  if(n.con||n.tags||n.remind)h+='<div class="mt">'+esc([n.remind?'Reminder '+nbRemTxt(n):'',n.con,nbTags(n).join(', ')].filter(function(x){return x}).join(' '+MID+' '))+'</div>';
+  if(n.folder||n.con||n.tags||n.remind)h+='<div class="mt">'+esc([n.folder?nbFNice(n.folder):'',n.remind?'Reminder '+nbRemTxt(n):'',n.con,nbTags(n).join(', ')].filter(function(x){return x}).join(' '+MID+' '))+'</div>';
   var ph=nbPhotos(n);h+=ph.map(function(p,i){return nbIsDraw(p)?'<button class="nbdraw" data-redraw="'+i+'"><img src="'+esc(nbImg(p))+'" alt="Drawing"><span>Tap to keep drawing</span></button>':''}).join('');if(ph.length)h+='<div class="dmphotos">'+ph.filter(function(p){return !nbIsAudio(p)&&!nbIsDraw(p)}).map(function(p){var u=dmPhotoUrl(p);return '<a href="'+esc(u)+'" target="_blank" rel="noopener"><img src="'+esc(u)+'" alt="Photo"></a>'}).join('')+'</div>'+ph.filter(nbIsAudio).map(function(p){return '<audio class="nbau" controls preload="none" src="'+esc(dmPhotoUrl(p))+'"></audio>'}).join('');
   h+='<div class="nbbody">'+L.map(function(l,i){if(nbIsCk(l))return '<label class="nbck'+(nbCkDone(l)?' done':'')+'"><input type="checkbox" data-nbl="'+i+'"'+(nbCkDone(l)?' checked':'')+'><span>'+linkify(nbCkText(l))+'</span></label>';
     var m=/^(.*)=\s*$/.exec(l),ans=m?nbAnswer(L,i,m[1]):null;
@@ -4122,24 +4198,28 @@ function openNote(id){
   h+='<div class="row"><button class="btn primary" id="nbEdit">Edit</button><button class="btn" id="nbShare">Send to Keep / share</button><button class="btn" id="nbX">Close</button></div>';
   var shu=nbShared()[n.id];
   h+='<div class="row" style="gap:18px;flex-wrap:wrap"><button class="minilink" id="nbSh">'+(shu?'Send the link again':'Share with someone (they can edit)')+'</button>'+(shu?'<button class="minilink" id="nbShOff">Stop sharing</button>':'')+'</div>';
-  h+='<div class="row" style="gap:18px"><button class="minilink" id="nbArch">'+(n.arch?'Move out of archive':'Archive')+'</button><button class="minilink red" id="nbDel">Delete note</button></div>';
+  h+='<div class="row" style="gap:18px;flex-wrap:wrap"><button class="minilink" id="nbMove">Move to folder</button><button class="minilink" id="nbArch">'+(n.arch?'Move out of archive':'Archive')+'</button><button class="minilink red" id="nbDel">Delete note</button></div>';
   openSheet(h);
   [].forEach.call(document.querySelectorAll('[data-redraw]'),function(b){b.onclick=function(){var i=+b.dataset.redraw,L2=nbPhotos(n);nbRedraw(L2[i],function(ref){L2[i]=ref;n.photos=L2.join(';');nbSaveQuiet(n);if(nbShared()[n.id])nbSharePush(n,false).catch(function(){});openNote(id);render();toast('Drawing saved')})}});
   bind('nbX',closeSheet);bind('nbEdit',function(){openNoteEdit(id)});bind('nbShare',function(){nbShare(n)});
   bind('nbPin',function(){n.pin=n.pin?'':'yes';nbSaveQuiet(n);openNote(id);render()});
   bind('nbSh',function(){nbSharePush(n,false).then(function(j){try{if(navigator.share){navigator.share({title:n.title||'Note',url:j.url}).catch(function(){});}else copyText(j.url)}catch(e){copyText(j.url)}openNote(id);render()},function(e){toast(e.message||String(e))})});
   bind('nbShOff',function(){nbSharePush(n,true).then(function(){toast('Not shared any more');openNote(id);render()},function(e){toast(e.message||String(e))})});
+  bind('nbMove',function(){nbPickFolder('Move to folder',n.folder,null,function(p){var was=n.folder||'';closeSheet();if(p===was){openNote(id);return}n.folder=p;nbSaveQuiet(n);openNote(id);render();offerUndo(function(){n.folder=was;nbSaveQuiet(n);render()},'Moved to '+(p?nbFName(p):'Notes'))},function(){openNote(id)})});
   bind('nbArch',function(){var was=n.arch;n.arch=was?'':stampNow();nbSaveQuiet(n);closeSheet();render();offerUndo(function(){n.arch=was;nbSaveQuiet(n);render()},was?'Moved out of archive':'Note archived')});
   bind('nbDel',function(){confirmSheet('Delete this note?',n.title||nbPreview(n.body),'Delete',function(){n.deleted=stampNow();nbSaveQuiet(n);NB.rows=NB.rows.filter(function(x){return x.id!==id});nbSave();closeSheet();render();offerUndo(function(){n.deleted='';NB.rows.push(n);nbSave();nbSaveQuiet(n);render()},'Note deleted')})});
   [].forEach.call(document.querySelectorAll('[data-nbl]'),function(cb){cb.onchange=function(){var LL=nbLines(n.body),i=+cb.dataset.nbl;LL[i]=LL[i].replace(/\[( |x|X)\]/,cb.checked?'[x]':'[ ]');n.body=LL.join('\n');cb.parentNode.classList.toggle('done',cb.checked);nbSaveQuiet(n);render()}});
 }
 function linkify(t){return esc(t).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>')}
 function openNoteEdit(id,pre){
-  var isNew=!id,n=id?nbFind(id):{id:'',title:'',body:'',tags:'',con:'',pin:'',color:'',remind:'',photos:'',arch:''};if(!n)return;if(isNew&&pre)for(var k in pre)n[k]=pre[k];
+  var isNew=!id,n=id?nbFind(id):{id:'',title:'',body:'',tags:'',con:'',pin:'',color:'',remind:'',photos:'',arch:'',folder:''};if(!n)return;if(isNew&&pre)for(var k in pre)n[k]=pre[k];
   var col=n.color||'',photos=nbPhotos(n);
   var h='<h3>'+(isNew?'New note':'Edit note')+'</h3>';
   h+='<div class="field"><label for="neTitle">Title</label><input id="neTitle" value="'+esc(n.title)+'"></div>';
-  h+='<div class="field"><label for="neBody">Note</label><textarea id="neBody" rows="9" placeholder="Write here. Math: 4*12.50= fills in.">'+esc(n.body)+'</textarea></div><div class="netools"><button type="button" class="netb" id="neCk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4" width="6" height="6" rx="1.5"/><path d="M5 7l1 1 2-2M13 7h8M3.5 15.5h6v6h-6zM13 18.5h8"/></svg><span>Checklist</span></button><label class="netb" for="nePh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Photo</span></label><button type="button" class="netb" id="neDraw"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></svg><span>Draw</span></button><button type="button" class="netb" id="neRec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span>Record</span></button><button type="button" class="netb" id="neColB"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 2-.8 2-1.8 0-1.1-.9-1.4-.9-2.4 0-1 .8-1.8 1.9-1.8H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></svg><span>Color</span></button></div><input id="nePh" type="file" accept="image/*" hidden>';
+  var curF=String(n.folder||'');
+  function folderOpts(sel){return '<option value="">Notes (no folder)</option>'+nbFolders().map(function(f){return '<option value="'+esc(f)+'"'+(f===sel?' selected':'')+'>'+esc(nbFNice(f))+'</option>'}).join('')+'<option value="__new">+ New folder</option>'}
+  h+='<div class="field"><label for="neFold">Folder</label><select id="neFold">'+folderOpts(curF)+'</select><div class="nefnew" id="neFNew" hidden><input id="neFName" aria-label="New folder name" autocomplete="off"><button type="button" class="btn" id="neFAdd">Add</button></div></div>';
+  h+='<div class="field"><label for="neBody">Note</label><textarea id="neBody" rows="9">'+esc(n.body)+'</textarea></div><div class="netools"><button type="button" class="netb" id="neCk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4" width="6" height="6" rx="1.5"/><path d="M5 7l1 1 2-2M13 7h8M3.5 15.5h6v6h-6zM13 18.5h8"/></svg><span>Checklist</span></button><label class="netb" for="nePh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Photo</span></label><button type="button" class="netb" id="neDraw"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></svg><span>Draw</span></button><button type="button" class="netb" id="neRec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span>Record</span></button><button type="button" class="netb" id="neColB"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 2-.8 2-1.8 0-1.1-.9-1.4-.9-2.4 0-1 .8-1.8 1.9-1.8H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></svg><span>Color</span></button></div><input id="nePh" type="file" accept="image/*" hidden>';
   h+='<div class="dmphotos" id="nePhs"></div>';
   h+='<div class="nbcolrow" id="neCols"'+(col?'':' hidden')+'><div class="nbcols">'+NBCOLORS.map(function(cn){return '<button type="button" class="nbcol nbc-'+(cn||'none')+(cn===col?' on':'')+'" data-col="'+cn+'" aria-label="'+(cn||'No color')+'"></button>'}).join('')+'</div></div>';
   h+='<details class="fgrp" style="border-radius:14px;background:rgba(120,120,128,.12)"'+(n.con||n.tags||n.remind?' open':'')+'><summary><b>Reminder, contractor, tags</b><span class="fgv">'+esc([n.remind?nbRemTxt(n):'',n.con,n.tags].filter(function(x){return x}).join(' '+MID+' ')||'None')+'</span></summary><div class="fgin">';
@@ -4162,6 +4242,9 @@ function openNoteEdit(id,pre){
   bind('neRemT',function(){var d=addDays(todayStr(),1);while(noWork(d))d=addDays(d,1);rem.value=d+'T08:00';remWarn()});
   bind('neRemX',function(){rem.value='';document.getElementById('neRep').value='';remWarn()});
   bind('neX',function(){isNew?closeSheet():openNote(id)});
+  var fsel=document.getElementById('neFold');
+  fsel.onchange=function(){var nw=fsel.value==='__new';document.getElementById('neFNew').hidden=!nw;if(nw){fsel.value=curF;document.getElementById('neFName').focus()}else curF=fsel.value};
+  bind('neFAdd',function(){var nm=val('neFName').replace(/\//g,'-').trim();if(!nm)return;curF=nbMakeFolder(nm);nbSave();fsel.innerHTML=folderOpts(curF);document.getElementById('neFName').value='';document.getElementById('neFNew').hidden=true});
   bind('neColB',function(){var r=document.getElementById('neCols');r.hidden=!r.hidden});
   bind('neCk',function(){var p=ta.selectionStart,v=ta.value,ls=v.lastIndexOf('\n',p-1)+1,le=v.indexOf('\n',p);if(le<0)le=v.length;var line=v.slice(ls,le);
     if(ta.selectionEnd>p){var sel=v.slice(p,ta.selectionEnd).split('\n').map(function(l){return l.trim()&&!nbIsCk(l)?'[ ] '+l.trim():l}).join('\n');ta.value=v.slice(0,p)+sel+v.slice(ta.selectionEnd);ta.focus();return}
@@ -4175,7 +4258,7 @@ function openNoteEdit(id,pre){
   suggestBox('neCon','neConS',function(){return MASTER.contractors.map(function(x){return {label:x.name}})},function(){});
   bind('neSave',function(){
     if(photos.some(function(p){return /^(data|draw):/.test(p)})){document.getElementById('neW').innerHTML='<div class="warn">Wait a second, the photo is still uploading.</div>';return}
-    var v={title:val('neTitle').trim(),body:ta.value.replace(/\s+$/,''),con:val('neCon').trim(),tags:val('neTags').trim(),color:col,remind:rem.value?rem.value+(val('neRep')?'|'+val('neRep'):''):'',photos:photos.join(';')};
+    var v={title:val('neTitle').trim(),body:ta.value.replace(/\s+$/,''),con:val('neCon').trim(),tags:val('neTags').trim(),folder:curF,color:col,remind:rem.value?rem.value+(val('neRep')?'|'+val('neRep'):''):'',photos:photos.join(';')};
     if(!v.title&&!v.body&&!v.photos){document.getElementById('neW').innerHTML='<div class="warn">Write something first.</div>';return}
     for(var k2 in v)n[k2]=v[k2];
     if(isNew){n.id='n'+Date.now().toString(36);NB.rows.push(n)}
