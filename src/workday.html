@@ -658,6 +658,16 @@ html.lg .aibox{background:var(--lg-card)!important;border:1px solid var(--lg-edg
 .nbc-red,html.lg .nbcard.nbc-red{background:#F28B82!important}.nbc-orange,html.lg .nbcard.nbc-orange{background:#FBBC04!important}.nbc-yellow,html.lg .nbcard.nbc-yellow{background:#FFF475!important}.nbc-green,html.lg .nbcard.nbc-green{background:#CCFF90!important}.nbc-teal,html.lg .nbcard.nbc-teal{background:#A7FFEB!important}.nbc-blue,html.lg .nbcard.nbc-blue{background:#AECBFA!important}.nbc-purple,html.lg .nbcard.nbc-purple{background:#D7AEFB!important}.nbc-pink,html.lg .nbcard.nbc-pink{background:#FDCFE8!important}.nbc-brown,html.lg .nbcard.nbc-brown{background:#E6C9A8!important}.nbc-gray,html.lg .nbcard.nbc-gray{background:#E8EAED!important}
 .nbcard[class*="nbc-"],.nbhead[class*="nbc-"]{color:#202124}.nbcard[class*="nbc-"] span{color:#3c4043}
 @media (prefers-color-scheme:dark){.nbc-red,html.lg .nbcard.nbc-red{background:#77172E!important}.nbc-orange,html.lg .nbcard.nbc-orange{background:#692B17!important}.nbc-yellow,html.lg .nbcard.nbc-yellow{background:#7C4A03!important}.nbc-green,html.lg .nbcard.nbc-green{background:#264D3B!important}.nbc-teal,html.lg .nbcard.nbc-teal{background:#0C625D!important}.nbc-blue,html.lg .nbcard.nbc-blue{background:#256377!important}.nbc-purple,html.lg .nbcard.nbc-purple{background:#472E5B!important}.nbc-pink,html.lg .nbcard.nbc-pink{background:#6C394F!important}.nbc-brown,html.lg .nbcard.nbc-brown{background:#4B443A!important}.nbc-gray,html.lg .nbcard.nbc-gray{background:#232427!important}.nbcard[class*="nbc-"],.nbhead[class*="nbc-"]{color:#E8EAED}.nbcard[class*="nbc-"] span{color:#C4C7C5}}
+.drawov{position:fixed;inset:0;z-index:80;background:#fff;display:grid;grid-template-rows:auto 1fr auto;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+.drawbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;background:#f2f2f7;color:#1c1c1e}.drawbar button{font-size:16px;color:#0A72F5;padding:6px 8px}.drawbar span{display:flex;gap:8px;align-items:center}
+.dwc{width:26px;height:26px;border-radius:13px;padding:0!important;border:2px solid #fff;box-shadow:0 0 0 1px #ccc}.dwc.on{box-shadow:0 0 0 3px #0A72F5}.dwe.on{font-weight:800}
+#dwC{width:100%;height:100%;touch-action:none;background:#fff;display:block}
+.recov{background:rgba(0,0,0,.45);display:grid;place-items:center;grid-template-rows:none}
+.recbox{background:var(--surface);color:var(--fg);border-radius:22px;padding:22px;display:grid;gap:14px;justify-items:center;width:min(340px,90vw)}
+.rectime{font-size:34px;font-weight:700;font-variant-numeric:tabular-nums}
+.recbtn{width:76px;height:76px;border-radius:38px;background:#E0271C;border:6px solid #fff;box-shadow:0 0 0 2px #E0271C}.recbtn.on{border-radius:18px;transform:scale(.8)}
+.nbau{width:100%;margin:4px 0}.nbaup audio{width:220px}.nbaup{display:inline-block}
+#neRep{margin-top:6px}
 </style>
 
 <header id="hdr"><div class="wrap" id="hdrIn"></div></header>
@@ -672,7 +682,7 @@ html.lg .aibox{background:var(--lg-card)!important;border:1px solid var(--lg-edg
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Nov 5, 2026 (74)';
+var KEY='workday.v1',APPVER='Nov 6, 2026 (75)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -3951,11 +3961,75 @@ function nbProgress(body){var t=0,d=0;nbLines(body).forEach(function(l){if(nbIsC
 function nbPreview(body){return nbLines(body).filter(function(l){return l.trim()}).slice(0,2).map(function(l){return nbIsCk(l)?(nbCkDone(l)?'[x] ':'[ ] ')+nbCkText(l):l}).join(' / ')}
 function nbTags(n){return String(n.tags||'').split(/,\s*/).filter(function(x){return x})}
 function nbForContractor(con){var k=norm(con||'');if(!k)return [];return NB.rows.filter(function(n){return norm(n.con)===k})}
+/* reminder stored as "YYYY-MM-DDTHH:MM" or "YYYY-MM-DDTHH:MM|weekly" */
+var NBREP={'':'Does not repeat',daily:'Every day',weekday:'Every work day',weekly:'Every week',monthly:'Every month',yearly:'Every year'};
+function nbRem(n){var s=String(n.remind||''),p=s.split('|');return {at:p[0]||'',rep:p[1]||''}}
+function nbIsAudio(ref){return /^(wd:)?au-/.test(String(ref))}
+function nbNextOcc(at,rep,from){
+  var d=at.slice(0,10),t=at.slice(11,16)||'09:00',ms=atTime(d,t),g=0;
+  if(!rep)return ms;
+  while(ms<from&&g<800){g++;
+    if(rep==='daily'||rep==='weekday')d=addDays(d,1);
+    else if(rep==='weekly')d=addDays(d,7);
+    else{var y=+d.slice(0,4),m=+d.slice(5,7),dd=+d.slice(8,10);if(rep==='monthly'){m++;if(m>12){m=1;y++}}else y++;var last=new Date(y,m,0).getDate();d=y+'-'+pad(m)+'-'+pad(Math.min(dd,last))}
+    ms=atTime(d,t)}
+  return ms;
+}
+/* open a full-screen sketch pad; cb gets a JPEG data URL */
+function openDraw(cb){
+  var ov=document.createElement('div');ov.className='drawov';
+  ov.innerHTML='<div class="drawbar"><button id="dwX">Cancel</button><span><button class="dwc on" data-dc="#1C1C1E" style="background:#1C1C1E"></button><button class="dwc" data-dc="#E0271C" style="background:#E0271C"></button><button class="dwc" data-dc="#0A72F5" style="background:#0A72F5"></button><button class="dwc" data-dc="#17924A" style="background:#17924A"></button><button class="dwc" data-dc="#F59E0B" style="background:#F59E0B"></button><button class="dwe" data-dc="erase">Eraser</button></span><button id="dwOk"><b>Done</b></button></div><canvas id="dwC"></canvas><div class="drawbar"><button id="dwThin">Thin</button><button id="dwThick">Thick</button><button id="dwUndo">Undo</button><button id="dwClr">Clear</button></div>';
+  document.body.appendChild(ov);
+  var c=document.getElementById('dwC'),dpr=window.devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;c.width=w*dpr;c.height=h*dpr;
+  var g=c.getContext('2d');g.scale(dpr,dpr);g.lineCap='round';g.lineJoin='round';
+  var strokes=[],cur=null,col='#1C1C1E',size=3;
+  function redraw(){g.fillStyle='#fff';g.fillRect(0,0,w,h);strokes.forEach(function(s){g.strokeStyle=s.c==='erase'?'#fff':s.c;g.lineWidth=s.c==='erase'?s.w*6:s.w;g.beginPath();s.p.forEach(function(q,i){if(i)g.lineTo(q[0],q[1]);else g.moveTo(q[0],q[1])});if(s.p.length===1)g.lineTo(s.p[0][0]+.1,s.p[0][1]);g.stroke()})}
+  redraw();
+  function pt(e){var r=c.getBoundingClientRect(),t=e.touches?e.touches[0]:e;return [t.clientX-r.left,t.clientY-r.top]}
+  function start(e){e.preventDefault();cur={c:col,w:size,p:[pt(e)]};strokes.push(cur);redraw()}
+  function move(e){if(!cur)return;e.preventDefault();cur.p.push(pt(e));redraw()}
+  function end(){cur=null}
+  c.addEventListener('touchstart',start,{passive:false});c.addEventListener('touchmove',move,{passive:false});c.addEventListener('touchend',end);
+  c.addEventListener('mousedown',start);c.addEventListener('mousemove',move);window.addEventListener('mouseup',end);
+  [].forEach.call(ov.querySelectorAll('[data-dc]'),function(b){b.onclick=function(){col=b.dataset.dc;[].forEach.call(ov.querySelectorAll('[data-dc]'),function(x){x.classList.toggle('on',x===b)})}});
+  document.getElementById('dwThin').onclick=function(){size=3};document.getElementById('dwThick').onclick=function(){size=8};
+  document.getElementById('dwUndo').onclick=function(){strokes.pop();redraw()};document.getElementById('dwClr').onclick=function(){strokes=[];redraw()};
+  document.getElementById('dwX').onclick=function(){ov.remove()};
+  document.getElementById('dwOk').onclick=function(){var url=strokes.length?c.toDataURL('image/jpeg',0.8):'';ov.remove();if(url)cb(url)};
+}
+/* record a voice note; cb gets an audio data URL */
+function openRecord(cb){
+  if(!window.MediaRecorder||!navigator.mediaDevices){toast('Recording is not available on this device.');return}
+  var ov=document.createElement('div');ov.className='drawov recov';
+  ov.innerHTML='<div class="recbox"><b>Voice recording</b><div class="rectime" id="rcT">0:00</div><button class="recbtn" id="rcGo" aria-label="Start recording"></button><div class="row" style="justify-content:center;gap:24px"><button class="btn" id="rcX">Cancel</button><button class="btn primary" id="rcOk" disabled>Save</button></div><div class="mt" id="rcMsg">Tap the red button to record (up to 2 minutes).</div></div>';
+  document.body.appendChild(ov);
+  var rec=null,chunks=[],stream=null,t0=0,tick=0,blob=null;
+  function stopAll(){try{rec&&rec.state!=='inactive'&&rec.stop()}catch(e){}try{stream&&stream.getTracks().forEach(function(t){t.stop()})}catch(e){}clearInterval(tick)}
+  document.getElementById('rcX').onclick=function(){stopAll();ov.remove()};
+  document.getElementById('rcGo').onclick=function(){var b=document.getElementById('rcGo');
+    if(rec&&rec.state==='recording'){rec.stop();return}
+    navigator.mediaDevices.getUserMedia({audio:true}).then(function(s){stream=s;chunks=[];
+      var mt=MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported('audio/mp4')?'audio/mp4':'';
+      rec=mt?new MediaRecorder(s,{mimeType:mt,audioBitsPerSecond:48000}):new MediaRecorder(s);
+      rec.ondataavailable=function(e){if(e.data&&e.data.size)chunks.push(e.data)};
+      rec.onstop=function(){clearInterval(tick);try{stream.getTracks().forEach(function(t){t.stop()})}catch(e){}blob=new Blob(chunks,{type:rec.mimeType||'audio/mp4'});b.classList.remove('on');document.getElementById('rcOk').disabled=false;document.getElementById('rcMsg').textContent='Recorded. Tap Save, or the red button to record again.'};
+      rec.start();t0=Date.now();b.classList.add('on');document.getElementById('rcOk').disabled=true;document.getElementById('rcMsg').textContent='Recording... tap to stop.';
+      tick=setInterval(function(){var sec=Math.floor((Date.now()-t0)/1000);document.getElementById('rcT').textContent=Math.floor(sec/60)+':'+pad(sec%60);if(sec>=120)rec.stop()},250);
+    },function(){document.getElementById('rcMsg').textContent='The microphone is blocked. Turn it on in iPhone Settings for Workday.'})};
+  document.getElementById('rcOk').onclick=function(){if(!blob)return;var r=new FileReader();r.onload=function(){ov.remove();cb(String(r.result).replace(/^data:audio\/mp4;codecs=[^;]*;/,'data:audio/mp4;'))};r.readAsDataURL(blob)};
+}
+/* share a note as a read-only web page */
+function nbShared(){try{return JSON.parse(localStorage.getItem('workday.nbshared')||'{}')}catch(e){return {}}}
+function nbSharePush(n,off){
+  if(!msgOK())return Promise.reject(new Error('Sharing needs the Messages connection (gear, Messages).'));
+  var media=nbPhotos(n).map(function(r){return String(r).replace(/^wd:/,'')}).filter(function(x){return !/^https?:/.test(x)});
+  return msgApi('/share',{nid:n.id,off:!!off,title:n.title,body:n.body,color:n.color,media:media}).then(function(j){var m=nbShared();if(off)delete m[n.id];else m[n.id]=j.url;try{localStorage.setItem('workday.nbshared',JSON.stringify(m))}catch(e){}return j});
+}
 var NBCOLORS=['','red','orange','yellow','green','teal','blue','purple','pink','brown','gray'];
 function nbPhotos(n){return String(n.photos||'').split(/;\s*/).filter(function(x){return x})}
-function nbRemTxt(n){if(!n.remind)return '';var d=n.remind.slice(0,10),t=n.remind.slice(11,16);return engShort(d)+(t?' '+clock(atTime(d,t)):'')}
-function nbRemMs(n){if(!n.remind)return 0;return atTime(n.remind.slice(0,10),n.remind.slice(11,16)||'09:00')}
-function nbReminders(days){if(typeof NB==="undefined"||!NB)return [];var now=Date.now(),end=now+days*86400000,out=[];NB.rows.forEach(function(n){if(n.arch||!n.remind)return;var ms=nbRemMs(n);if(ms>now&&ms<end&&!noWork(n.remind.slice(0,10)))out.push({key:'r-note-'+n.id+'-'+ms,sig:String(ms),title:'Note: '+(n.title||nbPreview(n.body).slice(0,40)||'Reminder'),start:ms,end:ms+10*60000,alert:0})});return out}
+function nbRemTxt(n){var r=nbRem(n);if(!r.at)return '';var ms=nbNextOcc(r.at,r.rep,Date.now()-60000),dt=new Date(ms),d=dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate());return engShort(d)+' '+clock(ms)+(r.rep?' ('+NBREP[r.rep].toLowerCase()+')':'')}
+function nbRemMs(n){var r=nbRem(n);if(!r.at)return 0;return nbNextOcc(r.at,r.rep,Date.now()-60000)}
+function nbReminders(days){if(typeof NB==="undefined"||!NB)return [];var now=Date.now(),end=now+days*86400000,out=[];NB.rows.forEach(function(n){if(n.arch)return;var r=nbRem(n);if(!r.at)return;var from=now,g=0;while(g<40){g++;var ms=nbNextOcc(r.at,r.rep,from);if(ms>=end)break;var dt=new Date(ms),d=dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate());var skip=noWork(d)||(r.rep==='weekday'&&(dt.getDay()===0||dt.getDay()===6));if(!skip&&ms>now)out.push({key:'r-note-'+n.id+'-'+ms,sig:String(ms),title:'Note: '+(n.title||nbPreview(n.body).slice(0,40)||'Reminder'),start:ms,end:ms+10*60000,alert:0});if(!r.rep)break;from=ms+60000}});return out}
 /* math like iPhone Notes: "4*12.50=" fills in the answer; "labor = 3*40" can be used later as "labor" */
 function nbCalcExpr(src){
   var s=String(src).replace(/[$,]/g,'').replace(/[\u00d7xX]/g,'*').replace(/\u00f7/g,'/').replace(/(\d)\s*%/g,'($1/100)'),i=0;
@@ -3989,7 +4063,7 @@ function renderNotes(){
   var list=NB.rows.filter(function(n){if(arch!==!!n.arch)return false;if(NB.tag==='__rem'&&!n.remind)return false;if(NB.tag&&NB.tag.charAt(0)!=='_'&&nbTags(n).indexOf(NB.tag)<0&&n.con!==NB.tag)return false;return !q||(n.title+' '+n.body+' '+n.tags+' '+n.con).toLowerCase().indexOf(q)>=0});
   list.sort(function(a,b){if(NB.tag==='__rem')return nbRemMs(a)-nbRemMs(b);return (b.pin?1:0)-(a.pin?1:0)||String(b.updated).localeCompare(String(a.updated))});
   if(!list.length)h+='<div class="empty" style="text-align:center">'+(q||NB.tag?'Nothing here.':NB.busy?'Loading...':'No notes yet.')+'</div>';
-  h+='<div class="nbgrid">'+list.map(function(n){var pr=nbProgress(n.body),ph=nbPhotos(n)[0];return '<button class="nbcard'+(n.color?' nbc-'+esc(n.color):'')+'" data-nb="'+esc(n.id)+'">'+(ph?'<img class="nbimg" src="'+esc(dmPhotoUrl(ph))+'" alt="">':'')+(n.pin?'<i class="nbpin">Pinned</i>':'')+'<b>'+esc(n.title||nbPreview(n.body).slice(0,40)||'Note')+'</b><span>'+esc(nbPreview(n.body))+'</span>'+(n.remind?'<em class="nbrem">'+esc(nbRemTxt(n))+'</em>':'')+'<small>'+esc([n.con,nbTags(n).join(', '),pr].filter(function(x){return x}).join(' '+MID+' '))+'</small></button>'}).join('')+'</div>';
+  h+='<div class="nbgrid">'+list.map(function(n){var pr=nbProgress(n.body),ph=nbPhotos(n).filter(function(x){return !nbIsAudio(x)})[0],hasAu=nbPhotos(n).some(nbIsAudio);return '<button class="nbcard'+(n.color?' nbc-'+esc(n.color):'')+'" data-nb="'+esc(n.id)+'">'+(ph?'<img class="nbimg" src="'+esc(dmPhotoUrl(ph))+'" alt="">':'')+(n.pin?'<i class="nbpin">Pinned</i>':'')+'<b>'+esc(n.title||nbPreview(n.body).slice(0,40)||'Note')+'</b><span>'+esc(nbPreview(n.body))+'</span>'+(n.remind?'<em class="nbrem">'+esc(nbRemTxt(n))+'</em>':'')+'<small>'+esc([hasAu?'Recording':'',nbShared()[n.id]?'Shared':'',n.con,nbTags(n).join(', '),pr].filter(function(x){return x}).join(' '+MID+' '))+'</small></button>'}).join('')+'</div>';
   document.getElementById('mainIn').innerHTML=h;document.getElementById('main').className='';
   var qi=document.getElementById('nbQ');qi.oninput=function(){NB.q=qi.value;var p=qi.selectionStart;renderNotes();var n2=document.getElementById('nbQ');n2.focus();try{n2.setSelectionRange(p,p)}catch(e){}};
   bind('nbNew',function(){openNoteEdit(null)});
@@ -4004,15 +4078,19 @@ function openNote(id){
   var L=nbLines(n.body);
   var h='<div class="nbhead'+(n.color?' nbc-'+esc(n.color):'')+'"><h3 style="margin:0">'+esc(n.title||'Note')+'</h3><button class="minilink" id="nbPin">'+(n.pin?'Unpin':'Pin')+'</button></div>';
   if(n.con||n.tags||n.remind)h+='<div class="mt">'+esc([n.remind?'Reminder '+nbRemTxt(n):'',n.con,nbTags(n).join(', ')].filter(function(x){return x}).join(' '+MID+' '))+'</div>';
-  var ph=nbPhotos(n);if(ph.length)h+='<div class="dmphotos">'+ph.map(function(p){var u=dmPhotoUrl(p);return '<a href="'+esc(u)+'" target="_blank" rel="noopener"><img src="'+esc(u)+'" alt="Photo"></a>'}).join('')+'</div>';
+  var ph=nbPhotos(n);if(ph.length)h+='<div class="dmphotos">'+ph.filter(function(p){return !nbIsAudio(p)}).map(function(p){var u=dmPhotoUrl(p);return '<a href="'+esc(u)+'" target="_blank" rel="noopener"><img src="'+esc(u)+'" alt="Photo"></a>'}).join('')+'</div>'+ph.filter(nbIsAudio).map(function(p){return '<audio class="nbau" controls preload="none" src="'+esc(dmPhotoUrl(p))+'"></audio>'}).join('');
   h+='<div class="nbbody">'+L.map(function(l,i){if(nbIsCk(l))return '<label class="nbck'+(nbCkDone(l)?' done':'')+'"><input type="checkbox" data-nbl="'+i+'"'+(nbCkDone(l)?' checked':'')+'><span>'+linkify(nbCkText(l))+'</span></label>';
     var m=/^(.*)=\s*$/.exec(l),ans=m?nbAnswer(L,i,m[1]):null;
     return l.trim()?'<p>'+linkify(l)+(ans?'<b class="nbans">'+esc(nbFmt(ans.v,ans.money))+'</b>':'')+'</p>':'<p class="gap"></p>'}).join('')+'</div>';
   h+='<div class="row"><button class="btn primary" id="nbEdit">Edit</button><button class="btn" id="nbShare">Send to Keep / share</button><button class="btn" id="nbX">Close</button></div>';
+  var shu=nbShared()[n.id];
+  h+='<div class="row" style="gap:18px;flex-wrap:wrap"><button class="minilink" id="nbSh">'+(shu?'Send the link again':'Share with someone')+'</button>'+(shu?'<button class="minilink" id="nbShOff">Stop sharing</button>':'')+'</div>';
   h+='<div class="row" style="gap:18px"><button class="minilink" id="nbArch">'+(n.arch?'Move out of archive':'Archive')+'</button><button class="minilink red" id="nbDel">Delete note</button></div>';
   openSheet(h);
   bind('nbX',closeSheet);bind('nbEdit',function(){openNoteEdit(id)});bind('nbShare',function(){nbShare(n)});
   bind('nbPin',function(){n.pin=n.pin?'':'yes';nbSaveQuiet(n);openNote(id);render()});
+  bind('nbSh',function(){nbSharePush(n,false).then(function(j){try{if(navigator.share){navigator.share({title:n.title||'Note',url:j.url}).catch(function(){});}else copyText(j.url)}catch(e){copyText(j.url)}openNote(id);render()},function(e){toast(e.message||String(e))})});
+  bind('nbShOff',function(){nbSharePush(n,true).then(function(){toast('Not shared any more');openNote(id);render()},function(e){toast(e.message||String(e))})});
   bind('nbArch',function(){var was=n.arch;n.arch=was?'':stampNow();nbSaveQuiet(n);closeSheet();render();offerUndo(function(){n.arch=was;nbSaveQuiet(n);render()},was?'Moved out of archive':'Note archived')});
   bind('nbDel',function(){confirmSheet('Delete this note?',n.title||nbPreview(n.body),'Delete',function(){n.deleted=stampNow();nbSaveQuiet(n);NB.rows=NB.rows.filter(function(x){return x.id!==id});nbSave();closeSheet();render();offerUndo(function(){n.deleted='';NB.rows.push(n);nbSave();nbSaveQuiet(n);render()},'Note deleted')})});
   [].forEach.call(document.querySelectorAll('[data-nbl]'),function(cb){cb.onchange=function(){var LL=nbLines(n.body),i=+cb.dataset.nbl;LL[i]=LL[i].replace(/\[( |x|X)\]/,cb.checked?'[x]':'[ ]');n.body=LL.join('\n');cb.parentNode.classList.toggle('done',cb.checked);nbSaveQuiet(n);render()}});
@@ -4023,25 +4101,28 @@ function openNoteEdit(id,pre){
   var col=n.color||'',photos=nbPhotos(n);
   var h='<h3>'+(isNew?'New note':'Edit note')+'</h3>';
   h+='<div class="field"><label for="neTitle">Title</label><input id="neTitle" value="'+esc(n.title)+'"></div>';
-  h+='<div class="field"><label for="neBody">Note</label><textarea id="neBody" rows="9">'+esc(n.body)+'</textarea><div class="row" style="gap:16px"><button type="button" class="minilink" id="neCk">+ Checkbox</button><button type="button" class="minilink" id="neToList">Make lines a checklist</button><label class="minilink" for="nePh" style="cursor:pointer">+ Photo</label><input id="nePh" type="file" accept="image/*" hidden></div><div class="mt" style="font-size:12px">Math: type 4*12.50= and the answer fills in.</div></div>';
+  h+='<div class="field"><label for="neBody">Note</label><textarea id="neBody" rows="9">'+esc(n.body)+'</textarea><div class="row" style="gap:16px"><button type="button" class="minilink" id="neCk">+ Checkbox</button><button type="button" class="minilink" id="neToList">Make lines a checklist</button><label class="minilink" for="nePh" style="cursor:pointer">+ Photo</label><input id="nePh" type="file" accept="image/*" hidden><button type="button" class="minilink" id="neDraw">+ Drawing</button><button type="button" class="minilink" id="neRec">+ Recording</button></div><div class="mt" style="font-size:12px">Math: type 4*12.50= and the answer fills in.</div></div>';
   h+='<div class="dmphotos" id="nePhs"></div>';
   h+='<div class="field"><label>Color</label><div class="nbcols">'+NBCOLORS.map(function(cn){return '<button type="button" class="nbcol nbc-'+(cn||'none')+(cn===col?' on':'')+'" data-col="'+cn+'" aria-label="'+(cn||'No color')+'"></button>'}).join('')+'</div></div>';
   h+='<details class="fgrp" style="border-radius:14px;background:rgba(120,120,128,.12)"'+(n.con||n.tags||n.remind?' open':'')+'><summary><b>Reminder, contractor, tags</b><span class="fgv">'+esc([n.remind?nbRemTxt(n):'',n.con,n.tags].filter(function(x){return x}).join(' '+MID+' ')||'None')+'</span></summary><div class="fgin">';
-  h+='<div class="field"><label for="neRem">Remind me</label><input id="neRem" type="datetime-local" value="'+esc(n.remind||'')+'"><div class="row" style="gap:16px"><button type="button" class="minilink" id="neRemT">Tomorrow 8 AM</button><button type="button" class="minilink" id="neRemX">No reminder</button></div><div id="neRemW"></div></div>';
+  h+='<div class="field"><label for="neRem">Remind me</label><input id="neRem" type="datetime-local" value="'+esc(nbRem(n).at)+'"><select id="neRep">'+Object.keys(NBREP).map(function(k){return '<option value="'+k+'"'+(nbRem(n).rep===k?' selected':'')+'>'+NBREP[k]+'</option>'}).join('')+'</select><div class="row" style="gap:16px"><button type="button" class="minilink" id="neRemT">Tomorrow 8 AM</button><button type="button" class="minilink" id="neRemX">No reminder</button></div><div id="neRemW"></div></div>';
   h+='<div class="field"><label for="neCon">Contractor</label><input id="neCon" value="'+esc(n.con)+'" autocomplete="off"><div class="sugs" id="neConS"></div></div><div class="field"><label for="neTags">Tags (comma between)</label><input id="neTags" value="'+esc(n.tags)+'"></div></div></details>';
   h+='<div id="neW"></div><div class="row"><button class="btn primary" id="neSave">Save</button><button class="btn" id="neX">Cancel</button></div>';
   openSheet(h);
   var ta=document.getElementById('neBody');
-  function drawPh(){var b=document.getElementById('nePhs');if(!b)return;b.innerHTML=photos.map(function(p,i){return '<span class="nbph"><img src="'+esc(dmPhotoUrl(p))+'" alt="Photo"><button type="button" data-nprm="'+i+'" aria-label="Remove photo">&times;</button></span>'}).join('');[].forEach.call(b.querySelectorAll('[data-nprm]'),function(x){x.onclick=function(){photos.splice(+x.dataset.nprm,1);drawPh()}})}
+  function drawPh(){var b=document.getElementById('nePhs');if(!b)return;b.innerHTML=photos.map(function(p,i){if(nbIsAudio(p)||/^data:audio/.test(p))return '<span class="nbph nbaup"><audio controls preload="none" src="'+esc(/^data:/.test(p)?p:dmPhotoUrl(p))+'"></audio><button type="button" data-nprm="'+i+'" aria-label="Remove recording">&times;</button></span>';return '<span class="nbph"><img src="'+esc(/^data:/.test(p)?p:dmPhotoUrl(p))+'" alt="Photo"><button type="button" data-nprm="'+i+'" aria-label="Remove photo">&times;</button></span>'}).join('');[].forEach.call(b.querySelectorAll('[data-nprm]'),function(x){x.onclick=function(){photos.splice(+x.dataset.nprm,1);drawPh()}})}
   drawPh();
   document.getElementById('nePh').onchange=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;if(!msgOK()){toast('Photos need the Messages connection (gear, Messages).');return}
     shrink(f,function(url){photos.push(url);drawPh();msgApi('/photo',{image:url}).then(function(j){var i=photos.indexOf(url);if(i>=0)photos[i]='wd:'+j.id;drawPh()},function(e2){var i=photos.indexOf(url);if(i>=0)photos.splice(i,1);drawPh();toast('Photo not saved: '+(e2.message||e2))})})};
+  function upMedia(url,path,field){photos.push(url);drawPh();var o={};o[field]=url;msgApi(path,o).then(function(j){var i=photos.indexOf(url);if(i>=0)photos[i]='wd:'+j.id;drawPh()},function(e2){var i=photos.indexOf(url);if(i>=0)photos.splice(i,1);drawPh();toast('Not saved: '+(e2.message||e2))})}
+  bind('neDraw',function(){if(!msgOK()){toast('Drawings need the Messages connection (gear, Messages).');return}openDraw(function(u){upMedia(u,'/photo','image')})});
+  bind('neRec',function(){if(!msgOK()){toast('Recordings need the Messages connection (gear, Messages).');return}openRecord(function(u){upMedia(u,'/audio','audio')})});
   [].forEach.call(document.querySelectorAll('[data-col]'),function(b){b.onclick=function(){col=b.dataset.col;[].forEach.call(document.querySelectorAll('[data-col]'),function(x){x.classList.toggle('on',x===b)})}});
   var rem=document.getElementById('neRem');
   function remWarn(){var v=rem.value,w=document.getElementById('neRemW');if(!w)return;w.innerHTML=v&&noWork(v.slice(0,10))?'<div class="warn">That day is '+esc(noWork(v.slice(0,10)))+'. No reminder will ring then. Pick another time.</div>':''}
   rem.onchange=remWarn;remWarn();
   bind('neRemT',function(){var d=addDays(todayStr(),1);while(noWork(d))d=addDays(d,1);rem.value=d+'T08:00';remWarn()});
-  bind('neRemX',function(){rem.value='';remWarn()});
+  bind('neRemX',function(){rem.value='';document.getElementById('neRep').value='';remWarn()});
   bind('neX',function(){isNew?closeSheet():openNote(id)});
   bind('neCk',function(){var p=ta.selectionStart,v=ta.value,pre2=(p>0&&v.charAt(p-1)!=='\n')?'\n':'';ta.value=v.slice(0,p)+pre2+'[ ] '+v.slice(p);var np=p+pre2.length+4;ta.focus();ta.setSelectionRange(np,np)});
   bind('neToList',function(){ta.value=ta.value.split('\n').map(function(l){return l.trim()&&!nbIsCk(l)?'[ ] '+l.trim():l}).join('\n')});
@@ -4053,12 +4134,13 @@ function openNoteEdit(id,pre){
   suggestBox('neCon','neConS',function(){return MASTER.contractors.map(function(x){return {label:x.name}})},function(){});
   bind('neSave',function(){
     if(photos.some(function(p){return /^data:/.test(p)})){document.getElementById('neW').innerHTML='<div class="warn">Wait a second, the photo is still uploading.</div>';return}
-    var v={title:val('neTitle').trim(),body:ta.value.replace(/\s+$/,''),con:val('neCon').trim(),tags:val('neTags').trim(),color:col,remind:rem.value||'',photos:photos.join(';')};
+    var v={title:val('neTitle').trim(),body:ta.value.replace(/\s+$/,''),con:val('neCon').trim(),tags:val('neTags').trim(),color:col,remind:rem.value?rem.value+(val('neRep')?'|'+val('neRep'):''):'',photos:photos.join(';')};
     if(!v.title&&!v.body&&!v.photos){document.getElementById('neW').innerHTML='<div class="warn">Write something first.</div>';return}
     for(var k2 in v)n[k2]=v[k2];
     if(isNew){n.id='n'+Date.now().toString(36);NB.rows.push(n)}
     nbWrite(n,isNew).then(function(){toast('Saved')},function(e){toast('Saved on this phone. Google: '+bridgeErr(e))});
     try{remPush(true)}catch(x){}
+    if(nbShared()[n.id])nbSharePush(n,false).catch(function(){});
     openNote(n.id);render();
   });
 }

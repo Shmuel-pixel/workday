@@ -104,6 +104,7 @@ export class Box extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS inbox (id TEXT PRIMARY KEY, item TEXT, ts INTEGER, done INTEGER DEFAULT 0)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS drops (id TEXT PRIMARY KEY, ts INTEGER)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS contacts (phone TEXT PRIMARY KEY, name TEXT)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS shares (nid TEXT PRIMARY KEY, token TEXT, data TEXT, ts INTEGER)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS backups (id TEXT PRIMARY KEY, ts INTEGER, kind TEXT, size INTEGER, summary TEXT)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS bparts (id TEXT, n INTEGER, data BLOB, PRIMARY KEY (id, n))');
   }
@@ -127,6 +128,7 @@ export class Box extends DurableObject {
       if (p === '/handoff' && req.method === 'GET') return json(this.handoffTake(url.searchParams.get('c')));
       if (p === '/widget' && req.method === 'GET') { var wk = this.get('widget_key'); if (!wk || url.searchParams.get('w') !== wk) return err('Wrong widget key', 401); return json(JSON.parse(this.get('widget') || '{"items":[]}')); }
       if (p === '/drop' && req.method === 'POST') return json(await this.drop(await req.json()));
+      if (p.indexOf('/n/') === 0) return await this.sharePage(p.slice(3));
 
       var key = req.headers.get('X-Key') || (p.indexOf('/media/') === 0 ? url.searchParams.get('k') : '');
       if (!this.get('app_key') || key !== this.get('app_key')) return err('Wrong or missing app key', 401);
@@ -155,6 +157,13 @@ export class Box extends DurableObject {
         var pb = fromB64(mm[2]); if (pb.length > 1900000) return err('That photo is too big.');
         var pid = 'ph-' + rand(16); this.saveMedia(pid, mm[1], pb); return json({ id: pid });
       }
+      if (p === '/audio' && req.method === 'POST') {
+        var au = await req.json(), am = /^data:(audio\/[a-z0-9.+-]+)(;[^,]*)?;base64,(.*)$/.exec(String(au.audio || ''));
+        if (!am) return err('No recording came through.');
+        var ab = fromB64(am[3]); if (ab.length > 1900000) return err('That recording is too long.');
+        var aid = 'au-' + rand(16); this.saveMedia(aid, am[1], ab); return json({ id: aid });
+      }
+      if (p === '/share' && req.method === 'POST') return json(this.shareSave(await req.json(), url));
       if (p === '/backup/config' && req.method === 'POST') return json(await this.backupConfig(await req.json()));
       if (p === '/backup/now' && req.method === 'POST') return json(await this.runBackup('manual'));
       if (p === '/backups') return json(this.backupList());
@@ -420,6 +429,32 @@ export class Box extends DurableObject {
   }
 
   /* ---------- photos and files ---------- */
+  /* read-only web page for a note that Shmuel shares */
+  shareSave(b, url) {
+    var nid = String(b.nid || ''); if (!nid) return { error: 'No note' };
+    if (b.off) { this.sql.exec('DELETE FROM shares WHERE nid=?', nid); return { ok: true }; }
+    var row = this.sql.exec('SELECT token FROM shares WHERE nid=?', nid).toArray()[0], token = row ? row.token : rand(20);
+    var data = JSON.stringify({ title: String(b.title || ''), body: String(b.body || ''), color: String(b.color || ''), media: (b.media || []).slice(0, 20).map(String) });
+    this.sql.exec('INSERT INTO shares (nid,token,data,ts) VALUES (?,?,?,?) ON CONFLICT(nid) DO UPDATE SET data=excluded.data, ts=excluded.ts', nid, token, data, Date.now());
+    return { ok: true, url: url.origin + '/n/' + token };
+  }
+  async sharePage(rest) {
+    var parts = rest.split('/'), token = parts[0];
+    var row = this.sql.exec('SELECT data,ts FROM shares WHERE token=?', token).toArray()[0];
+    if (!row) return new Response('This note is not shared any more.', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+    var d = JSON.parse(row.data);
+    if (parts[1] === 'm') { var mid = d.media[+parts[2]]; if (!mid) return err('Not found', 404); return await this.media(mid); }
+    var e = function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+    var cols = { red: '#F28B82', orange: '#FBBC04', yellow: '#FFF475', green: '#CCFF90', teal: '#A7FFEB', blue: '#AECBFA', purple: '#D7AEFB', pink: '#FDCFE8', brown: '#E6C9A8', gray: '#E8EAED' };
+    var body = d.body.split('\n').map(function (l) {
+      var m = /^\s*[-*]?\s*\[( |x|X)\]\s?(.*)$/.exec(l);
+      if (m) return '<div class="ck' + (m[1] !== ' ' ? ' done' : '') + '">' + (m[1] !== ' ' ? '&#9745;' : '&#9744;') + ' ' + e(m[2]) + '</div>';
+      return l.trim() ? '<p>' + e(l).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>') + '</p>' : '<br>';
+    }).join('');
+    var media = d.media.map(function (id, i) { var src = '/n/' + token + '/m/' + i; return id.indexOf('au-') === 0 ? '<audio controls src="' + src + '"></audio>' : '<a href="' + src + '"><img src="' + src + '" alt=""></a>'; }).join('');
+    var html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + e(d.title || 'Note') + '</title><style>body{margin:0;background:#f2f2f7;font:17px/1.45 -apple-system,system-ui,sans-serif;color:#1c1c1e}main{max-width:640px;margin:0 auto;padding:20px 16px}.n{background:' + (cols[d.color] || '#fff') + ';border-radius:18px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,.08)}h1{font-size:24px;margin:0 0 10px}p{margin:4px 0;white-space:pre-wrap}.ck{margin:6px 0}.ck.done{color:#777;text-decoration:line-through}img{max-width:100%;border-radius:12px;margin:6px 0;display:block}audio{width:100%;margin:6px 0}small{display:block;color:#888;margin-top:14px;font-size:13px}</style></head><body><main><div class="n"><h1>' + e(d.title || 'Note') + '</h1>' + media + body + '</div><small>Shared from Workday. Updated ' + new Date(row.ts).toLocaleString('en-US', { timeZone: 'America/New_York' }) + '. Refresh to see the latest.</small></main></body></html>';
+    return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
+  }
   saveMedia(id, mime, bytes) {
     if (bytes.length > 1900000) return;
     this.sql.exec('INSERT INTO media (id,mime,data,ts) VALUES (?,?,?,?) ON CONFLICT(id) DO NOTHING', id, mime, bytes, Date.now());
