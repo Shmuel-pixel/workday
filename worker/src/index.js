@@ -7,6 +7,7 @@
   Nothing secret is in this file. Keys are made on first use and kept in storage.
 */
 import { DurableObject } from 'cloudflare:workers';
+import { mcpHandle } from './mcp.js';
 
 var GRAPH_DEFAULT = 'v23.0';
 var PUSH_SUB = 'https://workday.shmuel-4f0.workers.dev/';
@@ -131,11 +132,24 @@ export class Box extends DurableObject {
       if (p === '/drop' && req.method === 'POST') return json(await this.drop(await req.json()));
       if (p.indexOf('/n/') === 0 && /\/save$/.test(p) && req.method === 'POST') return json(this.shareGuestSave(p.slice(3).split('/')[0], await req.json()));
       if (p.indexOf('/n/') === 0) return await this.sharePage(p.slice(3));
+      if (p.indexOf('/.well-known/') === 0) return err('Not found', 404);
+      if (p.indexOf('/mcp/') === 0 && p !== '/mcp/setup') {
+        var mt = this.get('mcp_tok');
+        if (!mt || p.slice(5) !== mt) return err('Wrong connector link. Make a new one in Workday: gear, Claude connector.', 404);
+        return await mcpHandle(this, req);
+      }
 
       var key = req.headers.get('X-Key') || (p.indexOf('/media/') === 0 ? url.searchParams.get('k') : '');
       if (!this.get('app_key') || key !== this.get('app_key')) return err('Wrong or missing app key', 401);
 
       if (p === '/status') return json(this.status(url));
+      if (p === '/mcp/setup' && req.method === 'POST') {
+        var mb = await req.json();
+        if (mb.conn && mb.conn.url && mb.conn.token) this.put('mcp_conn', JSON.stringify({ url: String(mb.conn.url), token: String(mb.conn.token) }));
+        if (mb.off) { this.put('mcp_tok', ''); return json({ ok: true, off: true }); }
+        if (mb.rotate || !this.get('mcp_tok')) this.put('mcp_tok', rand(32));
+        return json({ url: url.origin + '/mcp/' + this.get('mcp_tok'), linked: !!(this.get('mcp_conn') || this.get('bk_cfg')) });
+      }
       if (p === '/wa/onboard' && req.method === 'POST') return json(await this.onboard(await req.json()));
       if (p === '/wa/sync' && req.method === 'POST') return json(await this.requestSync());
       if (p === '/config' && req.method === 'POST') return json(await this.config(await req.json(), url));

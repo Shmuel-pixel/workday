@@ -634,7 +634,8 @@ html.tv .swhint{display:none}
 .nbpk svg{width:24px;height:24px;flex:none;color:#F5A623}.nbpk b{flex:1}.nbpk small{opacity:.6}
 .nbpk.on{outline:2px solid var(--todo)}
 .nbfmenu{display:flex;flex-direction:column;gap:8px;margin:10px 0}
-.nefnew{display:flex;gap:8px;margin-top:8px}.nefnew input{flex:1;min-width:0}
+.nefnew{display:flex;gap:8px;margin-top:8px}
+.mcurl{font:13px ui-monospace,Menlo,monospace;word-break:break-all;padding:10px 12px;border-radius:12px;background:rgba(120,120,128,.14);margin:6px 0}.nefnew input{flex:1;min-width:0}
 .nbcard{display:grid;gap:4px;align-content:start;text-align:left;padding:12px;border-radius:16px;background:var(--surface);border:1px solid var(--line);min-height:96px}
 html.lg .nbcard{background:var(--lg-card)!important;border:1px solid var(--lg-edge-dim);box-shadow:var(--lg-shadow),var(--lg-hi)}
 .nbcard b{font-size:15px;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
@@ -706,7 +707,7 @@ html.lg .aibox{background:var(--lg-card)!important;border:1px solid var(--lg-edg
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Nov 6, 2026 (79)';
+var KEY='workday.v1',APPVER='Nov 6, 2026 (80)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -2943,6 +2944,7 @@ function openSettings(page){
     h+=setGroup('Assistant',setRow('sAI','Assistant and voice',getKey()?'Key saved on this phone':'No key yet',''));
     h+=setGroup('Sheets',setRow('sSheets','View, print or open your sheets',SHEETS.length+' sheets',''));
     h+=setGroup('Safety',setRow('sBk','Backups','Weekly copy of all sheets and contacts. Save to Files',''));
+    h+=setGroup('Claude',setRow('sMcp','Claude connector','Let Claude in any chat see and change Workday',''));
     h+=setGroup('Devices',setRow('sHoMake','Set up another device','Copy everything to your iPad with a code','')+setRow('sHoTake','Set up from my iPhone','Type the code from your other device',''));
     h+=setGroup('Home Screen',setRow('sWidget','Widget','Today\'s jobs on your Home Screen',''));
     h+=setGroup('App','<div class="setrow static"><span><b>Version '+esc((APPVER.match(/\((\d+)\)/)||[])[1]||APPVER)+'</b><small>'+esc(APPVER.replace(/\s*\(\d+\)/,''))+'</small></span><span class="setr"></span></div><button class="setrow" id="appUpd"><span><b style="color:var(--todo)">Update app now</b></span><span></span></button>');
@@ -2957,7 +2959,7 @@ function openSettings(page){
     bind('sLoc',function(){openLocation(openSettings)});
     bind('sRem',function(){openSettings('rem')});bind('sCrew',function(){openSettings('crew')});
     bind('sVeh',function(){openSettings('vehicles')});bind('sTools',function(){openSettings('tools')});bind('sTypes',function(){openSettings('types')});
-    bind('sAI',function(){openSettings('ai')});bind('sWidget',openWidget);bind('sHoMake',openHandoffMake);bind('sHoTake',openHandoffTake);bind('sSheets',function(){openSettings('sheets')});bind('sBk',openBackups);
+    bind('sAI',function(){openSettings('ai')});bind('sWidget',openWidget);bind('sHoMake',openHandoffMake);bind('sHoTake',openHandoffTake);bind('sSheets',function(){openSettings('sheets')});bind('sBk',openBackups);bind('sMcp',openMcp);
     return;
   }
   if(P==='rem'){h+=head('Reminders')+remEditor().replace('<label>Reminders</label>','')}
@@ -3842,6 +3844,23 @@ function bkShare(files){
   files.forEach(function(f){var a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();setTimeout(function(){a.remove()},1000)});
   try{localStorage.setItem('workday.bksaved',String(Date.now()))}catch(e){}
   return Promise.resolve(true);
+}
+function openMcp(rot){
+  var h='<div class="sethead"><button class="minilink" id="mcBack">&lsaquo; Settings</button></div><h3>Claude connector</h3>';
+  if(!msgOK()||!connOK()){h+='<div class="warn">This needs Google and Messages connected on this device.</div><button class="btn" id="mcDone">Done</button>';openSheet(h);bind('mcBack',function(){openSettings('main')});bind('mcDone',closeSheet);return}
+  h+='<div class="mt">With this, Claude in any chat (iPhone, iPad or computer) can read and change your jobs, dumpsters, towing, keys, notes, contacts, equipment and supply sheets. It asks you before it changes anything.</div>';
+  h+='<div id="mcOut" class="mt">Making your link...</div>';
+  h+='<ol class="steps"><li>Tap <b>Copy link</b>.</li><li>Open <b>claude.ai</b> in Safari (or the Claude app on a computer). Go to <b>Customize</b>, then <b>Connectors</b>, tap <b>+</b>, then <b>Add custom connector</b>.</li><li>Name: <b>Workday</b>. Paste the link in the URL box. If it asks about signing in, pick <b>No sign in</b>. Tap <b>Add</b>.</li><li>In a chat, tap <b>+</b>, then <b>Connectors</b>, and turn on <b>Workday</b>.</li></ol>';
+  h+='<div class="mt">Keep the link private. Anyone with it can change your sheets. If it gets out, tap <b>Make a new link</b> and the old one stops working.</div>';
+  h+='<div class="row" style="gap:18px;flex-wrap:wrap"><button class="minilink" id="mcRot">Make a new link</button><button class="minilink red" id="mcOff">Turn off</button></div><button class="btn" id="mcDone">Done</button>';
+  openSheet(h);bind('mcBack',function(){openSettings('main')});bind('mcDone',closeSheet);
+  var out=document.getElementById('mcOut');
+  msgApi('/mcp/setup',{conn:{url:CONN.url,token:CONN.token},rotate:!!rot}).then(function(j){
+    out.innerHTML='<div class="mcurl">'+esc(j.url)+'</div><div class="row"><button class="btn primary" id="mcCopy">Copy link</button></div>';
+    bind('mcCopy',function(){copyText(j.url);var b=document.getElementById('mcCopy');if(b)b.textContent='Copied'});
+  },function(e){out.innerHTML='<div class="warn">'+esc(e.message||String(e))+'</div>'});
+  bind('mcRot',function(){confirmSheet('Make a new link?','The old link stops working. You will need to paste the new one in Claude.','Make new link',function(){openMcp(true)})});
+  bind('mcOff',function(){confirmSheet('Turn off the Claude connector?','Claude will not be able to reach Workday until you make a new link here.','Turn off',function(){msgApi('/mcp/setup',{off:true}).then(function(){toast('Claude connector is off');closeSheet()},function(e){toast(e.message||String(e))})})});
 }
 function openBackups(){
   var h='<div class="sethead"><button class="minilink" id="bkBack">&lsaquo; Settings</button></div><h3>Backups</h3>';
