@@ -668,6 +668,10 @@ html.lg .aibox{background:var(--lg-card)!important;border:1px solid var(--lg-edg
 .recbtn{width:76px;height:76px;border-radius:38px;background:#E0271C;border:6px solid #fff;box-shadow:0 0 0 2px #E0271C}.recbtn.on{border-radius:18px;transform:scale(.8)}
 .nbau{width:100%;margin:4px 0}.nbaup audio{width:220px}.nbaup{display:inline-block}
 #neRep{margin-top:6px}
+.nbdraw{display:grid;gap:4px;width:100%;padding:0;background:transparent;text-align:center}.nbdraw img{width:100%;border-radius:12px;border:1px solid var(--line);background:#fff;display:block}.nbdraw span{font-size:12px;color:var(--todo);font-weight:600}
+.nbdrawe{display:block;width:100%}.nbdrawe img{width:100%!important;height:auto!important;max-height:40vh;object-fit:contain!important;background:#fff;border:1px solid var(--line);cursor:pointer}
+.nbimgd{object-fit:contain!important;background:#fff}
+.drawbar{padding:8px 10px!important;gap:4px!important}.drawbar button{font-size:15px!important;padding:6px 4px!important}.drawbar span{gap:6px!important}.dwc{width:24px!important;height:24px!important}.dwtools{gap:0!important}.dwt{font-size:13px!important;color:#1c1c1e!important;border-radius:10px;padding:6px 6px!important}.dwt.on{background:#fff;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.15)}
 </style>
 
 <header id="hdr"><div class="wrap" id="hdrIn"></div></header>
@@ -682,7 +686,7 @@ html.lg .aibox{background:var(--lg-card)!important;border:1px solid var(--lg-edg
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Nov 6, 2026 (76)';
+var KEY='workday.v1',APPVER='Nov 6, 2026 (77)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -3975,27 +3979,45 @@ function nbNextOcc(at,rep,from){
     ms=atTime(d,t)}
   return ms;
 }
-/* open a full-screen sketch pad; cb gets a JPEG data URL */
-function openDraw(cb){
+/* sketch pad like Keep: pen, marker, highlighter, eraser; reopen a drawing later and keep going.
+   cb(jpegDataUrl, strokesJson). Strokes are saved as fractions of the width so they fit any screen. */
+function openDraw(cb,data){
   var ov=document.createElement('div');ov.className='drawov';
-  ov.innerHTML='<div class="drawbar"><button id="dwX">Cancel</button><span><button class="dwc on" data-dc="#1C1C1E" style="background:#1C1C1E"></button><button class="dwc" data-dc="#E0271C" style="background:#E0271C"></button><button class="dwc" data-dc="#0A72F5" style="background:#0A72F5"></button><button class="dwc" data-dc="#17924A" style="background:#17924A"></button><button class="dwc" data-dc="#F59E0B" style="background:#F59E0B"></button><button class="dwe" data-dc="erase">Eraser</button></span><button id="dwOk"><b>Done</b></button></div><canvas id="dwC"></canvas><div class="drawbar"><button id="dwThin">Thin</button><button id="dwThick">Thick</button><button id="dwUndo">Undo</button><button id="dwClr">Clear</button></div>';
+  var COLS=['#1C1C1E','#E0271C','#0A72F5','#17924A','#F59E0B','#8E44AD'];
+  ov.innerHTML='<div class="drawbar"><button id="dwX">Cancel</button><span class="dwtools"><button class="dwt on" data-tool="pen">Pen</button><button class="dwt" data-tool="marker">Marker</button><button class="dwt" data-tool="hi">Highlighter</button><button class="dwt" data-tool="erase">Eraser</button></span><button id="dwOk"><b>Done</b></button></div><canvas id="dwC"></canvas><div class="drawbar"><span>'+COLS.map(function(c,i){return '<button class="dwc'+(i?'':' on')+'" data-dc="'+c+'" style="background:'+c+'" aria-label="Color"></button>'}).join('')+'</span><span><button id="dwUndo">Undo</button><button id="dwClr">Clear</button></span></div>';
   document.body.appendChild(ov);
   var c=document.getElementById('dwC'),dpr=window.devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;c.width=w*dpr;c.height=h*dpr;
   var g=c.getContext('2d');g.scale(dpr,dpr);g.lineCap='round';g.lineJoin='round';
-  var strokes=[],cur=null,col='#1C1C1E',size=3;
-  function redraw(){g.fillStyle='#fff';g.fillRect(0,0,w,h);strokes.forEach(function(s){g.strokeStyle=s.c==='erase'?'#fff':s.c;g.lineWidth=s.c==='erase'?s.w*6:s.w;g.beginPath();s.p.forEach(function(q,i){if(i)g.lineTo(q[0],q[1]);else g.moveTo(q[0],q[1])});if(s.p.length===1)g.lineTo(s.p[0][0]+.1,s.p[0][1]);g.stroke()})}
+  var strokes=(data&&data.s)||[],cur=null,col=COLS[0],tool='pen';
+  var W={pen:3,marker:8,hi:22,erase:24};
+  function grid(){g.fillStyle='#fff';g.fillRect(0,0,w,h);g.strokeStyle='#EEF0F3';g.lineWidth=1;for(var y=24;y<h;y+=24){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke()}}
+  function redraw(forSave){if(forSave){g.fillStyle='#fff';g.fillRect(0,0,w,h)}else grid();
+    strokes.forEach(function(s){g.save();if(s.t==='hi'){g.globalAlpha=.35}g.strokeStyle=s.t==='erase'?'#fff':s.c;g.lineWidth=s.wd*w;g.beginPath();s.p.forEach(function(q,i){var x=q[0]*w,y=q[1]*w;if(i)g.lineTo(x,y);else g.moveTo(x,y)});if(s.p.length===1)g.lineTo(s.p[0][0]*w+.1,s.p[0][1]*w);g.stroke();g.restore()})}
   redraw();
-  function pt(e){var r=c.getBoundingClientRect(),t=e.touches?e.touches[0]:e;return [t.clientX-r.left,t.clientY-r.top]}
-  function start(e){e.preventDefault();cur={c:col,w:size,p:[pt(e)]};strokes.push(cur);redraw()}
+  function pt(e){var r=c.getBoundingClientRect(),t=e.touches?e.touches[0]:e;return [(t.clientX-r.left)/w,(t.clientY-r.top)/w]}
+  function start(e){e.preventDefault();cur={t:tool,c:col,wd:W[tool]/w,p:[pt(e)]};strokes.push(cur);redraw()}
   function move(e){if(!cur)return;e.preventDefault();cur.p.push(pt(e));redraw()}
   function end(){cur=null}
   c.addEventListener('touchstart',start,{passive:false});c.addEventListener('touchmove',move,{passive:false});c.addEventListener('touchend',end);
   c.addEventListener('mousedown',start);c.addEventListener('mousemove',move);window.addEventListener('mouseup',end);
-  [].forEach.call(ov.querySelectorAll('[data-dc]'),function(b){b.onclick=function(){col=b.dataset.dc;[].forEach.call(ov.querySelectorAll('[data-dc]'),function(x){x.classList.toggle('on',x===b)})}});
-  document.getElementById('dwThin').onclick=function(){size=3};document.getElementById('dwThick').onclick=function(){size=8};
+  [].forEach.call(ov.querySelectorAll('[data-dc]'),function(b){b.onclick=function(){col=b.dataset.dc;if(tool==='erase')tool='pen';[].forEach.call(ov.querySelectorAll('[data-dc]'),function(x){x.classList.toggle('on',x===b)});[].forEach.call(ov.querySelectorAll('[data-tool]'),function(x){x.classList.toggle('on',x.dataset.tool===tool)})}});
+  [].forEach.call(ov.querySelectorAll('[data-tool]'),function(b){b.onclick=function(){tool=b.dataset.tool;[].forEach.call(ov.querySelectorAll('[data-tool]'),function(x){x.classList.toggle('on',x===b)})}});
   document.getElementById('dwUndo').onclick=function(){strokes.pop();redraw()};document.getElementById('dwClr').onclick=function(){strokes=[];redraw()};
   document.getElementById('dwX').onclick=function(){ov.remove()};
-  document.getElementById('dwOk').onclick=function(){var url=strokes.length?c.toDataURL('image/jpeg',0.8):'';ov.remove();if(url)cb(url)};
+  document.getElementById('dwOk').onclick=function(){if(!strokes.length){ov.remove();return}
+    var maxY=0;strokes.forEach(function(s){s.p.forEach(function(q){maxY=Math.max(maxY,q[1]*w+s.wd*w)})});
+    redraw(true);var hh=Math.min(h,Math.max(120,Math.ceil(maxY+16)));
+    var out=document.createElement('canvas');out.width=Math.round(w*dpr);out.height=Math.round(hh*dpr);out.getContext('2d').drawImage(c,0,0,out.width,out.height,0,0,out.width,out.height);
+    var url=out.toDataURL('image/jpeg',0.85),js=JSON.stringify({v:1,s:strokes});ov.remove();cb(url,js)};
+}
+function nbIsDraw(ref){return String(ref).indexOf('#dr-')>0}
+function nbImg(ref){return dmPhotoUrl(String(ref).split('#')[0])}
+/* upload a drawing (picture + strokes); resolves to the ref "wd:ph-x#dr-y" */
+function nbUpDraw(url,js){return Promise.all([msgApi('/photo',{image:url}),msgApi('/drawing',{data:js})]).then(function(a){return 'wd:'+a[0].id+'#'+a[1].id})}
+/* reopen a saved drawing and keep drawing on it */
+function nbRedraw(ref,done){
+  var dr=String(ref).split('#')[1];if(!dr||!msgOK()){toast('This drawing cannot be changed here.');return}
+  fetch(msgMediaUrl(dr)).then(function(r){return r.json()}).then(function(d){openDraw(function(u,js){toast('Saving drawing...');nbUpDraw(u,js).then(done,function(e){toast('Drawing not saved: '+(e.message||e))})},d)},function(){toast('Could not open the drawing.')});
 }
 /* record a voice note; cb gets an audio data URL */
 function openRecord(cb){
@@ -4032,7 +4054,7 @@ function nbPull(){
 function nbShared(){try{return JSON.parse(localStorage.getItem('workday.nbshared')||'{}')}catch(e){return {}}}
 function nbSharePush(n,off){
   if(!msgOK())return Promise.reject(new Error('Sharing needs the Messages connection (gear, Messages).'));
-  var media=nbPhotos(n).map(function(r){return String(r).replace(/^wd:/,'')}).filter(function(x){return !/^https?:/.test(x)});
+  var media=nbPhotos(n).map(function(r){return String(r).replace(/^wd:/,'').split('#')[0]}).filter(function(x){return !/^https?:/.test(x)});
   return msgApi('/share',{nid:n.id,off:!!off,title:n.title,body:n.body,color:n.color,media:media}).then(function(j){var m=nbShared();if(off)delete m[n.id];else m[n.id]=j.url;try{localStorage.setItem('workday.nbshared',JSON.stringify(m))}catch(e){}return j});
 }
 var NBCOLORS=['','red','orange','yellow','green','teal','blue','purple','pink','brown','gray'];
@@ -4074,7 +4096,7 @@ function renderNotes(){
   var list=NB.rows.filter(function(n){if(arch!==!!n.arch)return false;if(NB.tag==='__rem'&&!n.remind)return false;if(NB.tag&&NB.tag.charAt(0)!=='_'&&nbTags(n).indexOf(NB.tag)<0&&n.con!==NB.tag)return false;return !q||(n.title+' '+n.body+' '+n.tags+' '+n.con).toLowerCase().indexOf(q)>=0});
   list.sort(function(a,b){if(NB.tag==='__rem')return nbRemMs(a)-nbRemMs(b);return (b.pin?1:0)-(a.pin?1:0)||String(b.updated).localeCompare(String(a.updated))});
   if(!list.length)h+='<div class="empty" style="text-align:center">'+(q||NB.tag?'Nothing here.':NB.busy?'Loading...':'No notes yet.')+'</div>';
-  h+='<div class="nbgrid">'+list.map(function(n){var pr=nbProgress(n.body),ph=nbPhotos(n).filter(function(x){return !nbIsAudio(x)})[0],hasAu=nbPhotos(n).some(nbIsAudio);return '<button class="nbcard'+(n.color?' nbc-'+esc(n.color):'')+'" data-nb="'+esc(n.id)+'">'+(ph?'<img class="nbimg" src="'+esc(dmPhotoUrl(ph))+'" alt="">':'')+(n.pin?'<i class="nbpin">Pinned</i>':'')+'<b>'+esc(n.title||nbPreview(n.body).slice(0,40)||'Note')+'</b><span>'+esc(nbPreview(n.body))+'</span>'+(n.remind?'<em class="nbrem">'+esc(nbRemTxt(n))+'</em>':'')+'<small>'+esc([hasAu?'Recording':'',nbShared()[n.id]?'Shared':'',n.con,nbTags(n).join(', '),pr].filter(function(x){return x}).join(' '+MID+' '))+'</small></button>'}).join('')+'</div>';
+  h+='<div class="nbgrid">'+list.map(function(n){var pr=nbProgress(n.body),ph=nbPhotos(n).filter(function(x){return !nbIsAudio(x)})[0],hasAu=nbPhotos(n).some(nbIsAudio);return '<button class="nbcard'+(n.color?' nbc-'+esc(n.color):'')+'" data-nb="'+esc(n.id)+'">'+(ph?'<img class="nbimg'+(nbIsDraw(ph)?' nbimgd':'')+'" src="'+esc(nbImg(ph))+'" alt="">':'')+(n.pin?'<i class="nbpin">Pinned</i>':'')+'<b>'+esc(n.title||nbPreview(n.body).slice(0,40)||'Note')+'</b><span>'+esc(nbPreview(n.body))+'</span>'+(n.remind?'<em class="nbrem">'+esc(nbRemTxt(n))+'</em>':'')+'<small>'+esc([hasAu?'Recording':'',nbShared()[n.id]?'Shared':'',n.con,nbTags(n).join(', '),pr].filter(function(x){return x}).join(' '+MID+' '))+'</small></button>'}).join('')+'</div>';
   document.getElementById('mainIn').innerHTML=h;document.getElementById('main').className='';
   var qi=document.getElementById('nbQ');qi.oninput=function(){NB.q=qi.value;var p=qi.selectionStart;renderNotes();var n2=document.getElementById('nbQ');n2.focus();try{n2.setSelectionRange(p,p)}catch(e){}};
   bind('nbNew',function(){openNoteEdit(null)});
@@ -4089,7 +4111,7 @@ function openNote(id){
   var L=nbLines(n.body);
   var h='<div class="nbhead'+(n.color?' nbc-'+esc(n.color):'')+'"><h3 style="margin:0">'+esc(n.title||'Note')+'</h3><button class="minilink" id="nbPin">'+(n.pin?'Unpin':'Pin')+'</button></div>';
   if(n.con||n.tags||n.remind)h+='<div class="mt">'+esc([n.remind?'Reminder '+nbRemTxt(n):'',n.con,nbTags(n).join(', ')].filter(function(x){return x}).join(' '+MID+' '))+'</div>';
-  var ph=nbPhotos(n);if(ph.length)h+='<div class="dmphotos">'+ph.filter(function(p){return !nbIsAudio(p)}).map(function(p){var u=dmPhotoUrl(p);return '<a href="'+esc(u)+'" target="_blank" rel="noopener"><img src="'+esc(u)+'" alt="Photo"></a>'}).join('')+'</div>'+ph.filter(nbIsAudio).map(function(p){return '<audio class="nbau" controls preload="none" src="'+esc(dmPhotoUrl(p))+'"></audio>'}).join('');
+  var ph=nbPhotos(n);h+=ph.map(function(p,i){return nbIsDraw(p)?'<button class="nbdraw" data-redraw="'+i+'"><img src="'+esc(nbImg(p))+'" alt="Drawing"><span>Tap to keep drawing</span></button>':''}).join('');if(ph.length)h+='<div class="dmphotos">'+ph.filter(function(p){return !nbIsAudio(p)&&!nbIsDraw(p)}).map(function(p){var u=dmPhotoUrl(p);return '<a href="'+esc(u)+'" target="_blank" rel="noopener"><img src="'+esc(u)+'" alt="Photo"></a>'}).join('')+'</div>'+ph.filter(nbIsAudio).map(function(p){return '<audio class="nbau" controls preload="none" src="'+esc(dmPhotoUrl(p))+'"></audio>'}).join('');
   h+='<div class="nbbody">'+L.map(function(l,i){if(nbIsCk(l))return '<label class="nbck'+(nbCkDone(l)?' done':'')+'"><input type="checkbox" data-nbl="'+i+'"'+(nbCkDone(l)?' checked':'')+'><span>'+linkify(nbCkText(l))+'</span></label>';
     var m=/^(.*)=\s*$/.exec(l),ans=m?nbAnswer(L,i,m[1]):null;
     return l.trim()?'<p>'+linkify(l)+(ans?'<b class="nbans">'+esc(nbFmt(ans.v,ans.money))+'</b>':'')+'</p>':'<p class="gap"></p>'}).join('')+'</div>';
@@ -4098,6 +4120,7 @@ function openNote(id){
   h+='<div class="row" style="gap:18px;flex-wrap:wrap"><button class="minilink" id="nbSh">'+(shu?'Send the link again':'Share with someone (they can edit)')+'</button>'+(shu?'<button class="minilink" id="nbShOff">Stop sharing</button>':'')+'</div>';
   h+='<div class="row" style="gap:18px"><button class="minilink" id="nbArch">'+(n.arch?'Move out of archive':'Archive')+'</button><button class="minilink red" id="nbDel">Delete note</button></div>';
   openSheet(h);
+  [].forEach.call(document.querySelectorAll('[data-redraw]'),function(b){b.onclick=function(){var i=+b.dataset.redraw,L2=nbPhotos(n);nbRedraw(L2[i],function(ref){L2[i]=ref;n.photos=L2.join(';');nbSaveQuiet(n);if(nbShared()[n.id])nbSharePush(n,false).catch(function(){});openNote(id);render();toast('Drawing saved')})}});
   bind('nbX',closeSheet);bind('nbEdit',function(){openNoteEdit(id)});bind('nbShare',function(){nbShare(n)});
   bind('nbPin',function(){n.pin=n.pin?'':'yes';nbSaveQuiet(n);openNote(id);render()});
   bind('nbSh',function(){nbSharePush(n,false).then(function(j){try{if(navigator.share){navigator.share({title:n.title||'Note',url:j.url}).catch(function(){});}else copyText(j.url)}catch(e){copyText(j.url)}openNote(id);render()},function(e){toast(e.message||String(e))})});
@@ -4121,12 +4144,12 @@ function openNoteEdit(id,pre){
   h+='<div id="neW"></div><div class="row"><button class="btn primary" id="neSave">Save</button><button class="btn" id="neX">Cancel</button></div>';
   openSheet(h);
   var ta=document.getElementById('neBody');
-  function drawPh(){var b=document.getElementById('nePhs');if(!b)return;b.innerHTML=photos.map(function(p,i){if(nbIsAudio(p)||/^data:audio/.test(p))return '<span class="nbph nbaup"><audio controls preload="none" src="'+esc(/^data:/.test(p)?p:dmPhotoUrl(p))+'"></audio><button type="button" data-nprm="'+i+'" aria-label="Remove recording">&times;</button></span>';return '<span class="nbph"><img src="'+esc(/^data:/.test(p)?p:dmPhotoUrl(p))+'" alt="Photo"><button type="button" data-nprm="'+i+'" aria-label="Remove photo">&times;</button></span>'}).join('');[].forEach.call(b.querySelectorAll('[data-nprm]'),function(x){x.onclick=function(){photos.splice(+x.dataset.nprm,1);drawPh()}})}
+  function drawPh(){var b=document.getElementById('nePhs');if(!b)return;b.innerHTML=photos.map(function(p,i){if(nbIsAudio(p)||/^data:audio/.test(p))return '<span class="nbph nbaup"><audio controls preload="none" src="'+esc(/^data:/.test(p)?p:dmPhotoUrl(p))+'"></audio><button type="button" data-nprm="'+i+'" aria-label="Remove recording">&times;</button></span>';if(nbIsDraw(p)||/^draw:/.test(p))return '<span class="nbph nbdrawe"><img src="'+esc(/^draw:/.test(p)?p.slice(5):nbImg(p))+'" alt="Drawing" data-redrawe="'+i+'"><button type="button" data-nprm="'+i+'" aria-label="Remove drawing">&times;</button></span>';return '<span class="nbph"><img src="'+esc(/^data:/.test(p)?p:dmPhotoUrl(p))+'" alt="Photo"><button type="button" data-nprm="'+i+'" aria-label="Remove photo">&times;</button></span>'}).join('');[].forEach.call(b.querySelectorAll('[data-nprm]'),function(x){x.onclick=function(){photos.splice(+x.dataset.nprm,1);drawPh()}});[].forEach.call(b.querySelectorAll('[data-redrawe]'),function(x){x.onclick=function(){var i=+x.dataset.redrawe;nbRedraw(photos[i],function(ref){photos[i]=ref;drawPh()})}})}
   drawPh();
   document.getElementById('nePh').onchange=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;if(!msgOK()){toast('Photos need the Messages connection (gear, Messages).');return}
     shrink(f,function(url){photos.push(url);drawPh();msgApi('/photo',{image:url}).then(function(j){var i=photos.indexOf(url);if(i>=0)photos[i]='wd:'+j.id;drawPh()},function(e2){var i=photos.indexOf(url);if(i>=0)photos.splice(i,1);drawPh();toast('Photo not saved: '+(e2.message||e2))})})};
   function upMedia(url,path,field){photos.push(url);drawPh();var o={};o[field]=url;msgApi(path,o).then(function(j){var i=photos.indexOf(url);if(i>=0)photos[i]='wd:'+j.id;drawPh()},function(e2){var i=photos.indexOf(url);if(i>=0)photos.splice(i,1);drawPh();toast('Not saved: '+(e2.message||e2))})}
-  bind('neDraw',function(){if(!msgOK()){toast('Drawings need the Messages connection (gear, Messages).');return}openDraw(function(u){upMedia(u,'/photo','image')})});
+  bind('neDraw',function(){if(!msgOK()){toast('Drawings need the Messages connection (gear, Messages).');return}openDraw(function(u,js){var tmp='draw:'+u;photos.push(tmp);drawPh();nbUpDraw(u,js).then(function(ref){var i=photos.indexOf(tmp);if(i>=0)photos[i]=ref;drawPh()},function(e2){var i=photos.indexOf(tmp);if(i>=0)photos.splice(i,1);drawPh();toast('Drawing not saved: '+(e2.message||e2))})})});
   bind('neRec',function(){if(!msgOK()){toast('Recordings need the Messages connection (gear, Messages).');return}openRecord(function(u){upMedia(u,'/audio','audio')})});
   [].forEach.call(document.querySelectorAll('[data-col]'),function(b){b.onclick=function(){col=b.dataset.col;[].forEach.call(document.querySelectorAll('[data-col]'),function(x){x.classList.toggle('on',x===b)})}});
   var rem=document.getElementById('neRem');
@@ -4144,7 +4167,7 @@ function openNoteEdit(id,pre){
     var ins=' '+nbFmt(ans.v,ans.money);ta.value=v.slice(0,p)+ins+v.slice(p);ta.setSelectionRange(p+ins.length,p+ins.length)});
   suggestBox('neCon','neConS',function(){return MASTER.contractors.map(function(x){return {label:x.name}})},function(){});
   bind('neSave',function(){
-    if(photos.some(function(p){return /^data:/.test(p)})){document.getElementById('neW').innerHTML='<div class="warn">Wait a second, the photo is still uploading.</div>';return}
+    if(photos.some(function(p){return /^(data|draw):/.test(p)})){document.getElementById('neW').innerHTML='<div class="warn">Wait a second, the photo is still uploading.</div>';return}
     var v={title:val('neTitle').trim(),body:ta.value.replace(/\s+$/,''),con:val('neCon').trim(),tags:val('neTags').trim(),color:col,remind:rem.value?rem.value+(val('neRep')?'|'+val('neRep'):''):'',photos:photos.join(';')};
     if(!v.title&&!v.body&&!v.photos){document.getElementById('neW').innerHTML='<div class="warn">Write something first.</div>';return}
     for(var k2 in v)n[k2]=v[k2];

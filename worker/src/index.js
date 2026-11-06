@@ -165,6 +165,11 @@ export class Box extends DurableObject {
         var ab = fromB64(am[3]); if (ab.length > 1900000) return err('That recording is too long.');
         var aid = 'au-' + rand(16); this.saveMedia(aid, am[1], ab); return json({ id: aid });
       }
+      if (p === '/drawing' && req.method === 'POST') {
+        var dj = await req.json(), dt = new TextEncoder().encode(String(dj.data || ''));
+        if (!dt.length || dt.length > 1900000) return err('Drawing too big.');
+        var did = 'dr-' + rand(16); this.saveMedia(did, 'application/json', dt); return json({ id: did });
+      }
       if (p === '/share' && req.method === 'POST') return json(this.shareSave(await req.json(), url));
       if (p === '/share/changes') return json({ changes: this.sql.exec('SELECT nid,data,edited FROM shares WHERE edited > ?', +(url.searchParams.get('since') || 0)).toArray().map(function (r) { var d = JSON.parse(r.data); return { nid: r.nid, title: d.title, body: d.body, edited: r.edited }; }) });
       if (p === '/backup/config' && req.method === 'POST') return json(await this.backupConfig(await req.json()));
