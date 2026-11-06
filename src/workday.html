@@ -662,7 +662,7 @@ html.lg .aibox{background:var(--lg-card)!important;border:1px solid var(--lg-edg
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Nov 4, 2026 (72)';
+var KEY='workday.v1',APPVER='Nov 5, 2026 (73)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -1576,9 +1576,10 @@ function dmStep(r,status){
 /* swap: this one is called in for pickup, and the same dumpster is ordered again starting today */
 function dmSwap(r){
   var T=todayStr(),old={status:r.status,req:r.req,notes:r.notes};
-  var ch={status:'Pickup Requested',req:T,notes:(r.notes?r.notes+'; ':'')+'Swapped '+dshort(T)};
+  var md=(new Date().getMonth()+1)+'/'+new Date().getDate();
+  var ch={status:'Pickup Requested',req:T,notes:(r.notes?r.notes.replace(/[.;\s]+$/,'')+'. ':'')+'Called for swap '+md};
   for(var k in ch)r[k]=ch[k];
-  var nr={row:0,id:dmId(),site:r.site,co:r.co,size:r.size,num:'',status:'Ordered',ord:T,del:'',req:'',pick:'',tons:'',inv:'',notes:'Swap for '+(r.num?'#'+r.num:r.size+' delivered '+dshort(r.del)),photos:''};
+  var nr={row:0,id:dmId(),site:r.site,co:r.co,size:r.size,num:'',status:'Ordered',ord:T,del:'',req:'',pick:'',tons:'',inv:'',notes:'Replacement for '+r.id,photos:''};
   DM.rows.push(nr);dmSave();render();
   var p1=dmPatch(r,ch);
   var p2=getMcp().then(function(mcp){if(!mcp)throw new Error('The dumpster log is not connected.');return mcp.callTool(GS,'append_values',{spreadsheetId:DSID,range:'Dumpsters!A1',values:[[nr.id].concat(dmVals(nr))]}).then(function(){mcp.invalidate(GS,'get_values').catch(function(){})})});
