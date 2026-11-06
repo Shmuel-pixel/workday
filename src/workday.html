@@ -717,7 +717,7 @@ html.lg .aibox{background:var(--lg-card)!important;border:1px solid var(--lg-edg
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Nov 6, 2026 (83)';
+var KEY='workday.v1',APPVER='Nov 6, 2026 (84)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -2195,7 +2195,7 @@ function trackChanges(){
   syncSave();schedSync();
 }
 var syncT=null;function schedSync(){if(!connOK())return;clearTimeout(syncT);syncT=setTimeout(syncNow,2500)}
-function syncNow(manual){
+function syncNow(manual){if(manual&&typeof phqCheck==='function')phqCheck(true);
   if(!connOK()||SYNC.busy)return Promise.resolve();
   if(!navigator.onLine){if(manual)toast('No signal. It will sync when you are back online.');return Promise.resolve()}
   SYNC.busy=true;
@@ -3969,7 +3969,7 @@ function openMcp(rot){
   msgApi('/photos/inbox').then(function(j){var el=document.getElementById('mcInbox');if(!el)return;var all=j.photos||[],wait=all.filter(function(x){return !x.used});
     if(!all.length){el.innerHTML='<b>Holding area:</b> empty';return}
     var show=wait.length?wait:all.slice(0,12);
-    el.innerHTML='<b>Holding area:</b> '+(wait.length?wait.length+' waiting to be sorted':'all sorted')+'<div class="mcgrid">'+show.slice(0,24).map(function(x){var u=MSG.url+'/media/'+encodeURIComponent(x.id)+'?k='+encodeURIComponent(MSG.key);return '<a href="'+esc(u)+'" target="_blank"><img loading="lazy" src="'+esc(u)+'" alt=""></a>'}).join('')+'</div>'+(wait.length?'':'<div class="mt">Showing the last ones sorted.</div>')},function(){});
+    el.innerHTML=(wait.length?'<button class="phqbar" id="mcRev">'+PHQ_SVG+'<b>'+wait.length+(wait.length===1?' photo':' photos')+' to file</b><span>Review &rsaquo;</span></button>':'')+'<b>Holding area:</b> '+(wait.length?wait.length+' waiting to be sorted':'all sorted')+'<div class="mcgrid">'+show.slice(0,24).map(function(x){var u=MSG.url+'/media/'+encodeURIComponent(x.id)+'?k='+encodeURIComponent(MSG.key);return '<a href="'+esc(u)+'" target="_blank"><img loading="lazy" src="'+esc(u)+'" alt=""></a>'}).join('')+'</div>'+(wait.length?'':'<div class="mt">Showing the last ones sorted.</div>');bind('mcRev',openPhotoReview)},function(){});
   msgApi('/mcp/setup',{conn:{url:CONN.url,token:CONN.token},rotate:!!rot}).then(function(j){
     out.innerHTML='<div class="mcurl">'+esc(j.url)+'</div><div class="row"><button class="btn primary" id="mcCopy">Copy link</button></div>';
     bind('mcCopy',function(){copyText(j.url);var b=document.getElementById('mcCopy');if(b)b.textContent='Copied'});
