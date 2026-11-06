@@ -23,7 +23,8 @@ var INSTRUCTIONS = [
   '4. Never schedule work on Shabbos or Yom Tov. Ask for another day.',
   '5. If more than one row could match, ask which one.',
   '6. Delete = delete_row, which marks the row deleted (it can be brought back with restore_row) when the tab has a Deleted column. Keys are never deleted: set Status to Retired with the date and reason. Key serial numbers never change.',
-  'Notes (the Notes page) use list_notes, add_note, update_note, delete_note and make_folder. Photos, drawings and recordings cannot be added from a chat; Shmuel adds those in the app (open the note, tap Photo).',
+  'Notes (the Notes page) use list_notes, add_note, update_note, delete_note and make_folder.',
+  'Photos: a photo pasted in this chat cannot be passed to Workday. To add one, Shmuel shares it from the Photos app with Send to Workday; then use recent_photos and attach_photo. Drawings and recordings are made in the app.',
   '7. Jobs (Cards): Date YYYY-MM-DD, Time HH:MM 24-hour, Status todo or done. Materials and Tools are separated by "; ". Use add_job / update_job for jobs; they fill ID, Created, Updated, Source and Moves.',
   '8. Dumpster status goes Ordered -> Delivered -> Pickup Requested -> Picked Up; fill that step\'s date column when it changes.',
   '9. Keep answers short, like a text message.'
@@ -56,7 +57,9 @@ var TOOLS = [
   { name: 'add_note', description: 'Add a note to the Notes page. Folder can be a name or path ("Payback/Loads"); a new folder is made if it does not exist. Checklist items become tick boxes.', inputSchema: { type: 'object', properties: { title: S, body: S, checklist: { type: 'array', items: S }, folder: S, tags: { type: 'string', description: 'Comma between tags' }, contractor: S, color: { type: 'string', enum: NB_COLORS }, pinned: { type: 'boolean' }, remind_at: { type: 'string', description: 'YYYY-MM-DD HH:MM New York time' }, repeat: { type: 'string', enum: NB_REPEAT } } } },
   { name: 'update_note', description: 'Change a note found by id or by title. Only what you give changes. append_text and add_checklist add to the end; check_items ticks boxes whose text matches; remind_at "" removes the reminder; folder "" moves it to the top.', inputSchema: { type: 'object', properties: { id: S, title_is: { type: 'string', description: 'Find the note by its current title' }, title: S, body: S, append_text: S, add_checklist: { type: 'array', items: S }, check_items: { type: 'array', items: S }, uncheck_items: { type: 'array', items: S }, folder: S, tags: S, contractor: S, color: { type: 'string', enum: NB_COLORS }, pinned: { type: 'boolean' }, archived: { type: 'boolean' }, remind_at: S, repeat: { type: 'string', enum: NB_REPEAT } } } },
   { name: 'delete_note', description: 'Delete a note (by id or title). It can be brought back with restore_row on book workday, tab Notebook, with the id.', inputSchema: { type: 'object', properties: { id: S, title_is: S } }, annotations: { destructiveHint: true } },
-  { name: 'make_folder', description: 'Make a notes folder. Use a path like "Payback/Loads" for a folder inside a folder.', inputSchema: { type: 'object', properties: { path: S }, required: ['path'] } }
+  { name: 'make_folder', description: 'Make a notes folder. Use a path like "Payback/Loads" for a folder inside a folder.', inputSchema: { type: 'object', properties: { path: S }, required: ['path'] } },
+  { name: 'recent_photos', description: 'Photos Shmuel sent to Workday from his iPhone (Photos, Share, Send to Workday), newest first. Shows the photos so you can see them. Use attach_photo to put one in a note, a job or a dumpster.', inputSchema: { type: 'object', properties: { count: { type: 'number', description: 'How many (default 1, at most 4)' }, look: { type: 'boolean', description: 'Show the pictures (default true)' } } }, annotations: { readOnlyHint: true } },
+  { name: 'attach_photo', description: 'Put photos he sent into a note (note id or note_title), a job card (job_id, with optional text), or a dumpster (dumpster_id). photo_ids from recent_photos, or count for the newest ones (default 1).', inputSchema: { type: 'object', properties: { photo_ids: { type: 'array', items: S }, count: { type: 'number' }, note_id: S, note_title: S, job_id: S, text: { type: 'string', description: 'Caption when attaching to a job' }, dumpster_id: S } } }
 ];
 
 export async function mcpHandle(box, req) {
@@ -89,7 +92,8 @@ async function one(box, m) {
       var name = m.params && m.params.name, args = (m.params && m.params.arguments) || {};
       try {
         var res = await callTool(box, name, args);
-        r.result = { content: [{ type: 'text', text: typeof res === 'string' ? res : JSON.stringify(res, null, 1) }] };
+        if (res && res.__content) r.result = { content: res.__content };
+        else r.result = { content: [{ type: 'text', text: typeof res === 'string' ? res : JSON.stringify(res, null, 1) }] };
       } catch (e) {
         r.result = { content: [{ type: 'text', text: 'Error: ' + (e && e.message ? e.message : String(e)) }], isError: true };
       }
@@ -286,8 +290,55 @@ async function noteTool(box, name, a, now) {
   }
 }
 
+/* ---------- photos sent from the iPhone ---------- */
+function b64(bytes) {
+  var s = '', CH = 0x8000;
+  for (var i = 0; i < bytes.length; i += CH) s += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+  return btoa(s);
+}
+function photoRows(box, n) { return box.sql.exec('SELECT id,ts,used FROM mcp_photos ORDER BY ts DESC LIMIT ?', n).toArray(); }
+function ago(ts) { var m = Math.round((Date.now() - ts) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' days ago'; }
+async function photoTool(box, name, a, now) {
+  if (name === 'recent_photos') {
+    var n = Math.max(1, Math.min(+a.count || 1, 4)), rows = photoRows(box, n);
+    if (!rows.length) return 'No photos sent yet. On the iPhone: open the photo, tap Share, then Send to Workday.';
+    var content = [{ type: 'text', text: rows.map(function (r, i) { return (i + 1) + '. ' + r.id + ' sent ' + ago(r.ts) + (r.used ? ' (already put in ' + r.used + ')' : ''); }).join('\n') }];
+    if (a.look !== false) rows.forEach(function (r) {
+      var m = box.sql.exec('SELECT mime,data FROM media WHERE id=?', r.id).toArray()[0];
+      if (m) content.push({ type: 'image', data: b64(new Uint8Array(m.data)), mimeType: m.mime });
+    });
+    return { __content: content };
+  }
+  var ids = (a.photo_ids && a.photo_ids.length) ? a.photo_ids.slice(0, 10) : photoRows(box, Math.max(1, Math.min(+a.count || 1, 10))).map(function (r) { return r.id; });
+  if (!ids.length) throw new Error('No photos sent yet. On the iPhone: open the photo, tap Share, then Send to Workday.');
+  ids.forEach(function (id) { if (!box.sql.exec('SELECT id FROM mcp_photos WHERE id=?', id).toArray().length) throw new Error('No sent photo with id ' + id); });
+  var refs = ids.map(function (id) { return 'wd:' + id; }), where;
+  if (a.note_id || a.note_title) {
+    var t = await nbRead(box), nt = nbFind(t, { id: a.note_id, title_is: a.note_title });
+    var list = String(nt.Photos || '').split(/;\s*/).filter(Boolean).concat(refs);
+    await writeCells(box, 'workday', 'Notebook', nt._row, t.head, { Photos: list.join(';'), Updated: now.stamp });
+    where = 'note "' + (nt.Title || nt.ID) + '"';
+  } else if (a.job_id) {
+    var tc = await readTab(box, 'workday', 'Cards'), job = findRow(tc, { id: a.job_id });
+    var tn = await readTab(box, 'workday', 'Notes');
+    for (var i = 0; i < refs.length; i++) {
+      await appendRow(box, 'workday', 'Notes', tn.head, { 'Card ID': job.ID, Time: now.stamp, Text: i === 0 ? (a.text || 'Photo') : 'Photo', Photo: refs[i], 'Added By': 'Claude', 'Note ID': 'mc' + Date.now().toString(36) + i });
+    }
+    where = 'job ' + job.ID + (job.Address ? ' (' + job.Address + ')' : '');
+  } else if (a.dumpster_id) {
+    var td = await readTab(box, 'dumpsters', 'Dumpsters'), d = findRow(td, { id: a.dumpster_id });
+    if (colOf(td.head, 'Photos') < 0) throw new Error('The Dumpsters tab has no Photos column.');
+    var dl = String(d.Photos || '').split(/;\s*/).filter(Boolean).concat(refs);
+    await writeCells(box, 'dumpsters', 'Dumpsters', d._row, td.head, { Photos: dl.join('; ') });
+    where = 'dumpster ' + d.ID;
+  } else throw new Error('Say where: note_id or note_title, job_id, or dumpster_id.');
+  ids.forEach(function (id) { box.sql.exec('UPDATE mcp_photos SET used=? WHERE id=?', where, id); });
+  return { attached: ids.length, to: where, note: 'Shows in the Workday app after he pulls down.' };
+}
+
 async function callTool(box, name, a) {
   var now = nyNow();
+  if (name === 'recent_photos' || name === 'attach_photo') return photoTool(box, name, a, now);
   if (['list_notes', 'add_note', 'update_note', 'delete_note', 'make_folder'].indexOf(name) >= 0) return noteTool(box, name, a, now);
   if (name === 'workday_today') return { today: now.date, weekday: now.weekday, time: now.time, timezone: 'America/New_York', books: BOOKS };
 

@@ -728,7 +728,7 @@ html.lg .aibox{background:var(--lg-card)!important;border:1px solid var(--lg-edg
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Nov 6, 2026 (80)';
+var KEY='workday.v1',APPVER='Nov 6, 2026 (81)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -3872,6 +3872,8 @@ function openMcp(rot){
   h+='<div class="mt">With this, Claude in any chat (iPhone, iPad or computer) can read and change your jobs, dumpsters, towing, keys, notes, contacts, equipment and supply sheets. It asks you before it changes anything.</div>';
   h+='<div id="mcOut" class="mt">Making your link...</div>';
   h+='<ol class="steps"><li>Tap <b>Copy link</b>.</li><li>Open <b>claude.ai</b> in Safari (or the Claude app on a computer). Go to <b>Customize</b>, then <b>Connectors</b>, tap <b>+</b>, then <b>Add custom connector</b>.</li><li>Name: <b>Workday</b>. Paste the link in the URL box. If it asks about signing in, pick <b>No sign in</b>. Tap <b>Add</b>.</li><li>In a chat, tap <b>+</b>, then <b>Connectors</b>, and turn on <b>Workday</b>.</li></ol>';
+  h+='<h3 style="margin-top:18px">Photos for Claude</h3><div class="mt">Make a Shortcut once. Then in Photos tap <b>Share</b>, then <b>Send to Workday</b>, and tell Claude where to put it (a note, a job or a dumpster).</div><div id="mcPh"></div>';
+  h+='<ol class="steps"><li>Tap <b>Copy photo link</b>.</li><li>Open the <b>Shortcuts</b> app, tap <b>+</b>. Tap the name at the top and call it <b>Send to Workday</b>.</li><li>Tap the <b>i</b> (or the name, then Details) and turn on <b>Show in Share Sheet</b>. Done. At the top, tap <b>Any</b> and pick only <b>Images</b>.</li><li>Tap <b>Search Actions</b>, add <b>Convert Image</b>, set it to <b>JPEG</b>.</li><li>Add <b>Resize Image</b>, set the width to <b>1600</b>.</li><li>Add <b>Get Contents of URL</b>. Tap <b>URL</b> and paste the photo link. Tap the arrow to show more: Method <b>POST</b>, Request Body <b>File</b>, File = <b>Resized Image</b>.</li><li>Add <b>Show Notification</b>, set the text to <b>Contents of URL</b>. Tap <b>Done</b>.</li></ol>';
   h+='<div class="mt">Keep the link private. Anyone with it can change your sheets. If it gets out, tap <b>Make a new link</b> and the old one stops working.</div>';
   h+='<div class="row" style="gap:18px;flex-wrap:wrap"><button class="minilink" id="mcRot">Make a new link</button><button class="minilink red" id="mcOff">Turn off</button></div><button class="btn" id="mcDone">Done</button>';
   openSheet(h);bind('mcBack',function(){openSettings('main')});bind('mcDone',closeSheet);
@@ -3879,6 +3881,8 @@ function openMcp(rot){
   msgApi('/mcp/setup',{conn:{url:CONN.url,token:CONN.token},rotate:!!rot}).then(function(j){
     out.innerHTML='<div class="mcurl">'+esc(j.url)+'</div><div class="row"><button class="btn primary" id="mcCopy">Copy link</button></div>';
     bind('mcCopy',function(){copyText(j.url);var b=document.getElementById('mcCopy');if(b)b.textContent='Copied'});
+    var ph=document.getElementById('mcPh');if(ph)ph.innerHTML='<div class="mcurl">'+esc(j.url+'/photo')+'</div><div class="row"><button class="btn" id="mcCopy2">Copy photo link</button></div>';
+    bind('mcCopy2',function(){copyText(j.url+'/photo');var b=document.getElementById('mcCopy2');if(b)b.textContent='Copied'});
   },function(e){out.innerHTML='<div class="warn">'+esc(e.message||String(e))+'</div>'});
   bind('mcRot',function(){confirmSheet('Make a new link?','The old link stops working. You will need to paste the new one in Claude.','Make new link',function(){openMcp(true)})});
   bind('mcOff',function(){confirmSheet('Turn off the Claude connector?','Claude will not be able to reach Workday until you make a new link here.','Turn off',function(){msgApi('/mcp/setup',{off:true}).then(function(){toast('Claude connector is off');closeSheet()},function(e){toast(e.message||String(e))})})});

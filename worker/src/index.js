@@ -96,6 +96,7 @@ export class Box extends DurableObject {
     this.env = env;
     this.sql = ctx.storage.sql;
     this.sql.exec('CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS mcp_photos (id TEXT PRIMARY KEY, ts INTEGER, used TEXT)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS chats (chat TEXT PRIMARY KEY, name TEXT, last_ts INTEGER, last_text TEXT, last_dir TEXT, unread INTEGER DEFAULT 0, last_in INTEGER DEFAULT 0)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS msgs (id TEXT PRIMARY KEY, chat TEXT, dir TEXT, type TEXT, text TEXT, media TEXT, mime TEXT, ts INTEGER, status TEXT, err TEXT, via TEXT, upd INTEGER)');
     this.sql.exec('CREATE INDEX IF NOT EXISTS msgs_chat ON msgs (chat, ts)');
@@ -135,7 +136,10 @@ export class Box extends DurableObject {
       if (p.indexOf('/.well-known/') === 0) return err('Not found', 404);
       if (p.indexOf('/mcp/') === 0 && p !== '/mcp/setup') {
         var mt = this.get('mcp_tok');
-        if (!mt || p.slice(5) !== mt) return err('Wrong connector link. Make a new one in Workday: gear, Claude connector.', 404);
+        var mrest = p.slice(5).split('/');
+        if (!mt || mrest[0] !== mt) return err('Wrong connector link. Make a new one in Workday: gear, Claude connector.', 404);
+        if (mrest[1] === 'photo' && req.method === 'POST') return await this.mcpPhotoIn(req);
+        if (mrest.length > 1) return err('Not found', 404);
         return await mcpHandle(this, req);
       }
 
@@ -493,6 +497,29 @@ export class Box extends DurableObject {
       'document.getElementById("sb").onclick=function(){D.body=ed.value;save();close()};document.getElementById("cb").onclick=close;draw();' +
       '</script></body></html>';
     return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
+  }
+  /* a photo sent from the iPhone share sheet (Shortcut "Send to Workday") for Claude to use */
+  async mcpPhotoIn(req) {
+    var ct = (req.headers.get('Content-Type') || '').toLowerCase(), bytes = null, mime = '';
+    if (ct.indexOf('multipart/form-data') === 0) {
+      var fd = await req.formData(), f = null;
+      fd.forEach(function (v) { if (!f && v && typeof v === 'object' && v.arrayBuffer) f = v; });
+      if (f) { bytes = new Uint8Array(await f.arrayBuffer()); mime = f.type || ''; }
+    } else if (ct.indexOf('application/json') === 0) {
+      var jb = await req.json(), mm = /^data:(image\/[a-z]+);base64,(.*)$/.exec(String(jb.image || ''));
+      if (mm) { bytes = fromB64(mm[2]); mime = mm[1]; }
+    } else { bytes = new Uint8Array(await req.arrayBuffer()); mime = ct.split(';')[0]; }
+    if (!bytes || !bytes.length) return new Response('No photo came through. In the Shortcut, set Request Body to File and pick the photo.', { status: 400 });
+    if (bytes[0] === 0xFF && bytes[1] === 0xD8) mime = 'image/jpeg';
+    else if (bytes[0] === 0x89 && bytes[1] === 0x50) mime = 'image/png';
+    else if (bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) mime = 'image/webp';
+    else if (bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70) return new Response('That photo is HEIC. In the Shortcut, add Convert Image to JPEG before sending.', { status: 415 });
+    if (mime.indexOf('image/') !== 0) return new Response('That is not a photo.', { status: 415 });
+    if (bytes.length > 1900000) return new Response('That photo is too big. In the Shortcut, add Resize Image (width 1600) before sending.', { status: 413 });
+    var id = 'ph-' + rand(16);
+    this.saveMedia(id, mime, bytes);
+    this.sql.exec('INSERT INTO mcp_photos (id,ts,used) VALUES (?,?,?)', id, Date.now(), '');
+    return new Response('Sent to Workday. Tell Claude where to put it.', { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
   }
   saveMedia(id, mime, bytes) {
     if (bytes.length > 1900000) return;
