@@ -682,7 +682,7 @@ html.lg .aibox{background:var(--lg-card)!important;border:1px solid var(--lg-edg
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Nov 6, 2026 (75)';
+var KEY='workday.v1',APPVER='Nov 6, 2026 (76)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -3939,7 +3939,7 @@ function nbLoad(){
   if(NB.busy)return Promise.resolve();NB.busy=true;
   return bridge('getValues',{book:'workday',range:'Notebook!A1:M3000'}).then(function(d){
     NB.rows=(d.values||[]).slice(1).filter(function(r){return r[0]&&!r[8]}).map(function(r){var o={};NBCOLS.forEach(function(k,i){o[k]=r[i]||''});return o});
-    NB.at=Date.now();NB.busy=false;NB.err='';nbSave();if(S.view==='note')render();
+    NB.at=Date.now();NB.busy=false;NB.err='';nbSave();nbPull();if(S.view==='note')render();
   },function(e){NB.busy=false;NB.at=NB.at||1;NB.err=bridgeErr(e);if(S.view==='note')render()});
 }
 function nbFind(id){for(var i=0;i<NB.rows.length;i++)if(NB.rows[i].id===id)return NB.rows[i];return null}
@@ -4018,7 +4018,17 @@ function openRecord(cb){
     },function(){document.getElementById('rcMsg').textContent='The microphone is blocked. Turn it on in iPhone Settings for Workday.'})};
   document.getElementById('rcOk').onclick=function(){if(!blob)return;var r=new FileReader();r.onload=function(){ov.remove();cb(String(r.result).replace(/^data:audio\/mp4;codecs=[^;]*;/,'data:audio/mp4;'))};r.readAsDataURL(blob)};
 }
-/* share a note as a read-only web page */
+/* bring back changes made by people a note is shared with */
+function nbPull(){
+  if(!msgOK()||!Object.keys(nbShared()).length)return Promise.resolve();
+  var since=0;try{since=+(localStorage.getItem('workday.nbpull')||0)}catch(e){}
+  return msgApi('/share/changes?since='+since).then(function(j){var top=since,got=[];
+    (j.changes||[]).forEach(function(c){top=Math.max(top,c.edited);var n=nbFind(c.nid);if(!n)return;var mine=Date.parse(String(n.updated||'').replace(' ','T'))||0;if(c.edited>mine&&(c.body!==n.body||c.title!==n.title)){n.body=c.body;n.title=c.title;nbWrite(n,false).catch(function(){});got.push(n.title||'a note')}});
+    try{localStorage.setItem('workday.nbpull',String(top))}catch(e){}
+    if(got.length){nbSave();if(S.view==='note')render();toast('Changed by someone you shared with: '+got.join(', '))}
+  },function(){});
+}
+/* share a note as a web page others can view and edit */
 function nbShared(){try{return JSON.parse(localStorage.getItem('workday.nbshared')||'{}')}catch(e){return {}}}
 function nbSharePush(n,off){
   if(!msgOK())return Promise.reject(new Error('Sharing needs the Messages connection (gear, Messages).'));
@@ -4053,6 +4063,7 @@ function nbAnswer(lines,idx,before){
 }
 function renderNotes(){
   if(!NB.busy&&(!NB.at||Date.now()-NB.at>5*60000))nbLoad();
+  else if(Date.now()-(NB.pt||0)>30000){NB.pt=Date.now();nbPull()}
   var q=NB.q.trim().toLowerCase(),arch=NB.tag==='__arch';
   var h='<div class="eqbar"><div><b>Notes</b><span>'+(function(){var k=NB.rows.filter(function(n){return !n.arch}).length;return k?k+(k===1?' note':' notes'):''})()+'</span></div><button class="addround" id="nbNew" aria-label="New note">+</button></div>';
   h+='<input class="search" id="nbQ" type="search" placeholder="Search notes" value="'+esc(NB.q)+'">';
@@ -4084,7 +4095,7 @@ function openNote(id){
     return l.trim()?'<p>'+linkify(l)+(ans?'<b class="nbans">'+esc(nbFmt(ans.v,ans.money))+'</b>':'')+'</p>':'<p class="gap"></p>'}).join('')+'</div>';
   h+='<div class="row"><button class="btn primary" id="nbEdit">Edit</button><button class="btn" id="nbShare">Send to Keep / share</button><button class="btn" id="nbX">Close</button></div>';
   var shu=nbShared()[n.id];
-  h+='<div class="row" style="gap:18px;flex-wrap:wrap"><button class="minilink" id="nbSh">'+(shu?'Send the link again':'Share with someone')+'</button>'+(shu?'<button class="minilink" id="nbShOff">Stop sharing</button>':'')+'</div>';
+  h+='<div class="row" style="gap:18px;flex-wrap:wrap"><button class="minilink" id="nbSh">'+(shu?'Send the link again':'Share with someone (they can edit)')+'</button>'+(shu?'<button class="minilink" id="nbShOff">Stop sharing</button>':'')+'</div>';
   h+='<div class="row" style="gap:18px"><button class="minilink" id="nbArch">'+(n.arch?'Move out of archive':'Archive')+'</button><button class="minilink red" id="nbDel">Delete note</button></div>';
   openSheet(h);
   bind('nbX',closeSheet);bind('nbEdit',function(){openNoteEdit(id)});bind('nbShare',function(){nbShare(n)});

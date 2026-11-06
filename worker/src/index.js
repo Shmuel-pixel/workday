@@ -105,6 +105,7 @@ export class Box extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS drops (id TEXT PRIMARY KEY, ts INTEGER)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS contacts (phone TEXT PRIMARY KEY, name TEXT)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS shares (nid TEXT PRIMARY KEY, token TEXT, data TEXT, ts INTEGER)');
+    try { this.sql.exec('ALTER TABLE shares ADD COLUMN edited INTEGER DEFAULT 0'); } catch (e) {}
     this.sql.exec('CREATE TABLE IF NOT EXISTS backups (id TEXT PRIMARY KEY, ts INTEGER, kind TEXT, size INTEGER, summary TEXT)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS bparts (id TEXT, n INTEGER, data BLOB, PRIMARY KEY (id, n))');
   }
@@ -128,6 +129,7 @@ export class Box extends DurableObject {
       if (p === '/handoff' && req.method === 'GET') return json(this.handoffTake(url.searchParams.get('c')));
       if (p === '/widget' && req.method === 'GET') { var wk = this.get('widget_key'); if (!wk || url.searchParams.get('w') !== wk) return err('Wrong widget key', 401); return json(JSON.parse(this.get('widget') || '{"items":[]}')); }
       if (p === '/drop' && req.method === 'POST') return json(await this.drop(await req.json()));
+      if (p.indexOf('/n/') === 0 && /\/save$/.test(p) && req.method === 'POST') return json(this.shareGuestSave(p.slice(3).split('/')[0], await req.json()));
       if (p.indexOf('/n/') === 0) return await this.sharePage(p.slice(3));
 
       var key = req.headers.get('X-Key') || (p.indexOf('/media/') === 0 ? url.searchParams.get('k') : '');
@@ -164,6 +166,7 @@ export class Box extends DurableObject {
         var aid = 'au-' + rand(16); this.saveMedia(aid, am[1], ab); return json({ id: aid });
       }
       if (p === '/share' && req.method === 'POST') return json(this.shareSave(await req.json(), url));
+      if (p === '/share/changes') return json({ changes: this.sql.exec('SELECT nid,data,edited FROM shares WHERE edited > ?', +(url.searchParams.get('since') || 0)).toArray().map(function (r) { var d = JSON.parse(r.data); return { nid: r.nid, title: d.title, body: d.body, edited: r.edited }; }) });
       if (p === '/backup/config' && req.method === 'POST') return json(await this.backupConfig(await req.json()));
       if (p === '/backup/now' && req.method === 'POST') return json(await this.runBackup('manual'));
       if (p === '/backups') return json(this.backupList());
@@ -438,6 +441,16 @@ export class Box extends DurableObject {
     this.sql.exec('INSERT INTO shares (nid,token,data,ts) VALUES (?,?,?,?) ON CONFLICT(nid) DO UPDATE SET data=excluded.data, ts=excluded.ts', nid, token, data, Date.now());
     return { ok: true, url: url.origin + '/n/' + token };
   }
+  /* someone Shmuel shared a note with saved a change */
+  shareGuestSave(token, b) {
+    var row = this.sql.exec('SELECT nid,data FROM shares WHERE token=?', String(token)).toArray()[0];
+    if (!row) return { error: 'This note is not shared any more.' };
+    var d = JSON.parse(row.data), body = String(b.body == null ? d.body : b.body), title = String(b.title == null ? d.title : b.title);
+    if (body.length > 50000 || title.length > 300) return { error: 'Too long' };
+    d.body = body; d.title = title; var now = Date.now();
+    this.sql.exec('UPDATE shares SET data=?, ts=?, edited=? WHERE token=?', JSON.stringify(d), now, now, String(token));
+    return { ok: true, ts: now };
+  }
   async sharePage(rest) {
     var parts = rest.split('/'), token = parts[0];
     var row = this.sql.exec('SELECT data,ts FROM shares WHERE token=?', token).toArray()[0];
@@ -446,13 +459,20 @@ export class Box extends DurableObject {
     if (parts[1] === 'm') { var mid = d.media[+parts[2]]; if (!mid) return err('Not found', 404); return await this.media(mid); }
     var e = function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
     var cols = { red: '#F28B82', orange: '#FBBC04', yellow: '#FFF475', green: '#CCFF90', teal: '#A7FFEB', blue: '#AECBFA', purple: '#D7AEFB', pink: '#FDCFE8', brown: '#E6C9A8', gray: '#E8EAED' };
-    var body = d.body.split('\n').map(function (l) {
-      var m = /^\s*[-*]?\s*\[( |x|X)\]\s?(.*)$/.exec(l);
-      if (m) return '<div class="ck' + (m[1] !== ' ' ? ' done' : '') + '">' + (m[1] !== ' ' ? '&#9745;' : '&#9744;') + ' ' + e(m[2]) + '</div>';
-      return l.trim() ? '<p>' + e(l).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>') + '</p>' : '<br>';
-    }).join('');
     var media = d.media.map(function (id, i) { var src = '/n/' + token + '/m/' + i; return id.indexOf('au-') === 0 ? '<audio controls src="' + src + '"></audio>' : '<a href="' + src + '"><img src="' + src + '" alt=""></a>'; }).join('');
-    var html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + e(d.title || 'Note') + '</title><style>body{margin:0;background:#f2f2f7;font:17px/1.45 -apple-system,system-ui,sans-serif;color:#1c1c1e}main{max-width:640px;margin:0 auto;padding:20px 16px}.n{background:' + (cols[d.color] || '#fff') + ';border-radius:18px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,.08)}h1{font-size:24px;margin:0 0 10px}p{margin:4px 0;white-space:pre-wrap}.ck{margin:6px 0}.ck.done{color:#777;text-decoration:line-through}img{max-width:100%;border-radius:12px;margin:6px 0;display:block}audio{width:100%;margin:6px 0}small{display:block;color:#888;margin-top:14px;font-size:13px}</style></head><body><main><div class="n"><h1>' + e(d.title || 'Note') + '</h1>' + media + body + '</div><small>Shared from Workday. Updated ' + new Date(row.ts).toLocaleString('en-US', { timeZone: 'America/New_York' }) + '. Refresh to see the latest.</small></main></body></html>';
+    var bg = cols[d.color] || '#fff';
+    var html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + e(d.title || 'Note') + '</title><style>body{margin:0;background:#f2f2f7;font:17px/1.45 -apple-system,system-ui,sans-serif;color:#1c1c1e}main{max-width:640px;margin:0 auto;padding:20px 16px}.n{background:' + bg + ';border-radius:18px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,.08)}h1{font-size:24px;margin:0 0 10px}#tt{font:700 24px -apple-system,system-ui,sans-serif;width:100%;border:0;background:transparent;margin:0 0 8px;padding:0;color:inherit}p{margin:4px 0;white-space:pre-wrap;word-wrap:break-word}label{display:flex;gap:10px;align-items:flex-start;margin:8px 0}label input{width:22px;height:22px;flex:none;margin-top:1px}label.done span{color:#777;text-decoration:line-through}img{max-width:100%;max-height:50vh;object-fit:contain;border-radius:12px;margin:6px 0;display:block}audio{width:100%;margin:6px 0}textarea{width:100%;box-sizing:border-box;min-height:220px;font:17px/1.45 -apple-system,system-ui,sans-serif;border:1px solid rgba(0,0,0,.15);border-radius:12px;padding:10px;background:rgba(255,255,255,.7)}.bar{display:flex;gap:10px;margin-top:14px}button{font:600 16px -apple-system,system-ui,sans-serif;border:0;border-radius:12px;padding:11px 16px;background:#0A72F5;color:#fff}button.sec{background:rgba(0,0,0,.08);color:#1c1c1e}small{display:block;color:#888;margin-top:14px;font-size:13px}#st{color:#17924A;font-weight:600}</style></head><body><main><div class="n"><input id="tt" aria-label="Title"><div id="md">' + media + '</div><div id="view"></div><textarea id="ed" hidden></textarea><div class="bar"><button id="eb">Edit</button><button id="sb" hidden>Save</button><button id="cb" class="sec" hidden>Cancel</button></div></div><small><span id="st"></span> Shared from Workday. Changes you make here go back to the owner.</small></main><script>' +
+      'var T=' + JSON.stringify(token) + ',D=' + JSON.stringify({ title: d.title, body: d.body }).replace(/</g, '\\u003c') + ';' +
+      'function esc(t){return String(t).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;"}[c]})}' +
+      'var CK=/^\\s*[-*]?\\s*\\[( |x|X)\\]\\s?/;' +
+      'function draw(){document.getElementById("tt").value=D.title||"";var L=D.body.split("\\n");document.getElementById("view").innerHTML=L.map(function(l,i){var m=CK.exec(l);if(m){var on=m[1]!==" ";return "<label class=\\""+(on?"done":"")+"\\"><input type=checkbox data-i="+i+(on?" checked":"")+"><span>"+esc(l.replace(CK,""))+"</span></label>"}return l.trim()?"<p>"+esc(l)+"</p>":"<br>"}).join("");' +
+      '[].forEach.call(document.querySelectorAll("[data-i]"),function(c){c.onchange=function(){var L2=D.body.split("\\n"),i=+c.dataset.i;L2[i]=L2[i].replace(/\\[( |x|X)\\]/,c.checked?"[x]":"[ ]");D.body=L2.join("\\n");save();draw()}})}' +
+      'function save(){var st=document.getElementById("st");st.textContent="Saving...";fetch("/n/"+T+"/save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title:D.title,body:D.body})}).then(function(r){return r.json()}).then(function(j){st.textContent=j.ok?"Saved.":(j.error||"Not saved")},function(){st.textContent="Not saved. Check the internet."})}' +
+      'document.getElementById("tt").onchange=function(e){D.title=e.target.value;save()};' +
+      'var ed=document.getElementById("ed");document.getElementById("eb").onclick=function(){ed.value=D.body;ed.hidden=false;document.getElementById("view").hidden=true;this.hidden=true;document.getElementById("sb").hidden=false;document.getElementById("cb").hidden=false;ed.focus()};' +
+      'function close(){ed.hidden=true;document.getElementById("view").hidden=false;document.getElementById("eb").hidden=false;document.getElementById("sb").hidden=true;document.getElementById("cb").hidden=true;draw()}' +
+      'document.getElementById("sb").onclick=function(){D.body=ed.value;save();close()};document.getElementById("cb").onclick=close;draw();' +
+      '</script></body></html>';
     return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
   }
   saveMedia(id, mime, bytes) {
