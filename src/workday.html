@@ -635,6 +635,15 @@ html.tv .swhint{display:none}
 .nbpk.on{outline:2px solid var(--todo)}
 .nbfmenu{display:flex;flex-direction:column;gap:8px;margin:10px 0}
 .nefnew{display:flex;gap:8px;margin-top:8px}
+.phqbar{display:flex;align-items:center;gap:10px;width:100%;margin:8px 0 2px;padding:12px 14px;border:0;border-radius:16px;background:linear-gradient(180deg,#4C8DF6,#2F6FE0);color:#fff;font:inherit;text-align:left;box-shadow:0 6px 18px rgba(47,111,224,.3)}
+.phqbar svg{width:24px;height:24px;flex:none}.phqbar b{flex:1;font-size:16px}.phqbar span{font-weight:600;opacity:.95}
+.prcard{display:flex;gap:12px;padding:12px;border-radius:16px;background:rgba(120,120,128,.12);margin:10px 0}
+.prcard>a{flex:none}.prcard img{width:84px;height:112px;object-fit:cover;border-radius:10px;display:block}
+.prbody{flex:1;min-width:0;display:grid;gap:4px;align-content:start}.prwhat{font-size:13px;opacity:.7}.prto{font-weight:700;font-size:15px}.prwhy{font-size:13px;opacity:.7}
+.prbtns{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}.prbtns .btn{padding:8px 14px;min-height:0}
+.prtell{display:flex;gap:8px;align-items:stretch;margin:6px 0}.prtell textarea{flex:1;min-width:0}
+.prmic{flex:none;width:52px;border:0;border-radius:14px;background:rgba(120,120,128,.18);color:inherit;display:grid;place-items:center}.prmic svg{width:24px;height:24px}
+.prmic.on{background:#E5484D;color:#fff;animation:prpulse 1.2s infinite}@keyframes prpulse{50%{opacity:.6}}
 .mcgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px}.mcgrid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block}
 .mcurl{font:13px ui-monospace,Menlo,monospace;word-break:break-all;padding:10px 12px;border-radius:12px;background:rgba(120,120,128,.14);margin:6px 0}.nefnew input{flex:1;min-width:0}
 .nbcard{display:grid;gap:4px;align-content:start;text-align:left;padding:12px;border-radius:16px;background:var(--surface);border:1px solid var(--line);min-height:96px}
@@ -708,7 +717,7 @@ html.lg .aibox{background:var(--lg-card)!important;border:1px solid var(--lg-edg
 (function(){
 var LAT=40.0821, LNG=-74.2097, LOCNAME='Lakewood, NJ';
 (function(){try{var l=JSON.parse(localStorage.getItem('workday.loc')||'null');if(l&&isFinite(l.lat)&&isFinite(l.lng)){LAT=l.lat;LNG=l.lng;LOCNAME=l.name||'My location'}}catch(e){}})();
-var KEY='workday.v1',APPVER='Nov 6, 2026 (82)';
+var KEY='workday.v1',APPVER='Nov 6, 2026 (83)';
 var S={view:'day',cur:null,calY:0,calM:0,cards:[],crew:['Adan','Albert','Alex','Anjio','Charlie','Hugo','Jeronimo','Jonathon','Marco','Mario','Riccardo','Ruben','Sergio','Winston'],vehicles:['2008 Chevy Utility C4500','2008 Small Van','2009 GMC 5500','2011 Utility F450','2012 Utility F450','2013 Chevy Silverado','2015 Ford F550','2015 Ford Transit','2016 F-550','2016 Ford Transit','2018 Dump Truck','2019 Ford Box Truck','2019 Transit #1 - Jonathon'],tools:['Circular saw','Miter saw','Drill','Impact driver','Leaf blower','Shop vac','Extension ladder','Generator'],types:['Cleanup','Deck repair','Dumpster drop','Dumpster pickup','Estimate','Material pickup','Gutter cleanout','Install'],askHidden:false,logFocus:null,query:''};
 
 /* ---------- dates ---------- */
@@ -1084,6 +1093,7 @@ function renderHeader(){
     if(s===nextWorkDay())h+='<button class="tmrwbtn" id="goToday"><b>'+(s===addDays(T,1)?'TOMORROW':esc(engShort(s)).toUpperCase())+'</b><span>'+esc(engShort(s))+' &middot; tap to go to today</span></button>';
     else h+=r==='today'?'<div class="status st-today">'+lab+'</div>':'<button class="status st-'+r+'" id="goToday">'+lab+' &middot; <u>Today &rarr;</u></button>';
     h+='<button class="navbtn" id="next" aria-label="Next day">&rsaquo;</button></div>';
+    if(PHQ.n>0)h+='<button class="phqbar" id="phqGo">'+PHQ_SVG+'<b>'+PHQ.n+(PHQ.n===1?' photo':' photos')+' to file</b><span>Review &rsaquo;</span></button>';
   }
   el.innerHTML=h;
   document.getElementById('gear').onclick=function(){openSettings('main')};
@@ -1091,6 +1101,7 @@ function renderHeader(){
   if(S.view==='day'){
     document.getElementById('prev').onclick=function(){go(-1)};
     document.getElementById('next').onclick=function(){go(1)};
+    var pg=document.getElementById('phqGo');if(pg)pg.onclick=openPhotoReview;
     var g=document.getElementById('goToday');if(g)g.onclick=function(){S.cur=todayStr();render()};
   }
 }
@@ -2700,6 +2711,103 @@ function printSupply(){
 }
 /* ---------- tabs ---------- */
 var TABS=[['day','Today',IC.day],['msg','Messages',IC.msg],['tr','Translate',IC.tr],['ppl','Contacts',IC.ppl],['note','Notes',IC.notebook],['dump','Hauling',IC.dump],['tool','Tools',IC.tool]];
+/* ---------- photos sent with Send to Workday: Claude suggests where each goes, you OK it ---------- */
+var PHQ={n:0,list:[],at:0,props:{},busy:false};
+var PHQ_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h2l1.5-2h5L16 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.5"/></svg>';
+function phqCheck(force){
+  if(!msgOK()||(!force&&Date.now()-PHQ.at<20000))return Promise.resolve();PHQ.at=Date.now();
+  return msgApi('/photos/inbox').then(function(j){var w=(j.photos||[]).filter(function(x){return !x.used});var was=PHQ.n;PHQ.list=w;PHQ.n=w.length;if(was!==PHQ.n&&S.view==='day'&&document.getElementById('scrim').hidden)render()},function(){});
+}
+function phqMark(ids,used){return msgApi('/photos/used',{ids:ids,used:used}).then(function(){PHQ.list=PHQ.list.filter(function(x){return ids.indexOf(x.id)<0});PHQ.n=PHQ.list.length})}
+function phqImg(id){return fetch(msgMediaUrl(id)).then(function(r){return r.blob()}).then(function(b){return new Promise(function(res){var u=URL.createObjectURL(b),im=new Image();im.onload=function(){var mx=1100,sc=Math.min(1,mx/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL('image/jpeg',0.8).split(',')[1])};im.onerror=function(){res('')};im.src=u})})}
+function phqContext(){
+  var T=todayStr(),lo=addDays(T,-10),hi=addDays(T,10);
+  var notes=NB.rows.filter(function(n){return !nbIsF(n)&&!n.deleted}).slice(-80).map(function(n){return n.id+' | '+(n.title||'(no title)')+' | folder: '+(n.folder||'-')+' | tags: '+(n.tags||'-')+' | '+String(n.body||'').replace(/\s+/g,' ').slice(0,140)});
+  var jobs=S.cards.filter(function(c){return !c.sample&&c.date>=lo&&c.date<=hi}).map(function(c){return c.id+' | '+c.date+' | '+(c.title||c.type||'')+' | '+(c.address||'')+' | '+(c.contractor||'')+' | crew '+(c.crew||'')});
+  var dms=DM.rows.filter(function(r){return r.status!=='Picked Up'}).map(function(r){return r.id+' | '+r.site+' | '+r.co+' | '+r.status});
+  return 'Today is '+T+'.\nNOTES (id | title | folder | tags | start of text):\n'+(notes.join('\n')||'none')+'\nNOTE FOLDERS: '+(nbFolders().join(', ')||'none')+'\nJOBS (id | date | title | address | contractor | crew):\n'+(jobs.join('\n')||'none')+'\nDUMPSTERS ON SITE (id | site | company | status):\n'+(dms.join('\n')||'none');
+}
+function phqAsk(list,extra){
+  var key=getKey();if(!key)return Promise.reject(new Error('Add your Claude key in Settings first (gear, Assistant).'));
+  return Promise.all(list.map(function(x){return phqImg(x.id)})).then(function(imgs){
+    var content=[{type:'text',text:phqContext()+(extra?'\n\nSHMUEL SAYS ABOUT THESE PHOTOS: '+extra:'')}];
+    list.forEach(function(x,i){content.push({type:'text',text:'Photo '+x.id+' (sent '+new Date(x.ts).toLocaleString()+'):'});if(imgs[i])content.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:imgs[i]}})});
+    content.push({type:'text',text:'For each photo, decide where it belongs in Shmuel\'s Workday app. Prefer an existing note when one is about the same thing (for a receipt: same store and total). Use a job only for photos of work or a job site. Return ONLY a JSON array, one object per photo: {"id":"ph-...","what":"3-8 word description","action":"note|new_note|job|dumpster|job_request|aside|unsure","note_id":"","job_id":"","dumpster_id":"","caption":"short caption for a job photo","new_note":{"title":"","body":"full useful text from the photo","tags":"comma tags","folder":"folder name or empty"},"why":"one short reason"}. aside = duplicate or not needed. job_request = the photo asks for work to be scheduled; put the job details in new_note.body. If Shmuel said where something goes, follow him.'});
+    return claudeFetch(key,{max_tokens:4000,messages:[{role:'user',content:content}]});
+  }).then(function(res){
+    if(!res.ok)throw new Error((res.j&&res.j.error&&res.j.error.message)||'Claude did not answer');
+    var t=(res.j.content||[]).map(function(b){return b.text||''}).join(''),m=t.match(/\[[\s\S]*\]/);
+    var arr=[];try{arr=JSON.parse(m?m[0]:t)}catch(e){throw new Error('Claude answered in a way I could not read. Try again.')}
+    arr.forEach(function(o){if(o&&o.id)PHQ.props[o.id]=o});return arr;
+  });
+}
+function phqTarget(o){
+  if(!o)return 'Thinking...';
+  if(o.action==='note'){var n=NB.rows.filter(function(x){return x.id===o.note_id})[0];return n?'Put in note: '+(n.title||'(no title)'):'Put in a note (not found)'}
+  if(o.action==='new_note')return 'New note'+(o.new_note&&o.new_note.folder?' in '+o.new_note.folder:'')+': '+((o.new_note&&o.new_note.title)||'');
+  if(o.action==='job'){var c=find(o.job_id);return c?'Add to job: '+(c.title||c.type||'')+(c.address?' - '+c.address.split(',')[0]:'')+' ('+engShort(c.date)+')':'Add to a job (not found)'}
+  if(o.action==='dumpster'){var d=DM.rows.filter(function(r){return r.id===o.dumpster_id})[0];return d?'Add to dumpster: '+d.site+' ('+d.co+')':'Add to a dumpster (not found)'}
+  if(o.action==='job_request')return 'Looks like a job request. Make a job card?';
+  if(o.action==='aside')return 'Set aside (not needed)';
+  return 'Not sure where this goes. Tell Claude below.';
+}
+function phqApply(id){
+  var o=PHQ.props[id];if(!o)return Promise.reject(new Error('No suggestion yet'));var ref='wd:'+id;
+  if(o.action==='note'){var n=NB.rows.filter(function(x){return x.id===o.note_id})[0];if(!n)return Promise.reject(new Error('That note is gone'));var L=nbPhotos(n);if(L.indexOf(ref)<0)L.push(ref);n.photos=L.join(';');return nbWrite(n,false).then(function(){return phqMark([id],'note "'+(n.title||n.id)+'"')})}
+  if(o.action==='new_note'){var nn=o.new_note||{},f=nn.folder?nbMakeFolder(String(nn.folder).replace(/\s*\/\s*/g,'/').trim()):'';var n2={};NBCOLS.forEach(function(k){n2[k]=''});n2.id='n'+Date.now().toString(36)+Math.floor(Math.random()*10);n2.title=nn.title||o.what||'Photo';n2.body=nn.body||'';n2.tags=nn.tags||'';n2.folder=f;n2.photos=ref;NB.rows.push(n2);return nbWrite(n2,true).then(function(){return phqMark([id],'note "'+n2.title+'"')})}
+  if(o.action==='job'){var c=find(o.job_id);if(!c)return Promise.reject(new Error('That job is gone'));var t=Date.now(),nid='p'+t.toString(36),d=new Date(t);c.comments=c.comments||[];c.comments.push({id:nid,t:t,text:o.caption||'Photo',photoUrl:ref,by:'Shmuel',synced:1});save();
+    return bridge('appendValues',{book:'workday',range:'Notes!A:F',values:[[c.id,ymd(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes()),o.caption||'Photo',ref,'Shmuel',nid]]}).then(function(){return phqMark([id],'job '+c.id)})}
+  if(o.action==='dumpster'){var r=DM.rows.filter(function(x){return x.id===o.dumpster_id})[0];if(!r)return Promise.reject(new Error('That dumpster is gone'));var dl=dmPhotos(r);dl.push(ref);return dmPatch(r,{photos:dl.join('; ')}).then(function(){return phqMark([id],'dumpster '+r.id)})}
+  if(o.action==='aside')return phqMark([id],'set aside');
+  return Promise.reject(new Error('Tell Claude where it goes first'));
+}
+/* tap to talk, tap again to stop; the words go in the box */
+function miniRec(btn,box){
+  if(btn._rec){var R=btn._rec;btn._rec=null;btn.classList.remove('on');btn.disabled=true;try{R.proc.disconnect();R.stream.getTracks().forEach(function(t){t.stop()});R.ctx.close()}catch(e){}
+    var prev=box.value;box.value=(prev?prev+' ':'')+'...';
+    msgApi('/transcribe',{audio:wavB64(R.chunks,R.rate),prompt:vocabPrompt()}).then(function(j){box.value=((prev?prev+' ':'')+((j&&j.text)||'')).trim();btn.disabled=false},function(e){box.value=prev;btn.disabled=false;toast(e.message||String(e))});return}
+  var AC=window.AudioContext||window.webkitAudioContext,ctx;try{ctx=new AC()}catch(e){toast('Microphone would not start');return}
+  navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}}).then(function(stream){
+    if(ctx.state==='suspended')ctx.resume();var src=ctx.createMediaStreamSource(stream),proc=ctx.createScriptProcessor(4096,1,1),R={ctx:ctx,stream:stream,proc:proc,chunks:[],rate:ctx.sampleRate};
+    proc.onaudioprocess=function(e){R.chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)))};src.connect(proc);proc.connect(ctx.destination);btn._rec=R;btn.classList.add('on');
+  },function(){toast('Microphone is blocked. Turn it on in iPhone Settings.')});
+}
+var MIC_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+function openPhotoReview(){
+  if(!msgOK()){toast('Needs the Messages connection');return}
+  var h='<h3>Photos to file</h3><div id="prTop" class="mt">Loading...</div><div id="prList"></div>';
+  openSheet(h);
+  Promise.all([phqCheck(true),NB.at?Promise.resolve():nbLoad().catch(function(){})]).then(function(){
+    var list=PHQ.list.slice().sort(function(a,b){return a.ts-b.ts});
+    var top=document.getElementById('prTop');if(!top)return;
+    if(!list.length){top.innerHTML='All sorted. Nothing waiting.';document.getElementById('prList').innerHTML='<div class="row"><button class="btn" id="prDone">Done</button></div>';bind('prDone',closeSheet);return}
+    top.innerHTML='<label for="prAll" style="font-size:13px;opacity:.7">Tell Claude about these (optional). Tap the mic to talk.</label><div class="prtell"><textarea id="prAll" rows="2" aria-label="Tell Claude about these photos"></textarea><button class="prmic" id="prAllMic" aria-label="Talk">'+MIC_SVG+'</button></div><div class="row" style="gap:8px"><button class="btn" id="prRe">Ask again with this</button><button class="btn primary" id="prOkAll">OK all</button></div>';
+    function card(x){var o=PHQ.props[x.id];return '<div class="prcard" id="pc-'+x.id+'"><a href="'+esc(msgMediaUrl(x.id))+'" target="_blank"><img src="'+esc(msgMediaUrl(x.id))+'" alt=""></a><div class="prbody"><div class="prwhat">'+esc(o?o.what||'':'')+'</div><div class="prto">'+esc(phqTarget(o))+'</div>'+(o&&o.why?'<div class="prwhy">'+esc(o.why)+'</div>':'')+
+      '<div class="prbtns">'+(o&&o.action==='job_request'?'<button class="btn primary" data-prjob="'+x.id+'">Make job</button>':'<button class="btn primary" data-prok="'+x.id+'"'+(!o||o.action==='unsure'?' disabled':'')+'>OK</button>')+'<button class="btn" data-prfix="'+x.id+'">Change</button><button class="btn" data-prskip="'+x.id+'">Later</button></div>'+
+      '<div class="prfix" id="pf-'+x.id+'" hidden><div class="prtell"><textarea rows="2" id="pt-'+x.id+'" aria-label="Where should this go?"></textarea><button class="prmic" data-prmic="'+x.id+'" aria-label="Talk">'+MIC_SVG+'</button></div><div class="row" style="gap:8px"><button class="btn" data-prredo="'+x.id+'">Ask again</button><button class="btn" data-praside="'+x.id+'">Not needed</button></div></div></div></div>'}
+    function draw(){var L=document.getElementById('prList');if(!L)return;var left=list.filter(function(x){return PHQ.list.some(function(y){return y.id===x.id})});
+      if(!left.length){L.innerHTML='<div class="mt">All filed.</div><div class="row"><button class="btn" id="prDone">Done</button></div>';bind('prDone',closeSheet);document.getElementById('prTop').innerHTML='';render();return}
+      L.innerHTML=left.map(card).join('');wire()}
+    function busy(id,t){var el=document.querySelector('#pc-'+id+' .prto');if(el)el.textContent=t}
+    function ok(id){busy(id,'Saving...');return phqApply(id).then(function(){draw()},function(e){busy(id,e.message||String(e))})}
+    function wire(){
+      [].forEach.call(document.querySelectorAll('[data-prok]'),function(b){b.onclick=function(){ok(b.dataset.prok)}});
+      [].forEach.call(document.querySelectorAll('[data-prskip]'),function(b){b.onclick=function(){var el=document.getElementById('pc-'+b.dataset.prskip);if(el)el.style.display='none'}});
+      [].forEach.call(document.querySelectorAll('[data-prfix]'),function(b){b.onclick=function(){var f=document.getElementById('pf-'+b.dataset.prfix);f.hidden=!f.hidden}});
+      [].forEach.call(document.querySelectorAll('[data-prmic]'),function(b){b.onclick=function(){miniRec(b,document.getElementById('pt-'+b.dataset.prmic))}});
+      [].forEach.call(document.querySelectorAll('[data-praside]'),function(b){b.onclick=function(){var id=b.dataset.praside;phqMark([id],'set aside').then(draw)}});
+      [].forEach.call(document.querySelectorAll('[data-prredo]'),function(b){b.onclick=function(){var id=b.dataset.prredo,t=val('pt-'+id).trim();if(!t)return;busy(id,'Asking Claude...');phqAsk(list.filter(function(x){return x.id===id}),t).then(draw,function(e){busy(id,e.message)})}});
+      [].forEach.call(document.querySelectorAll('[data-prjob]'),function(b){b.onclick=function(){var id=b.dataset.prjob,o=PHQ.props[id]||{};phqMark([id],'made into a job').then(function(){openEdit(null,{title:(o.new_note&&o.new_note.title)||o.what||'',notes:(o.new_note&&o.new_note.body)||''})})}});
+    }
+    bind('prAllMic',function(){miniRec(document.getElementById('prAllMic'),document.getElementById('prAll'))});
+    bind('prRe',function(){var t=val('prAll').trim(),left=list.filter(function(x){return PHQ.list.some(function(y){return y.id===x.id})});left.forEach(function(x){delete PHQ.props[x.id]});draw();phqAsk(left,t).then(draw,function(e){toast(e.message)})});
+    bind('prOkAll',function(){var ids=list.filter(function(x){var o=PHQ.props[x.id];return o&&['note','new_note','job','dumpster','aside'].indexOf(o.action)>=0&&PHQ.list.some(function(y){return y.id===x.id})}).map(function(x){return x.id});
+      ids.reduce(function(p,id){return p.then(function(){return ok(id)})},Promise.resolve())});
+    draw();
+    var need=list.filter(function(x){return !PHQ.props[x.id]});
+    if(need.length){var chunks=[];for(var i=0;i<need.length;i+=6)chunks.push(need.slice(i,i+6));chunks.reduce(function(p,ch){return p.then(function(){return phqAsk(ch,'').then(draw)})},Promise.resolve()).catch(function(e){var t2=document.getElementById('prTop');if(t2)t2.insertAdjacentHTML('afterbegin','<div class="warn">'+esc(e.message||String(e))+'</div>')})}
+  });
+}
 function render(){
   document.body.classList.toggle('inchat',S.view==='msg'&&!!MSG.cur);
   document.body.classList.toggle('msgmode',S.view==='msg'&&msgOK());
@@ -2841,7 +2949,7 @@ function threadHtml(c){
   var cm=c.comments||[],h='',lastDay='';
   if(!cm.length)return '<div class="empty" style="text-align:center;align-self:center">No notes yet. Type a note or add a photo below.</div>';
   cm.forEach(function(m){var dd=ymd(new Date(m.t));if(dd!==lastDay){h+='<div class="tday">'+esc(engShort(dd))+'</div>';lastDay=dd}
-    h+='<div class="bub">'+(m.img?'<img src="'+m.img+'" alt="Job photo">':(m.photoUrl?'<a href="'+esc(m.photoUrl)+'" target="_blank" rel="noopener" style="color:#fff;font-weight:700">Open photo</a>':''))+(m.text?'<span>'+linkify(esc(m.text))+'</span>':'')+linkRows(findLinks(m.text),true)+'<time>'+stamp(m.t)+'</time></div>'});
+    h+='<div class="bub">'+(m.img?'<img src="'+m.img+'" alt="Job photo">':(/^wd:/.test(m.photoUrl||'')&&msgOK()?'<img src="'+esc(msgMediaUrl(String(m.photoUrl).slice(3)))+'" alt="Job photo">':m.photoUrl?'<a href="'+esc(m.photoUrl)+'" target="_blank" rel="noopener" style="color:#fff;font-weight:700">Open photo</a>':''))+(m.text?'<span>'+linkify(esc(m.text))+'</span>':'')+linkRows(findLinks(m.text),true)+'<time>'+stamp(m.t)+'</time></div>'});
   return h;
 }
 function wireNotes(c,saved){
@@ -4384,7 +4492,10 @@ if(MOVED)setTimeout(openMoved,800);
 eveCheck();setInterval(function(){if(!document.hidden)eveCheck()},60000);
 setTimeout(loadKZ,400);
 if(msgOK()){setTimeout(function(){bkConfig(false)},6000);setTimeout(bkNudge,9000);msgCfgToSW();setTimeout(msgTick,1500);setTimeout(function(){remPush(true)},5000);setTimeout(function(){try{if(window.Notification&&Notification.permission==='granted')msgPushOn().catch(function(){})}catch(e){}},3000)}
-try{if(navigator.serviceWorker)navigator.serviceWorker.addEventListener('message',function(e){var d=e.data||{};if(d.type==='openDay'){closeSheet();S.view='day';S.cur=todayStr();render();mainTop();return}if(d.type==='openChat'&&msgOK()){closeSheet();if(d.chat)msgOpen(d.chat);else{MSG.cur=null;S.view='msg';render();msgTick()}}})}catch(e){}
+try{if(navigator.serviceWorker)navigator.serviceWorker.addEventListener('message',function(e){var d=e.data||{};if(d.type==='openDay'){closeSheet();S.view='day';S.cur=todayStr();render();mainTop();return}if(d.type==='openPhotos'){openPhotoReview();return}if(d.type==='openChat'&&msgOK()){closeSheet();if(d.chat)msgOpen(d.chat);else{MSG.cur=null;S.view='msg';render();msgTick()}}})}catch(e){}
+try{if(location.search.indexOf('photos=1')>=0)setTimeout(openPhotoReview,600)}catch(e){}
+try{if(location.search.indexOf('photos=1')>=0&&history.replaceState)history.replaceState(null,'',location.pathname)}catch(e){}
+try{setInterval(function(){if(!document.hidden)phqCheck()},30000);document.addEventListener('visibilitychange',function(){if(!document.hidden)phqCheck(true)});setTimeout(function(){phqCheck(true)},1500)}catch(e){}
 try{if(location.search.indexOf('chat=')>=0&&history.replaceState)history.replaceState(null,'',location.pathname)}catch(e){}
 if(connOK()){setTimeout(function(){syncNow()},800);setInterval(function(){if(!document.hidden)syncNow()},120000)}
 document.addEventListener('visibilitychange',function(){if(!document.hidden)eveCheck();if(!document.hidden&&connOK())syncNow();if(!document.hidden&&msgOK()){msgTick();remPush()}});

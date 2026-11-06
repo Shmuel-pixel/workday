@@ -147,6 +147,7 @@ export class Box extends DurableObject {
       if (!this.get('app_key') || key !== this.get('app_key')) return err('Wrong or missing app key', 401);
 
       if (p === '/status') return json(this.status(url));
+      if (p === '/photos/used' && req.method === 'POST') { var ub = await req.json(), self3 = this; (ub.ids || []).forEach(function (i) { self3.sql.exec('UPDATE mcp_photos SET used=? WHERE id=?', String(ub.used || 'sorted'), String(i)); }); return json({ ok: true }); }
       if (p === '/photos/inbox') return json({ photos: this.sql.exec('SELECT id,ts,used FROM mcp_photos ORDER BY ts DESC LIMIT 200').toArray() });
       if (p === '/mcp/setup' && req.method === 'POST') {
         var mb = await req.json();
@@ -398,7 +399,7 @@ export class Box extends DurableObject {
   notify() {
     var nt = this.get('notice'), n = nt ? JSON.parse(nt) : null;
     var lastIn = this.sql.exec('SELECT MAX(ts) AS t FROM msgs WHERE dir=\'in\'').toArray()[0].t || 0;
-    if (n && n.ts > Date.now() - 15 * 60000 && n.ts >= lastIn) return { kind: 'rem', title: 'Workday', body: n.title, count: 0 };
+    if (n && n.ts > Date.now() - 15 * 60000 && n.ts >= lastIn) return { kind: n.kind || 'rem', title: 'Workday', body: n.title, count: 0 };
     var u = this.sql.exec('SELECT COALESCE(SUM(unread),0) AS n FROM chats').toArray()[0].n;
     var last = this.sql.exec('SELECT m.chat, m.text, m.type, c.name FROM msgs m LEFT JOIN chats c ON c.chat=m.chat WHERE m.dir=\'in\' ORDER BY m.ts DESC LIMIT 1').toArray()[0];
     if (!last) return { count: u, title: 'Workday', body: 'New message' };
@@ -520,6 +521,12 @@ export class Box extends DurableObject {
     var id = 'ph-' + rand(16);
     this.saveMedia(id, mime, bytes);
     this.sql.exec('INSERT INTO mcp_photos (id,ts,used) VALUES (?,?,?)', id, Date.now(), '');
+    var lp = +(this.get('ph_push') || 0);
+    if (Date.now() - lp > 90000) {
+      this.put('ph_push', String(Date.now()));
+      this.put('notice', JSON.stringify({ title: 'New photos to file. Tap to review.', ts: Date.now(), kind: 'photos' }));
+      try { await this.pushAll(); } catch (e) {}
+    }
     return new Response('Sent to Workday. Tell Claude where to put it.', { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
   }
   saveMedia(id, mime, bytes) {

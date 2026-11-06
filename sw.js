@@ -1,5 +1,5 @@
 /* Workday offline cache. Bump VERSION when the app changes. */
-var VERSION='workday-v125';
+var VERSION='workday-v127';
 var SHELL=['./','index.html','manifest.webmanifest','icons/apple-touch-icon.png','icons/icon-192.png','icons/icon-512.png'];
 self.addEventListener('install',function(e){e.waitUntil(caches.open(VERSION).then(function(c){return c.addAll(SHELL)}).then(function(){return self.skipWaiting()}))});
 self.addEventListener('activate',function(e){e.waitUntil(caches.keys().then(function(ks){return Promise.all(ks.filter(function(k){return k!==VERSION&&k!=='wd-cfg'}).map(function(k){return caches.delete(k)}))}).then(function(){return self.clients.claim()}))});
@@ -32,11 +32,11 @@ self.addEventListener('push',function(e){
 self.addEventListener('notificationclick',function(e){
   e.notification.close();
   var chat=(e.notification.data&&e.notification.data.chat)||'',kind=(e.notification.data&&e.notification.data.kind)||'';
-  var url=self.registration.scope+(kind==='rem'?'':(chat?'?chat='+encodeURIComponent(chat):'?chat=list'));
+  var url=self.registration.scope+(kind==='photos'?'?photos=1':kind==='rem'?'':(chat?'?chat='+encodeURIComponent(chat):'?chat=list'));
   e.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(function(cs){
     for(var i=0;i<cs.length;i++){if(cs[i].url.indexOf(self.registration.scope)===0){
       /* app already open: tell it which chat to show, then bring it forward */
-      cs[i].postMessage(kind==='rem'?{type:'openDay'}:{type:'openChat',chat:chat});
+      cs[i].postMessage(kind==='photos'?{type:'openPhotos'}:kind==='rem'?{type:'openDay'}:{type:'openChat',chat:chat});
       try{return cs[i].focus().catch(function(){})}catch(x){return}
     }}
     return self.clients.openWindow(url);
